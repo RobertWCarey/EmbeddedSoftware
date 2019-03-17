@@ -11,7 +11,8 @@
 // Include Header Files
 #include "FIFO.h"
 
-bool FIFO_Init(TFIFO * const fifo){
+bool FIFO_Init(TFIFO * const fifo)
+{
   fifo->Start = 0;
   fifo->End = 0;
   fifo->NbBytes = 0;
@@ -19,7 +20,8 @@ bool FIFO_Init(TFIFO * const fifo){
   return true;
 }
 
-bool FIFO_Put(TFIFO * const fifo, const uint8_t data){
+bool FIFO_Put(TFIFO * const fifo, const uint8_t data)
+{
   // Check if the buffer is full
   if (fifo->NbBytes >= FIFO_SIZE)
     return false;
@@ -36,7 +38,8 @@ bool FIFO_Put(TFIFO * const fifo, const uint8_t data){
   return true;
 }
 
-bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr){
+bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr)
+{
   // Check if there is data in the buffer
   if (fifo->NbBytes <= 0)
     return false;

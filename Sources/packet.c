@@ -22,11 +22,13 @@ uint8_t   Packet_Command,	/*!< The packet's command */
 	  Packet_Parameter3,	/*!< The packet's 3rd parameter */
 	  Packet_Checksum;	/*!< The packet's checksum */
 
-bool Packet_Init(const uint32_t baudRate, const uint32_t moduleClk){
+bool Packet_Init(const uint32_t baudRate, const uint32_t moduleClk)
+{
   return UART_Init(baudRate,moduleClk);
 }
 
-bool Packet_Get(void){
+bool Packet_Get(void)
+{
   // Read Packet values into variables
   while(UART_InChar(&Packet_Checksum)){
       // Check if a valid packet
@@ -42,7 +44,8 @@ bool Packet_Get(void){
   return false;
 }
 
-bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3){
+bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3)
+{
   // Send bytes of packet into UART
   if (!UART_OutChar(command))
     return false;
