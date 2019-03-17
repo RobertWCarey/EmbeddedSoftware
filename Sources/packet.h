@@ -21,7 +21,7 @@ extern uint8_t 	Packet_Command,		/*!< The packet's command */
 		Packet_Parameter3,	/*!< The packet's 3rd parameter */
 		Packet_Checksum;	/*!< The packet's checksum */
 
-// Acknowledgement bit mask
+// Acknowledgment bit mask
 extern const uint8_t PACKET_ACK_MASK;
 
 /*! @brief Initializes the packets by calling the initialization routines of the supporting software modules.
