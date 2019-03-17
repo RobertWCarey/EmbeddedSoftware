@@ -32,9 +32,20 @@ bool Packet_Get(void){
   return false;
 }
 
-/*! @brief Builds a packet and places it in the transmit FIFO buffer.
- *
- *  @return bool - TRUE if a valid packet was sent.
- */
-bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3);
+bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3){
+  // Send bytes of packet into UART
+  if (!UART_OutChar(command))
+    return false;
+  if (!UART_OutChar(parameter1))
+      return false;
+  if (!UART_OutChar(parameter2))
+      return false;
+  if (!UART_OutChar(parameter3))
+      return false;
+  if (!UART_OutChar(command^parameter1^parameter2^parameter3))
+    return false;
+
+  // If all bytes successfully written to UART
+  return true;
+}
 
