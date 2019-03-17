@@ -60,11 +60,11 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk){
 }
 
 bool UART_InChar(uint8_t* const dataPtr){
-  return FIFO_Put(&Rx_Buffer, dataPtr);
+  return FIFO_Put(&Rx_Buffer,(uint8_t)*dataPtr);
 }
 
 bool UART_OutChar(const uint8_t data){
-  if (FIFO_Get(&Tx_Buffer,&data)){
+  if (FIFO_Get(&Tx_Buffer,(uint8_t*)&data)){
       UART2_C2 |= UART_C2_TIE_MASK; // Set Transfer Enable
       return true;
   }else
@@ -77,5 +77,18 @@ bool UART_OutChar(const uint8_t data){
  *  @note Assumes that UART_Init has been called.
  */
 void UART_Poll(void){
+  // Retrieve State of UART2 status register 1
+  uint8_t status = UART2_S1;
+
+  // Check if Receive Data Register Full Flag is set
+  if (status & UART_S1_RDRF_MASK)
+    // Read data from UART into Receive buffer
+    FIFO_Put(&Rx_Buffer,UART2_D);
+
+  // Check if Transmit Data Register Empty Flag is set
+  if (status & UART_S1_TDRE_MASK)
+    //Write data from Transmit buffer
+    if (!FIFO_Get(&Tx_Buffer,(uint8_t*)&UART2_D))// If buffer empty
+      UART2_C2 &= ~UART_C2_TIE_MASK; // Set Transfer Disable
 
 }
