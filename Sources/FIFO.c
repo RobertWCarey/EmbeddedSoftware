@@ -49,4 +49,6 @@ bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr){
   // Check if End position needs to be looped
   if (fifo->End > FIFO_SIZE)
     fifo->End=0;
+
+  return true;
 }
