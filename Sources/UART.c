@@ -62,7 +62,7 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
 
 bool UART_InChar(uint8_t* const dataPtr)
 {
-  return FIFO_Get(&Rx_Buffer,(uint8_t*)&dataPtr);
+  return FIFO_Get(&Rx_Buffer,dataPtr);
 }
 
 bool UART_OutChar(const uint8_t data)
