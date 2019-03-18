@@ -13,7 +13,7 @@
 #include "UART.h"
 
 // Acknowledgment bit mask
-const uint8_t PACKET_ACK_MASK = 0x08u;
+const uint8_t PACKET_ACK_MASK = 0x80u;
 
 // Packet structure
 uint8_t   Packet_Command,	/*!< The packet's command */
