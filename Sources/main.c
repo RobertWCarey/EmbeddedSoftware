@@ -56,11 +56,11 @@ static uint32_t BAUD_RATE = 38400;
  *  @param towerNb A variable containing the Tower Number.
  *  @return bool - TRUE if all packets were successfully sent.
  */
-static bool towerStatupPacketHandler (uint16union_t towerNb)
+static bool towerStatupPacketHandler (uint16union_t * const towerNb)
 {
   return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
       Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
-      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_PARAM1,towerNb.s.Lo,towerNb.s.Hi);
+      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_PARAM1,towerNb->s.Lo,towerNb->s.Hi);
 }
 
 /*! @brief Returns values for Special packet requested.
@@ -81,17 +81,17 @@ static bool specialPacketHandler()
  *  @param towerNb A variable containing the Tower Number.
  *  @return bool - TRUE if packet successfully sent.
  */
-static bool towerNumberPacketHandler(uint16union_t towerNb)
+static bool towerNumberPacketHandler(uint16union_t * const towerNb)
 {
   // Check which type of Tower Number Packet
   if (Packet_Parameter1 == 0x01u)// If Get
     // Send out Tower Number packet
-    return Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_PARAM1,towerNb.s.Lo,towerNb.s.Hi);
+    return Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_PARAM1,towerNb->s.Lo,towerNb->s.Hi);
   else if (Packet_Parameter1 == 0x02u) // If Set
   {
     //Update Tower Number Values
-    towerNb.s.Lo = Packet_Parameter2;
-    towerNb.s.Hi = Packet_Parameter3;
+    towerNb->s.Lo = Packet_Parameter2;
+    towerNb->s.Hi = Packet_Parameter3;
     return true;
   }
 
@@ -102,7 +102,7 @@ static bool towerNumberPacketHandler(uint16union_t towerNb)
  *
  *  @return void.
  */
-static void cmdHandler(uint16union_t towerNb)
+static void cmdHandler(uint16union_t * const towerNb)
 {
   // Isolate command packet
   uint8_t command = Packet_Command & ~PACKET_ACK_MASK;
@@ -162,7 +162,7 @@ int main(void)
   /* Write your code here */
   // Initialize Tower
   if (towerInit())
-    towerStatupPacketHandler(towerNumber);
+    towerStatupPacketHandler(&towerNumber);
 
   for (;;)
   {
@@ -174,7 +174,7 @@ int main(void)
       continue;// If no valid packet go to start of loop
 
     // Deal with any received packets
-    cmdHandler(towerNumber);
+    cmdHandler(&towerNumber);
 
     // Reset command variable
     Packet_Command = 0x00u;
