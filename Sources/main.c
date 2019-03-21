@@ -26,7 +26,6 @@
 */         
 /* MODULE main */
 
-
 // CPU module - contains low level hardware initialization routines
 #include "Cpu.h"
 #include "packet.h"
