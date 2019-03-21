@@ -61,6 +61,8 @@ typedef union
 
 extern TPacket Packet;
 
+=======
+
 // Acknowledgment bit mask
 extern const uint8_t PACKET_ACK_MASK;
 
