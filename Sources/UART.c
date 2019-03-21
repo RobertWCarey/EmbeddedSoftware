@@ -24,26 +24,26 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
   SIM_SCGC5 |= SIM_SCGC5_PORTE_MASK;
 
   // Declare Variable to store baud Rate
-  uint16union_t SBR;
-  uint8_t BFRA;
+  uint16union_t sbr;
+  uint8_t brfa;
 
   // Declare Variables used to calculate Baud Rate
-  uint8_t aquisitionRate = 16;
-  uint8_t BFRADivisor = 32;
+  uint8_t const AQUISITION_RATE = 16;
+  uint8_t const BRFA_DIVISOR = 32;
 
-  // Calculate SBR
-  SBR.l = (moduleClk/baudRate)/aquisitionRate;
+  // Calculate sbr
+  sbr.l = (moduleClk/baudRate)/AQUISITION_RATE;
   // Calculate BRFA (Baud Rate Fine Adjust)
-  BFRA = (moduleClk % (baudRate*aquisitionRate))*BFRADivisor/(baudRate*aquisitionRate);
+  brfa = (moduleClk % (baudRate*AQUISITION_RATE))*BRFA_DIVISOR/(baudRate*AQUISITION_RATE);
 
   // Disable the UART2 TX and RX
   UART2_C2 &= ~UART_C2_RE_MASK;
   UART2_C2 &= ~UART_C2_TE_MASK;
 
   // Write baud rate variables to registers
-  UART2_BDH |= UART_BDH_SBR(SBR.s.Hi);
-  UART2_BDL = SBR.s.Lo;
-  UART2_C4 |= UART_C4_BRFA(BFRA);
+  UART2_BDH |= UART_BDH_SBR(sbr.s.Hi);
+  UART2_BDL = sbr.s.Lo;
+  UART2_C4 |= UART_C4_BRFA(brfa);
 
   // Mux the UART2 TX & RX pins for PORTE
   PORTE_PCR16 |= PORT_PCR_MUX(3);

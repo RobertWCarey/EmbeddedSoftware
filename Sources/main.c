@@ -33,7 +33,7 @@
 #include "UART.h"
 
 // Baud Rate
-static uint32_t BAUD_RATE = 38400;
+#define BAUD_RATE 38400
 
 // Command Values
 #define CMD_TOWER_STARTUP 0x04u
