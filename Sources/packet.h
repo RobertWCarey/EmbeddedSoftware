@@ -1,3 +1,8 @@
+/*!
+ * @addtogroup Packet_module Packet module documentation
+ * @{
+ */
+
 /*! @file
  *
  *  @brief Routines to implement packet encoding and decoding for the serial port.
@@ -85,3 +90,7 @@ bool Packet_Get(void);
 bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3);
 
 #endif
+
+/*!
+ * @}
+ */

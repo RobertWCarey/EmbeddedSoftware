@@ -1,3 +1,8 @@
+/*!
+ * @addtogroup FIFO_module FIFO module documentation
+ * @{
+ */
+
 /*! @file
  *
  *  @brief Routines to implement a FIFO buffer.
@@ -54,3 +59,7 @@ bool FIFO_Put(TFIFO * const fifo, const uint8_t data);
 bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr);
 
 #endif
+
+/*!
+ * @}
+ */
