@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup UART_module UART module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief I/O routines for UART communications on the TWR-K70F120M.
@@ -90,3 +94,6 @@ void UART_Poll(void)
     if (!FIFO_Get(&Tx_Buffer,(uint8_t*)&UART2_D))// If buffer empty
       UART2_C2 &= ~UART_C2_TIE_MASK; // Set Transfer Disable
 }
+/*!
+ * @}
+ */

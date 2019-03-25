@@ -13,17 +13,18 @@
 **         No public methods
 **
 ** ###################################################################*/
+
+/*!
+**  @addtogroup main_module Main module documentation
+**  @{
+*/
 /*!
 ** @file main.c
 ** @version 2.0
 ** @brief
 **         Main module.
 **         This module contains user's application code.
-*/         
-/*!
-**  @addtogroup main_module main module documentation
-**  @{
-*/         
+*/
 /* MODULE main */
 
 // CPU module - contains low level hardware initialization routines

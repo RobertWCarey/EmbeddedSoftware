@@ -1,3 +1,4 @@
+
 /*! @file
  *
  *  @brief I/O routines for UART communications on the TWR-K70F120M.
@@ -46,3 +47,4 @@ bool UART_OutChar(const uint8_t data);
 void UART_Poll(void);
 
 #endif
+
