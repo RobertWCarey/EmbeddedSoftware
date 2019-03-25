@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup UART_module UART module documentation
+ * @{
+ */
 
 /*! @file
  *
@@ -48,3 +52,6 @@ void UART_Poll(void);
 
 #endif
 
+/*!
+ * @}
+ */
