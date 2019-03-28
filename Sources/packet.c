@@ -20,12 +20,8 @@
 // Acknowledgment bit mask
 const uint8_t PACKET_ACK_MASK = 0x80u;
 
-// Packet structure
-uint8_t   Packet_Command,	/*!< The packet's command */
-	  Packet_Parameter1, 	/*!< The packet's 1st parameter */
-	  Packet_Parameter2, 	/*!< The packet's 2nd parameter */
-	  Packet_Parameter3,	/*!< The packet's 3rd parameter */
-	  Packet_Checksum;	/*!< The packet's checksum */
+// Define Packet
+TPacket Packet;
 
 bool Packet_Init(const uint32_t baudRate, const uint32_t moduleClk)
 {

@@ -166,6 +166,7 @@ int main(void)
 
   for (;;)
   {
+
     // Check status of UART
     UART_Poll();
 
