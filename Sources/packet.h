@@ -69,6 +69,18 @@ extern TPacket Packet;
 // Acknowledgment bit mask
 extern const uint8_t PACKET_ACK_MASK;
 
+/*! @brief Returns the checksum for a packet.
+ *
+ *  @param command 	The packet's command.
+ *  @param parameter1 	The packet's 1st parameter.
+ *  @param parameter2 	The packet's 2nd parameter.
+ *  @param parameter3 	The packet's 3rd parameter.
+ *
+ *  @return uint8_t - Returns the calculated packet checksum.
+ */
+static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3);
+
+
 /*! @brief Initializes the packets by calling the initialization routines of the supporting software modules.
  *
  *  @param baudRate The desired baud rate in bits/sec.
