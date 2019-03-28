@@ -27,15 +27,6 @@ uint8_t   Packet_Command,	/*!< The packet's command */
 	  Packet_Parameter3,	/*!< The packet's 3rd parameter */
 	  Packet_Checksum;	/*!< The packet's checksum */
 
-/*! @brief Returns the checksum for a packet.
- *
- *  @param command 	The packet's command.
- *  @param parameter1 	The packet's 1st parameter.
- *  @param parameter2 	The packet's 2nd parameter.
- *  @param parameter3 	The packet's 3rd parameter.
- *
- *  @return uint8_t - Returns the calculated packet checksum.
- */
 static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3)
 {
   return (command^parameter1^parameter2^parameter3);
