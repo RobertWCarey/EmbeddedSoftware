@@ -31,6 +31,7 @@
 #include "Cpu.h"
 #include "packet.h"
 #include "UART.h"
+#include "LEDs.h"
 
 // Baud Rate
 #define BAUD_RATE 38400
@@ -166,6 +167,11 @@ int main(void)
 
   for (;;)
   {
+    LEDs_Init();
+    LEDs_On(LED_ORANGE);
+    LEDs_Off(LED_ORANGE);
+    LEDs_Toggle(LED_ORANGE);
+
     // Check status of UART
     UART_Poll();
 
