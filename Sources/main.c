@@ -36,6 +36,7 @@
 #include "IO_Map.h"
 #include "packet.h"
 #include "UART.h"
+#include "LEDs.h"
 
 // Baud Rate
 #define BAUD_RATE 115200
@@ -149,7 +150,8 @@ static void cmdHandler(uint16union_t * const towerNb)
  */
 static bool towerInit(void)
 {
-  return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ);
+  return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
+      LEDs_Init();
 }
 
 /*lint -save  -e970 Disable MISRA rule (6.3) checking. */
@@ -167,7 +169,10 @@ int main(void)
   /* Write your code here */
   // Initialize Tower
   if (towerInit())
+  {
+    LEDs_On(LED_ORANGE);
     towerStatupPacketHandler(&towerNumber);
+  }
 
   for (;;)
   {

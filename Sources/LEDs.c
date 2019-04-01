@@ -38,6 +38,8 @@ bool LEDs_Init(void)
 
   // Initialise LEDs as off
   GPIOA_PSOR |= ( LED_ORANGE | LED_YELLOW | LED_GREEN | LED_BLUE );
+
+  return true;
 }
 
 void LEDs_On(const TLED color)
