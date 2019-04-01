@@ -29,12 +29,16 @@
 
 // CPU module - contains low level hardware initialization routines
 #include "Cpu.h"
+#include "Events.h"
+#include "PE_Types.h"
+#include "PE_Error.h"
+#include "PE_Const.h"
+#include "IO_Map.h"
 #include "packet.h"
 #include "UART.h"
-#include "LEDs.h"
 
 // Baud Rate
-#define BAUD_RATE 38400
+#define BAUD_RATE 115200
 
 // Command Values
 #define CMD_TOWER_STARTUP 0x04u
@@ -167,10 +171,6 @@ int main(void)
 
   for (;;)
   {
-    LEDs_Init();
-    LEDs_On(LED_ORANGE);
-    LEDs_Off(LED_ORANGE);
-    LEDs_Toggle(LED_ORANGE);
 
     // Check status of UART
     UART_Poll();
