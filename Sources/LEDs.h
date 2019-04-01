@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup LEDs_module LEDs module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief Routines to access the LEDs on the TWR-K70F120M.
@@ -53,3 +57,6 @@ void LEDs_Off(const TLED color);
 void LEDs_Toggle(const TLED color);
 
 #endif
+/*!
+ * @}
+ */
