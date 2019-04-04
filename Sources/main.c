@@ -39,7 +39,7 @@
 #include "LEDs.h"
 
 // Baud Rate
-#define BAUD_RATE 115200
+static const uint32_t BAUD_RATE = 115200;
 
 // Command Values
 #define CMD_TOWER_STARTUP 0x04u
@@ -47,15 +47,18 @@
 #define CMD_TOWER_NUMBER 0x0Bu
 
 // Parameters for 0x04-Tower Startup
-#define TOWER_STARTUP_PARAM 0x00u
+static const uint8_t TOWER_STARTUP_PARAM = 0x00;
 
 // Parameters for 0x09-Special-Tower Version
-#define TOWER_SPECIAL_V 0x76u // ASCII "v" in Hex
-#define TOWER_VERSION_MAJOR 0x01u
-#define TOWER_VERSION_MINOR 0x00u
+static const uint8_t TOWER_SPECIAL_V = 0x76; // ASCII "v" in Hex
+static const uint8_t TOWER_SPECIAL_X = 0x78; // ASCII "x" in Hex
+static const uint8_t TOWER_VERSION_MAJOR = 0x01;
+static const uint8_t TOWER_VERSION_MINOR = 0x00;
 
 // Parameters for 0x0B-Tower Number
-#define TOWER_NUMBER_PARAM1 0x01u
+static const uint8_t TOWER_NUMBER_GET = 0x01;// Get Param
+static const uint8_t TOWER_NUMBER_SET = 0x02;// Set Param
+static const uint8_t TOWER_NUMBER_GET_P = 0x00;// Remainder of Get params
 
 /*! @brief Sends out required packets for Tower Startup.
  *
@@ -64,9 +67,14 @@
  */
 static bool towerStatupPacketHandler (uint16union_t * const towerNb)
 {
-  return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
+  // Check that params are valid
+  if ( (Packet_Parameter1 == TOWER_STARTUP_PARAM) && (Packet_Parameter2 == TOWER_STARTUP_PARAM) && (Packet_Parameter3 == TOWER_STARTUP_PARAM) )
+    return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
       Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
-      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_PARAM1,towerNb->s.Lo,towerNb->s.Hi);
+      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi);
+
+  // If invalid params return false
+  return false;
 }
 
 /*! @brief Returns values for Special packet requested.
@@ -76,7 +84,7 @@ static bool towerStatupPacketHandler (uint16union_t * const towerNb)
 static bool specialPacketHandler()
 {
   // Check which special selected
-  if (Packet_Parameter1 == TOWER_SPECIAL_V)// If Get Version selected
+  if ( (Packet_Parameter1 == TOWER_SPECIAL_V) && (Packet_Parameter2 == TOWER_SPECIAL_X) )// If Get Version selected
     return Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR);
 
   return false;
@@ -90,10 +98,11 @@ static bool specialPacketHandler()
 static bool towerNumberPacketHandler(uint16union_t * const towerNb)
 {
   // Check which type of Tower Number Packet
-  if (Packet_Parameter1 == 0x01u)// If Get
+  // If Get
+  if ( (Packet_Parameter1 == TOWER_NUMBER_GET) && (Packet_Parameter2 == TOWER_NUMBER_GET_P) && (Packet_Parameter3 == TOWER_NUMBER_GET_P) )
     // Send out Tower Number packet
-    return Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_PARAM1,towerNb->s.Lo,towerNb->s.Hi);
-  else if (Packet_Parameter1 == 0x02u) // If Set
+    return Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi);
+  else if (Packet_Parameter1 == TOWER_NUMBER_SET) // If Set
   {
     //Update Tower Number Values
     towerNb->s.Lo = Packet_Parameter2;
@@ -106,6 +115,7 @@ static bool towerNumberPacketHandler(uint16union_t * const towerNb)
 
 /*! @brief Performs necessary action for any valid packets received.
  *
+ *  @param towerNb A variable containing the Tower Number.
  *  @return void.
  */
 static void cmdHandler(uint16union_t * const towerNb)
@@ -139,8 +149,9 @@ static void cmdHandler(uint16union_t * const towerNb)
       Packet_Put(Packet_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     else// If !success send packet with NACK
     {
-      uint8_t NACK_Command = Packet_Command & ~PACKET_ACK_MASK;
-      Packet_Put(NACK_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
+      // Send Nack if required
+      uint8_t nackCommand = Packet_Command & ~PACKET_ACK_MASK;
+      Packet_Put(nackCommand,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     }
 }
 
