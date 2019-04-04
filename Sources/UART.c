@@ -46,7 +46,7 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
 
   // Write baud rate variables to registers
   UART2_BDH |= UART_BDH_SBR(sbr.s.Hi);
-  UART2_BDL = sbr.s.Lo;
+  UART2_BDL = UART_BDL_SBR(sbr.s.Lo);
   UART2_C4 |= UART_C4_BRFA(brfa);
 
   // Mux the UART2 TX & RX pins for PORTE
