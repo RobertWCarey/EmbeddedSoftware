@@ -46,7 +46,7 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
 
   // Write baud rate variables to registers
   UART2_BDH |= UART_BDH_SBR(sbr.s.Hi);
-  UART2_BDL = sbr.s.Lo;
+  UART2_BDL = UART_BDL_SBR(sbr.s.Lo);
   UART2_C4 |= UART_C4_BRFA(brfa);
 
   // Mux the UART2 TX & RX pins for PORTE
@@ -72,8 +72,7 @@ bool UART_InChar(uint8_t* const dataPtr)
 bool UART_OutChar(const uint8_t data)
 {
   if (FIFO_Put(&Tx_Buffer,data)){
-      UART2_C2 |= UART_C2_TIE_MASK; // Set Transfer Enable
-      return true;
+    return true;
   }else
     return false;
 }
@@ -91,8 +90,7 @@ void UART_Poll(void)
   // Check if Transmit Data Register Empty Flag is set
   if (status & UART_S1_TDRE_MASK)
     //Write data from Transmit buffer
-    if (!FIFO_Get(&Tx_Buffer,(uint8_t*)&UART2_D))// If buffer empty
-      UART2_C2 &= ~UART_C2_TIE_MASK; // Set Transfer Disable
+    FIFO_Get(&Tx_Buffer,(uint8_t*)&UART2_D);
 }
 /*!
  * @}
