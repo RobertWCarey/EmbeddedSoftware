@@ -1,6 +1,6 @@
 /* ###################################################################
 **     Filename    : main.c
-**     Project     : Lab1
+**     Project     : Lab2
 **     Processor   : MK70FN1M0VMJ12
 **     Version     : Driver 01.01
 **     Compiler    : GNU C Compiler
@@ -29,11 +29,17 @@
 
 // CPU module - contains low level hardware initialization routines
 #include "Cpu.h"
+#include "Events.h"
+#include "PE_Types.h"
+#include "PE_Error.h"
+#include "PE_Const.h"
+#include "IO_Map.h"
 #include "packet.h"
 #include "UART.h"
+#include "LEDs.h"
 
 // Baud Rate
-static const uint32_t BAUD_RATE = 38400;
+static const uint32_t BAUD_RATE = 115200;
 
 // Command Values
 #define CMD_TOWER_STARTUP 0x04u
@@ -155,7 +161,8 @@ static void cmdHandler(uint16union_t * const towerNb)
  */
 static bool towerInit(void)
 {
-  return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ);
+  return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
+      LEDs_Init();
 }
 
 /*lint -save  -e970 Disable MISRA rule (6.3) checking. */
@@ -173,10 +180,14 @@ int main(void)
   /* Write your code here */
   // Initialize Tower
   if (towerInit())
+  {
+    LEDs_On(LED_ORANGE);
     towerStatupPacketHandler(&towerNumber);
+  }
 
   for (;;)
   {
+
     // Check status of UART
     UART_Poll();
 

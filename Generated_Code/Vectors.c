@@ -6,7 +6,7 @@
 **     Version     : Component 01.028, Driver 01.04, CPU db: 3.00.000
 **     Repository  : Kinetis
 **     Compiler    : GNU C Compiler
-**     Date/Time   : 2015-07-29, 13:56, # CodeGen: 10
+**     Date/Time   : 2019-04-01, 16:47, # CodeGen: 0
 **     Abstract    :
 **
 **     Settings    :
@@ -55,6 +55,7 @@
 */         
 
   #include "Cpu.h"
+  #include "Events.h"
 
 
   /* ISR prototype */
