@@ -100,6 +100,7 @@ static bool towerNumberPacketHandler(uint16union_t * const towerNb)
 
 /*! @brief Performs necessary action for any valid packets received.
  *
+ *  @param towerNb A variable containing the Tower Number.
  *  @return void.
  */
 static void cmdHandler(uint16union_t * const towerNb)
@@ -111,6 +112,7 @@ static void cmdHandler(uint16union_t * const towerNb)
   // Variable to record if action was successful
   bool success = 0;
 
+  // TODO: Somewhere check the parameters for each packet!
   switch(command)
   {
     case CMD_TOWER_STARTUP:
@@ -133,6 +135,7 @@ static void cmdHandler(uint16union_t * const towerNb)
       Packet_Put(Packet_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     else// If !success send packet with NACK
     {
+      // Private local variable starting with an upercase letter!
       uint8_t NACK_Command = Packet_Command & ~PACKET_ACK_MASK;
       Packet_Put(NACK_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     }
