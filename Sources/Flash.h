@@ -35,6 +35,7 @@
 #define SIZE_BYTE 0x01
 #define SIZE_HALF_WORD 0x02
 #define SIZE_WORD 0x04
+#define SIZE_PHRASE 0x08
 // Variable address positions
 static const uint8_t ADDRS_BYTE = 0x80;
 static const uint8_t ADDRS_HALF_WORD = 0xC0;

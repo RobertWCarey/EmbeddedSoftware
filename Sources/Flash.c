@@ -53,7 +53,6 @@ static bool LaunchCommand(TFCCOB* ccob)
   return true;
 }
 
-
 static bool WritePhrase(const uint32_t address, const uint64union_t phrase)
 {
   TFCCOB write;
@@ -87,19 +86,6 @@ bool Flash_Init(void)
   return true;
 }
 
-/*! @brief Allocates space for a non-volatile variable in the Flash memory.
- *
- *  @param variable is the address of a pointer to a variable that is to be allocated space in Flash memory.
- *         The pointer will be allocated to a relevant address:
- *         If the variable is a byte, then any address.
- *         If the variable is a half-word, then an even address.
- *         If the variable is a word, then an address divisible by 4.
- *         This allows the resulting variable to be used with the relevant Flash_Write function which assumes a certain memory address.
- *         e.g. a 16-bit variable will be on an even address
- *  @param size The size, in bytes, of the variable that is to be allocated space in the Flash memory. Valid values are 1, 2 and 4.
- *  @return bool - TRUE if the variable was allocated space in the Flash memory.
- *  @note Assumes Flash has been initialized.
- */
 bool Flash_AllocateVar(volatile void** variable, const uint8_t size)
 {
   // Mask used to store the availability of addresses
@@ -139,50 +125,67 @@ bool Flash_AllocateVar(volatile void** variable, const uint8_t size)
   return false;
 }
 
-/*! @brief Writes a 32-bit number to Flash.
- *
- *  @param address The address of the data.
- *  @param data The 32-bit data to write.
- *  @return bool - TRUE if Flash was written successfully, FALSE if address is not aligned to a 4-byte boundary or if there is a programming error.
- *  @note Assumes Flash has been initialized.
- */
 bool Flash_Write32(volatile uint32_t* const address, const uint32_t data)
 {
+  uint8_t offset = (uint32_t)address - FLASH_DATA_START;
+  uint64union_t phrase;
 
+  if(!(offset % SIZE_PHRASE))
+  {
+    phrase.s.Hi = data;
+    phrase.s.Lo = _FW(FLASH_DATA_START + offset + SIZE_WORD);
+    return Flash_Write32((uint32_t*)address, phrase.l);
+  }
+  else
+  {
+    phrase.s.Hi = _FW(FLASH_DATA_START + offset - SIZE_WORD);
+    phrase.s.Lo = data;
+    return Flash_Write32((uint32_t*)(address - SIZE_WORD), phrase.l);
+  }
 }
 
-/*! @brief Writes a 16-bit number to Flash.
- *
- *  @param address The address of the data.
- *  @param data The 16-bit data to write.
- *  @return bool - TRUE if Flash was written successfully, FALSE if address is not aligned to a 2-byte boundary or if there is a programming error.
- *  @note Assumes Flash has been initialized.
- */
 bool Flash_Write16(volatile uint16_t* const address, const uint16_t data)
 {
+  uint8_t offset = (uint32_t)address - FLASH_DATA_START;
+  uint32union_t word;
 
+  if(!(offset % SIZE_WORD))
+  {
+    word.s.Hi = data;
+    word.s.Lo = _FH(FLASH_DATA_START + offset + SIZE_HALF_WORD);
+    return Flash_Write32((uint32_t*)address, word.l);
+  }
+  else
+  {
+    word.s.Hi = _FH(FLASH_DATA_START + offset - SIZE_HALF_WORD);
+    word.s.Lo = data;
+    return Flash_Write32((uint32_t*)(address - SIZE_HALF_WORD), word.l);
+  }
 }
 
-/*! @brief Writes an 8-bit number to Flash.
- *
- *  @param address The address of the data.
- *  @param data The 8-bit data to write.
- *  @return bool - TRUE if Flash was written successfully, FALSE if there is a programming error.
- *  @note Assumes Flash has been initialized.
- */
 bool Flash_Write8(volatile uint8_t* const address, const uint8_t data)
 {
+  uint8_t offset = (uint32_t)address - FLASH_DATA_START;
+  uint16union_t half_word;
+
+  if(!(offset % SIZE_HALF_WORD))
+  {
+    half_word.s.Hi = data;
+    half_word.s.Lo = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
+    return Flash_Write16((uint16_t*)address, half_word.l);
+  }
+  else
+  {
+    half_word.s.Hi = _FB(FLASH_DATA_START + offset - SIZE_BYTE);
+    half_word.s.Lo = data;
+    return Flash_Write16((uint16_t*)(address - SIZE_BYTE), half_word.l);
+  }
 
 }
 
-/*! @brief Erases the entire Flash sector.
- *
- *  @return bool - TRUE if the Flash "data" sector was erased successfully.
- *  @note Assumes Flash has been initialized.
- */
 bool Flash_Erase(void)
 {
-
+  EraseSector(FLASH_DATA_START);
 }
 
 
