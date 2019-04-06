@@ -44,12 +44,14 @@ static const uint8_t ADDRS_WORD = 0xF0;
 static const uint8_t FCMD_ERASE_SECTOR = 0x09;
 static const uint8_t FCMD_PROGRAM_PHRASE = 0x07;
 
+static const uint8_t BYTE_SHIFT = 8;
+
 // Common Command Object Struct
 typedef struct
 {
   uint8_t command;
-  uint32union_t address;
-  uint64union_t phrase;
+  uint32_t address;
+  uint64_t phrase;
 } TFCCOB;
 
 
