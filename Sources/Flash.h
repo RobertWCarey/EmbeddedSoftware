@@ -56,19 +56,33 @@ typedef struct
 } TFCCOB;
 
 
-/*! @brief .
+/*! @brief Goes through the sequence of writing to flash.
  *
- *  @param commonCommandObject The address of the data.
+ *  @param ccob Common Command Object contains command, address and data.
  *
- *  @return bool - TRUE .
+ *  @return bool - TRUE when the command has been completed.
  *  @note Assumes Flash has been initialized.
  */
-static bool LaunchCommand(TFCCOB* commonCommandObject);
+static bool LaunchCommand(TFCCOB* ccob);
 
-
+/*! @brief sets up write Common Command Object.
+ *
+ *  @param address address where phrase is to be written.
+ *  @param phrase  data to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool WritePhrase(const uint32_t address, const uint64union_t phrase);
 
-
+/*! @brief sets up write Common Command Object.
+ *
+ *  @param address address where phrase is to be written.
+ *  @param phrase  data to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool EraseSector(const uint32_t address);
 
 

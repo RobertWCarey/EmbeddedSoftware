@@ -134,13 +134,13 @@ bool Flash_Write32(volatile uint32_t* const address, const uint32_t data)
   {
     phrase.s.Hi = data;
     phrase.s.Lo = _FW(FLASH_DATA_START + offset + SIZE_WORD);
-    return Flash_Write32((uint32_t*)address, phrase.l);
+    return ModifyPhrase((uint32_t)address, phrase);
   }
   else
   {
     phrase.s.Hi = _FW(FLASH_DATA_START + offset - SIZE_WORD);
     phrase.s.Lo = data;
-    return Flash_Write32((uint32_t*)(address - SIZE_WORD), phrase.l);
+    return ModifyPhrase((uint32_t)(address - SIZE_WORD), phrase);
   }
 }
 
