@@ -15,6 +15,7 @@
 
 // new types
 #include "types.h"
+#include "Flash.h"
 
 
 static bool LaunchCommand(TFCCOB* commonCommandObject)
@@ -25,14 +26,23 @@ static bool LaunchCommand(TFCCOB* commonCommandObject)
 
 static bool WritePhrase(const uint32_t address, const uint64union_t phrase)
 {
+  TFCCOB write;
 
+  write.command = FCMD_PROGRAM_PHRASE;
+  write.address.l = address;
+  write.phrase.l = phrase;
+
+  LaunchCommand(&write);
 }
 
 static bool EraseSector(const uint32_t address)
 {
   TFCCOB erase;
 
-  erase.command =
+  erase.command = FCMD_ERASE_SECTOR;
+  erase.address.l = address;
+
+  LaunchCommand(&erase);
 }
 
 static bool ModifyPhrase(const uint32_t address, const uint64union_t phrase)
@@ -91,7 +101,7 @@ bool Flash_AllocateVar(volatile void** variable, const uint8_t size)
     if (availableAddrs & (currentMask>>i))// If there is a free spot
     {
       availableAddrs &= ~(currentMask>>i);// Update the availableAddrs
-      *variable = FLASH_DATA_START + i;// Assign the address to the variable
+      *variable = (uint32_t*)(FLASH_DATA_START + i);// Assign the address to the variable
       return true;
     }
   }

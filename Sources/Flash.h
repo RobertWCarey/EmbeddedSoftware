@@ -17,6 +17,7 @@
 
 // new types
 #include "types.h"
+#include "MK70F12.h"
 
 // FLASH data access
 #define _FB(flashAddress)  *(uint8_t  volatile *)(flashAddress)
@@ -31,9 +32,9 @@
 
 // Masks for:
 // Variable size selection
-static const uint8_t SIZE_BYTE = 0x01;
-static const uint8_t SIZE_HALF_WORD = 0x02;
-static const unit8_t SIZE_WORD = 0x04;
+#define SIZE_BYTE 0x01
+#define SIZE_HALF_WORD 0x02
+#define SIZE_WORD 0x04
 // Variable address positions
 static const uint8_t ADDRS_BYTE = 0x80;
 static const uint8_t ADDRS_HALF_WORD = 0xC0;
@@ -41,13 +42,15 @@ static const uint8_t ADDRS_WORD = 0xF0;
 
 // Flash Commands
 static const uint8_t FCMD_ERASE_SECTOR = 0x09;
+static const uint8_t FCMD_PROGRAM_PHRASE = 0x07;
 
 // Common Command Object Struct
-struct{
+typedef struct
+{
   uint8_t command;
   uint32union_t address;
   uint64union_t phrase;
-}TFCCOB;
+} TFCCOB;
 
 
 /*! @brief .
