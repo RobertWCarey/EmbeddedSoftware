@@ -112,7 +112,7 @@ bool Flash_AllocateVar(volatile void** variable, const uint8_t size)
   }
 
   // Check against available addresses for a free spot
-  for (uint8_t i = 0; i<8; i++)
+  for (uint8_t i = 0; i<8; i+=size)
   {
     if (availableAddrs & (currentMask>>i))// If there is a free spot
     {
@@ -140,7 +140,7 @@ bool Flash_Write32(volatile uint32_t* const address, const uint32_t data)
   {
     phrase.s.Hi = _FW(FLASH_DATA_START + offset - SIZE_WORD);
     phrase.s.Lo = data;
-    return ModifyPhrase((uint32_t)(address - SIZE_WORD), phrase);
+    return ModifyPhrase((uint32_t)address - SIZE_WORD, phrase);
   }
 }
 
@@ -151,15 +151,15 @@ bool Flash_Write16(volatile uint16_t* const address, const uint16_t data)
 
   if(!(offset % SIZE_WORD))
   {
-    word.s.Hi = data;
-    word.s.Lo = _FH(FLASH_DATA_START + offset + SIZE_HALF_WORD);
+    word.s.Hi = _FH(FLASH_DATA_START + offset + SIZE_HALF_WORD);
+    word.s.Lo = data;
     return Flash_Write32((uint32_t*)address, word.l);
   }
   else
   {
-    word.s.Hi = _FH(FLASH_DATA_START + offset - SIZE_HALF_WORD);
-    word.s.Lo = data;
-    return Flash_Write32((uint32_t*)(address - SIZE_HALF_WORD), word.l);
+    word.s.Hi = data;
+    word.s.Lo = _FH(FLASH_DATA_START + offset - SIZE_HALF_WORD);
+    return Flash_Write32((uint32_t)address - SIZE_HALF_WORD, word.l);
   }
 }
 
@@ -170,14 +170,14 @@ bool Flash_Write8(volatile uint8_t* const address, const uint8_t data)
 
   if(!(offset % SIZE_HALF_WORD))
   {
-    half_word.s.Hi = data;
-    half_word.s.Lo = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
+    half_word.s.Hi = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
+    half_word.s.Lo = data;
     return Flash_Write16((uint16_t*)address, half_word.l);
   }
   else
   {
-    half_word.s.Hi = _FB(FLASH_DATA_START + offset - SIZE_BYTE);
-    half_word.s.Lo = data;
+    half_word.s.Hi = data;
+    half_word.s.Lo = _FB(FLASH_DATA_START + offset - SIZE_BYTE);
     return Flash_Write16((uint16_t*)(address - SIZE_BYTE), half_word.l);
   }
 
