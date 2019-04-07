@@ -67,6 +67,15 @@ static const uint8_t TOWER_NUMBER_SET = 0x02;// Set Param
 static const uint8_t TOWER_MODE_GET = 0x01;// Get Param
 static const uint8_t TOWER_MODE_SET = 0x02;// Set Param
 
+// Parameters for 0x07-Program Byte
+static const uint8_t PROGRAM_BYTE_ERASE = 0x08;// Erase Sector Param
+static const uint8_t PROGRAM_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
+static const uint8_t PROGRAM_BYTE_RANGE_HI = 0x08;// Highest valid value Param
+
+// Parameters for 0x08-Read Byte
+static const uint8_t READ_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
+static const uint8_t READ_BYTE_RANGE_HI = 0x07;// Highest valid value Param
+
 /*! @brief Sends out required packets for Tower Startup.
  *
  *  @param towerNb A variable containing the Tower Number.
@@ -130,7 +139,7 @@ static bool towerModePacketHandler(volatile uint16union_t * const towerMode)
   // If Get
   if ( (Packet_Parameter1 == TOWER_MODE_GET) && !(Packet_Parameter2) && !(Packet_Parameter3) )
     // Send out Tower Number packet
-    return Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerMode->s.Lo,towerMode->s.Hi);
+    return Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi);
   else if (Packet_Parameter1 == TOWER_NUMBER_SET) // If Set
   {
     //Update Tower Number Values
@@ -147,9 +156,12 @@ static bool towerModePacketHandler(volatile uint16union_t * const towerMode)
 static bool prgmBytePacketHandler()
 {
   // Check offset is valid, and parameter byte is valid
-  if ((Packet_Parameter1 < 0) || (Packet_Parameter1 > 8) || (Packet_Parameter2))
+  if ((Packet_Parameter1 < PROGRAM_BYTE_RANGE_LO) || (Packet_Parameter1 > PROGRAM_BYTE_RANGE_HI) || (Packet_Parameter2))
     return false;
-
+  // Check if erase sector has been requested
+  if(Packet_Parameter1 == PROGRAM_BYTE_ERASE)
+    return Flash_Erase();
+  // Write data to selected address offset
   return Flash_Write8((uint8_t*)(FLASH_DATA_START+Packet_Parameter1),Packet_Parameter3);
 
 }
@@ -161,7 +173,7 @@ static bool prgmBytePacketHandler()
 static bool readBytePacketHandler()
 {
   // Check offset is valid, and parameter byte is valid
-  if ((Packet_Parameter1 < 0) || (Packet_Parameter1 > 7) || (Packet_Parameter2) || (Packet_Parameter3))
+  if ((Packet_Parameter1 < READ_BYTE_RANGE_LO) || (Packet_Parameter1 > READ_BYTE_RANGE_HI) || (Packet_Parameter2) || (Packet_Parameter3))
     return false;
 
   return Packet_Put(CMD_READ_BYTE, Packet_Parameter1, 0, _FB(FLASH_DATA_START+Packet_Parameter1));
