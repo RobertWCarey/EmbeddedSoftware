@@ -75,17 +75,23 @@ static bool LaunchCommand(TFCCOB* ccob);
  */
 static bool WritePhrase(const uint32_t address, const uint64union_t phrase);
 
-/*! @brief sets up write Common Command Object.
+/*! @brief sets up erase Common Command Object.
  *
- *  @param address address where phrase is to be written.
- *  @param phrase  data to be written.
+ *  @param address address where sector is to be erased.
  *
  *  @return bool - TRUE when the command has been completed.
  *  @note Assumes Flash has been initialized.
  */
 static bool EraseSector(const uint32_t address);
 
-
+/*! @brief executes commands to modify phrase.
+ *
+ *  @param address address where phrase is to be placed.
+ *  @param phrase  Modified phrase to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool ModifyPhrase(const uint32_t address, const uint64union_t phrase);
 
 /*! @brief Enables the Flash module.
