@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup Flash_module Flash module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief Routines for erasing and writing to the Flash.
@@ -13,6 +17,7 @@
 
 // new types
 #include "types.h"
+#include "MK70F12.h"
 
 // FLASH data access
 #define _FB(flashAddress)  *(uint8_t  volatile *)(flashAddress)
@@ -24,6 +29,70 @@
 #define FLASH_DATA_START 0x00080000LU
 // Address of the end of the Flash block we are using for data storage
 #define FLASH_DATA_END   0x00080007LU
+
+// Masks for:
+// Variable size selection
+#define SIZE_BYTE 0x01
+#define SIZE_HALF_WORD 0x02
+#define SIZE_WORD 0x04
+#define SIZE_PHRASE 0x08
+// Variable address positions
+static const uint8_t ADDRS_BYTE = 0x80;
+static const uint8_t ADDRS_HALF_WORD = 0xC0;
+static const uint8_t ADDRS_WORD = 0xF0;
+
+// Flash Commands
+static const uint8_t FCMD_ERASE_SECTOR = 0x09;
+static const uint8_t FCMD_PROGRAM_PHRASE = 0x07;
+
+static const uint8_t BYTE_SHIFT = 8;
+
+// Common Command Object Struct
+typedef struct
+{
+  uint8_t command;
+  uint32_t address;
+  uint64_t phrase;
+} TFCCOB;
+
+
+/*! @brief Goes through the sequence of writing to flash.
+ *
+ *  @param ccob Common Command Object contains command, address and data.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
+static bool LaunchCommand(TFCCOB* ccob);
+
+/*! @brief sets up write Common Command Object.
+ *
+ *  @param address address where phrase is to be written.
+ *  @param phrase  data to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
+static bool WritePhrase(const uint32_t address, const uint64union_t phrase);
+
+/*! @brief sets up erase Common Command Object.
+ *
+ *  @param address address where sector is to be erased.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
+static bool EraseSector(const uint32_t address);
+
+/*! @brief executes commands to modify phrase.
+ *
+ *  @param address address where phrase is to be placed.
+ *  @param phrase  Modified phrase to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
+static bool ModifyPhrase(const uint32_t address, const uint64union_t phrase);
 
 /*! @brief Enables the Flash module.
  *
@@ -81,3 +150,6 @@ bool Flash_Write8(volatile uint8_t* const address, const uint8_t data);
 bool Flash_Erase(void);
 
 #endif
+/*!
+ * @}
+ */
