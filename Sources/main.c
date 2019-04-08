@@ -122,7 +122,7 @@ static bool towerNumberPacketHandler(volatile uint16union_t * const towerNb)
   else if (Packet_Parameter1 == TOWER_NUMBER_SET) // If Set
   {
     //Update Tower Number Values
-    return Flash_Write16(towerNb,Packet_Parameter23);
+    return Flash_Write16((uint16_t*)towerNb,Packet_Parameter23);
   }
 
   return false;
@@ -143,7 +143,7 @@ static bool towerModePacketHandler(volatile uint16union_t * const towerMode)
   else if (Packet_Parameter1 == TOWER_NUMBER_SET) // If Set
   {
     //Update Tower Number Values
-    return Flash_Write16(towerMode,Packet_Parameter23);
+    return Flash_Write16((uint16_t*)towerMode,Packet_Parameter23);
   }
 
   return false;
@@ -182,7 +182,7 @@ static bool readBytePacketHandler()
 
 static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
 {
-  Flash_AllocateVar(&addrs, sizeof(*addrs));
+  Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
   if(addrs->l == 0xffff)
     Flash_Write16((uint16_t*)addrs, defaultData);
 }
@@ -268,8 +268,8 @@ int main(void)
   if (towerInit())
   {
     LEDs_On(LED_ORANGE);
-    Flash_AllocateVar(&nvTowerNb, sizeof(*nvTowerNb));
-    Flash_AllocateVar(&nvTowerMode, sizeof(*nvTowerMode));
+    Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
+    Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
     if(nvTowerNb->l == 0xffff)
       Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
     if(nvTowerMode->l == 0xffff)
