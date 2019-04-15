@@ -10,7 +10,7 @@
 /*##                                   */
 /*##     Compiler  : GNU C Compiler    */
 /*##                                   */
-/*##     Date/Time : 2018-07-21, 16:19, # CodeGen: 0 */
+/*##     Date/Time : 2019-04-06, 16:57, # CodeGen: 1 */
 /*##                                   */
 /*##     Abstract  :                   */
 /*##                                   */
@@ -38,7 +38,7 @@ __stack_size = 0x0400;                 /* required amount of stack */
 
 MEMORY {
   m_interrupts (RX) : ORIGIN = 0x00000000, LENGTH = 0x000001E8
-  m_text      (RX) : ORIGIN = 0x00000410, LENGTH = 0x000FFBF0
+  m_text      (RX) : ORIGIN = 0x00000410, LENGTH = 0x0007FBF0
   m_data      (RW) : ORIGIN = 0x1FFF0000, LENGTH = 0x00010000
   m_data_20000000 (RW) : ORIGIN = 0x20000000, LENGTH = 0x00010000
   m_cfmprotrom  (RX) : ORIGIN = 0x00000400, LENGTH = 0x00000010
@@ -171,7 +171,7 @@ SECTIONS
   ___m_data_20000000_ROMSize = ___m_data_20000000_RAMEnd - ___m_data_20000000_RAMStart;
 
 
-
+  
   /* Uninitialized data section */
   . = ALIGN(4);
   .bss :
@@ -204,12 +204,17 @@ SECTIONS
     LONG(0);
   } > m_data
   
+  text_end = ORIGIN(m_text) + LENGTH(m_text);
+  data_init_end = ___m_data_20000000_ROMStart + SIZEOF(.m_data_20000000) + SIZEOF(.romp);
+  ASSERT( data_init_end <= text_end, "region m_text overflowed with text and data")
+  
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack :
   {
     . = ALIGN(4);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
+    PROVIDE ( __end__ = . );
     __heap_addr = .;
     __HeapBase = .;
     . = . + __heap_size;
