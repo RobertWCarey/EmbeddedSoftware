@@ -291,8 +291,12 @@ int main(void)
     // Deal with any received packets
     cmdHandler(nvTowerNb,nvTowerMode);
 
-    // Reset command variable
+    // Reset Packet variables
     Packet_Command = 0x00u;
+    Packet_Parameter1 = 0x00u;
+    Packet_Parameter2 = 0x00u;
+    Packet_Parameter3 = 0x00u;
+    Packet_Checksum = 0x00u;
   }
 
   /*** Don't write any code pass this line, or it will be deleted during code generation. ***/
