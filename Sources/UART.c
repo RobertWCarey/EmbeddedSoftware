@@ -71,9 +71,9 @@ bool UART_InChar(uint8_t* const dataPtr)
 
 bool UART_OutChar(const uint8_t data)
 {
-  if (FIFO_Put(&Tx_Buffer,data)){
+  if (FIFO_Put(&Tx_Buffer,data))
     return true;
-  }else
+  else
     return false;
 }
 

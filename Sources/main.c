@@ -159,7 +159,7 @@ static bool prgmBytePacketHandler()
   if ((Packet_Parameter1 < PROGRAM_BYTE_RANGE_LO) || (Packet_Parameter1 > PROGRAM_BYTE_RANGE_HI) || (Packet_Parameter2))
     return false;
   // Check if erase sector has been requested
-  if(Packet_Parameter1 == PROGRAM_BYTE_ERASE)
+  if (Packet_Parameter1 == PROGRAM_BYTE_ERASE)
     return Flash_Erase();
   // Write data to selected address offset
   return Flash_Write8((uint8_t*)(FLASH_DATA_START+Packet_Parameter1),Packet_Parameter3);
@@ -183,7 +183,7 @@ static bool readBytePacketHandler()
 static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
 {
   Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
-  if(addrs->l == 0xffff)
+  if (addrs->l == 0xffff)
     Flash_Write16((uint16_t*)addrs, defaultData);
 }
 
@@ -270,9 +270,9 @@ int main(void)
     LEDs_On(LED_ORANGE);
     Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
     Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
-    if(nvTowerNb->l == 0xffff)
+    if (nvTowerNb->l == 0xffff)
       Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
-    if(nvTowerMode->l == 0xffff)
+    if (nvTowerMode->l == 0xffff)
       Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
 
     towerStatupPacketHandler(nvTowerNb,nvTowerMode);

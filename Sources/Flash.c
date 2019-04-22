@@ -102,8 +102,8 @@ bool Flash_AllocateVar(volatile void** variable, const uint8_t size)
     case SIZE_BYTE:
       currentMask = ADDRS_BYTE;
       break;
-    case SIZE_HALF_WORD:
-      currentMask = ADDRS_HALF_WORD;
+    case SIZE_halfWord:
+      currentMask = ADDRS_halfWord;
       break;
     case SIZE_WORD:
       currentMask = ADDRS_WORD;
@@ -134,7 +134,7 @@ bool Flash_Write32(volatile uint32_t* const address, const uint32_t data)
   uint64union_t phrase;
 
   // Check if the offset location aligns with phrase
-  if(!(offset % SIZE_PHRASE))// Aligned
+  if (!(offset % SIZE_PHRASE))// Aligned
   {
     phrase.s.Hi = data;
     phrase.s.Lo = _FW(FLASH_DATA_START + offset + SIZE_WORD);// pass phrase aligned address
@@ -155,17 +155,17 @@ bool Flash_Write16(volatile uint16_t* const address, const uint16_t data)
   uint32union_t word;
 
   // Check if the offset location aligns with word
-  if(!(offset % SIZE_WORD))// Aligned
+  if (!(offset % SIZE_WORD))// Aligned
   {
-    word.s.Hi = _FH(FLASH_DATA_START + offset + SIZE_HALF_WORD);
+    word.s.Hi = _FH(FLASH_DATA_START + offset + SIZE_halfWord);
     word.s.Lo = data;
     return Flash_Write32((uint32_t*)address, word.l);// pass word aligned address
   }
   else// Not aligned
   {
     word.s.Hi = data;
-    word.s.Lo = _FH(FLASH_DATA_START + offset - SIZE_HALF_WORD);
-    return Flash_Write32((uint32_t)address - SIZE_HALF_WORD, word.l);// pass word aligned address
+    word.s.Lo = _FH(FLASH_DATA_START + offset - SIZE_halfWord);
+    return Flash_Write32((uint32_t)address - SIZE_halfWord, word.l);// pass word aligned address
   }
 }
 
@@ -173,20 +173,20 @@ bool Flash_Write8(volatile uint8_t* const address, const uint8_t data)
 {
   // Calculate the offset
   uint8_t offset = (uint32_t)address - FLASH_DATA_START;
-  uint16union_t half_word;
+  uint16union_t halfWord;
 
   // Check if the offset location aligns with half-word
-  if(!(offset % SIZE_HALF_WORD))// Aligned
+  if (!(offset % SIZE_halfWord))// Aligned
   {
-    half_word.s.Hi = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
-    half_word.s.Lo = data;
-    return Flash_Write16((uint16_t*)address, half_word.l);// pass half-word aligned address
+    halfWord.s.Hi = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
+    halfWord.s.Lo = data;
+    return Flash_Write16((uint16_t*)address, halfWord.l);// pass half-word aligned address
   }
   else // Not aligned
   {
-    half_word.s.Hi = data;
-    half_word.s.Lo = _FB(FLASH_DATA_START + offset - SIZE_BYTE);
-    return Flash_Write16((uint16_t*)(address - SIZE_BYTE), half_word.l);// pass half-word aligned address
+    halfWord.s.Hi = data;
+    halfWord.s.Lo = _FB(FLASH_DATA_START + offset - SIZE_BYTE);
+    return Flash_Write16((uint16_t*)(address - SIZE_BYTE), halfWord.l);// pass half-word aligned address
   }
 
 }
