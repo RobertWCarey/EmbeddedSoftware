@@ -265,6 +265,7 @@ int main(void)
 
   /* Write your code here */
   // Initialize Tower
+  __DI();
   if (towerInit())
   {
     LEDs_On(LED_ORANGE);
@@ -277,12 +278,13 @@ int main(void)
 
     towerStatupPacketHandler(nvTowerNb,nvTowerMode);
   }
+  __EI();
 
   for (;;)
   {
 
     // Check status of UART
-    UART_Poll();
+    //UART_Poll();
 
     // Check if any valid Packets have been received
     if (!Packet_Get())
