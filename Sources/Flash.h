@@ -55,45 +55,6 @@ typedef struct
   uint64_t phrase;
 } TFCCOB;
 
-
-/*! @brief Goes through the sequence of writing to flash.
- *
- *  @param ccob Common Command Object contains command, address and data.
- *
- *  @return bool - TRUE when the command has been completed.
- *  @note Assumes Flash has been initialized.
- */
-static bool LaunchCommand(TFCCOB* ccob);
-
-/*! @brief sets up write Common Command Object.
- *
- *  @param address address where phrase is to be written.
- *  @param phrase  data to be written.
- *
- *  @return bool - TRUE when the command has been completed.
- *  @note Assumes Flash has been initialized.
- */
-static bool WritePhrase(const uint32_t address, const uint64union_t phrase);
-
-/*! @brief sets up erase Common Command Object.
- *
- *  @param address address where sector is to be erased.
- *
- *  @return bool - TRUE when the command has been completed.
- *  @note Assumes Flash has been initialized.
- */
-static bool EraseSector(const uint32_t address);
-
-/*! @brief executes commands to modify phrase.
- *
- *  @param address address where phrase is to be placed.
- *  @param phrase  Modified phrase to be written.
- *
- *  @return bool - TRUE when the command has been completed.
- *  @note Assumes Flash has been initialized.
- */
-static bool ModifyPhrase(const uint32_t address, const uint64union_t phrase);
-
 /*! @brief Enables the Flash module.
  *
  *  @return bool - TRUE if the Flash was setup successfully.

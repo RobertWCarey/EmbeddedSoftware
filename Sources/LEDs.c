@@ -45,19 +45,19 @@ bool LEDs_Init(void)
 void LEDs_On(const TLED color)
 {
   // Set logic low to put a voltage across LED
-  GPIOA_PCOR |= color;
+  GPIOA_PCOR = color;
 }
 
 void LEDs_Off(const TLED color)
 {
   // Set logic high to clear voltage across LED
-  GPIOA_PSOR |= color;
+  GPIOA_PSOR = color;
 }
 
 void LEDs_Toggle(const TLED color)
 {
   // Toggle LED
-  GPIOA_PTOR |= color;
+  GPIOA_PTOR = color;
 }
 /*!
  * @}

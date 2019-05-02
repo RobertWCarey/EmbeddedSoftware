@@ -17,7 +17,13 @@
 #include "types.h"
 #include "Flash.h"
 
-
+/*! @brief Goes through the sequence of writing to flash.
+ *
+ *  @param ccob Common Command Object contains command, address and data.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool LaunchCommand(TFCCOB* ccob)
 {
   // Check status of Access Error  and Flash Protection Violation
@@ -54,6 +60,14 @@ static bool LaunchCommand(TFCCOB* ccob)
   return true;
 }
 
+/*! @brief sets up write Common Command Object.
+ *
+ *  @param address address where phrase is to be written.
+ *  @param phrase  data to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool WritePhrase(const uint32_t address, const uint64union_t phrase)
 {
   TFCCOB write;
@@ -65,6 +79,13 @@ static bool WritePhrase(const uint32_t address, const uint64union_t phrase)
   LaunchCommand(&write);// Pass address of ccob
 }
 
+/*! @brief sets up erase Common Command Object.
+ *
+ *  @param address address where sector is to be erased.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool EraseSector(const uint32_t address)
 {
   TFCCOB erase;
@@ -75,6 +96,14 @@ static bool EraseSector(const uint32_t address)
   LaunchCommand(&erase);// Pass address of ccob
 }
 
+/*! @brief executes commands to modify phrase.
+ *
+ *  @param address address where phrase is to be placed.
+ *  @param phrase  Modified phrase to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool ModifyPhrase(const uint32_t address, const uint64union_t phrase)
 {
   // Erase Sector and then write phrase
@@ -102,8 +131,8 @@ bool Flash_AllocateVar(volatile void** variable, const uint8_t size)
     case SIZE_BYTE:
       currentMask = ADDRS_BYTE;
       break;
-    case SIZE_halfWord:
-      currentMask = ADDRS_halfWord;
+    case SIZE_HALF_WORD:
+      currentMask = ADDRS_HALF_WORD;
       break;
     case SIZE_WORD:
       currentMask = ADDRS_WORD;
@@ -157,15 +186,15 @@ bool Flash_Write16(volatile uint16_t* const address, const uint16_t data)
   // Check if the offset location aligns with word
   if (!(offset % SIZE_WORD))// Aligned
   {
-    word.s.Hi = _FH(FLASH_DATA_START + offset + SIZE_halfWord);
+    word.s.Hi = _FH(FLASH_DATA_START + offset + SIZE_HALF_WORD);
     word.s.Lo = data;
     return Flash_Write32((uint32_t*)address, word.l);// pass word aligned address
   }
   else// Not aligned
   {
     word.s.Hi = data;
-    word.s.Lo = _FH(FLASH_DATA_START + offset - SIZE_halfWord);
-    return Flash_Write32((uint32_t)address - SIZE_halfWord, word.l);// pass word aligned address
+    word.s.Lo = _FH(FLASH_DATA_START + offset - SIZE_HALF_WORD);
+    return Flash_Write32((uint32_t)address - SIZE_HALF_WORD, word.l);// pass word aligned address
   }
 }
 
@@ -176,7 +205,7 @@ bool Flash_Write8(volatile uint8_t* const address, const uint8_t data)
   uint16union_t halfWord;
 
   // Check if the offset location aligns with half-word
-  if (!(offset % SIZE_halfWord))// Aligned
+  if (!(offset % SIZE_HALF_WORD))// Aligned
   {
     halfWord.s.Hi = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
     halfWord.s.Lo = data;
