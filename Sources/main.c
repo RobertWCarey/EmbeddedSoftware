@@ -238,6 +238,11 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
     }
 }
 
+void PITCallback(void* arg)
+{
+
+}
+
 /*! @brief Runs all functions necessary for Tower to function.
  *
  *  @return bool - TRUE if all components successfully initialized.
@@ -246,6 +251,7 @@ static bool towerInit(void)
 {
   return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
       LEDs_Init() &&
+      PIT_Init(CPU_CORE_CLK_HZ, PITCallback, NULL) &&
       Flash_Init();
 }
 
