@@ -40,6 +40,7 @@
 #include "Flash.h"
 #include "PIT.h"
 #include "RTC.h"
+#include "FTM.h"
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -267,6 +268,16 @@ void RTCCallback(void* arg)
   Packet_Put(CMD_TIME_BYTE,time.hours,time.minutes,time.seconds);
 }
 
+/*! @brief Interrupt callback function to be called when FTM_ISR occurs (output compare match)
+ * Turn off blue LED
+ *  @param arg The user argument that comes with the callback
+ */
+void FTMCallback(void* arg)
+{
+  //turn off blue LED
+  LEDs_Off(LED_BLUE);
+}
+
 
 /*! @brief Runs all functions necessary for Tower to function.
  *
@@ -278,6 +289,7 @@ static bool towerInit(void)
       LEDs_Init() &&
       PIT_Init(CPU_CORE_CLK_HZ, PITCallback, NULL) &&
       RTC_Init(RTCCallback,NULL) &&
+      FTM_Init() &&
       Flash_Init();
 }
 
@@ -290,6 +302,16 @@ int main(void)
   uint16_t defaultTowerMode = 1;
   volatile uint16union_t *nvTowerNb;
   volatile uint16union_t *nvTowerMode;
+
+  //Configure struct for FTM_Set()
+  TFTMChannel channelSetup0;
+  channelSetup0.channelNb = 0;
+  channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
+  channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
+  channelSetup0.ioType.inputDetection = 0;
+  channelSetup0.ioType.outputAction = 0;
+  channelSetup0.callbackFunction = FTMCallback;
+  channelSetup0.callbackArguments = NULL;
 
   /*** Processor Expert internal initialization. DON'T REMOVE THIS CODE!!! ***/
   PE_low_level_init();
@@ -315,6 +337,10 @@ int main(void)
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);
 
+  //Set FTM Timer
+  FTM_Set(&channelSetup0);
+
+
   for (;;)
   {
 
@@ -324,6 +350,10 @@ int main(void)
     // Check if any valid Packets have been received
     if (!Packet_Get())
       continue;// If no valid packet go to start of loop
+
+    //Starts a timer and turns on LED
+    FTM_StartTimer(&channelSetup0);
+    LEDs_On(LED_BLUE);
 
     // Deal with any received packets
     cmdHandler(nvTowerNb,nvTowerMode);
