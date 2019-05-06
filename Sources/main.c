@@ -39,6 +39,7 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
+#include "RTC.h"
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -50,6 +51,7 @@ static const uint32_t BAUD_RATE = 115200;
 #define CMD_PROGRAM_BYTE 0x07u
 #define CMD_READ_BYTE 0x08u
 #define CMD_TOWER_MODE 0x0Du
+#define CMD_TIME_BYTE 0xCu
 
 // Parameters for 0x04-Tower Startup
 static const uint8_t TOWER_STARTUP_PARAM = 0x00;
@@ -251,6 +253,21 @@ void PITCallback(void* arg)
   LEDs_Toggle(LED_GREEN);
 }
 
+/*! @brief Interrupt callback function to be called when RTC_ISR occurs
+ * Turn on yellow LED and send the time
+ *  @param arg The user argument that comes with the callback
+ */
+void RTCCallback(void* arg)
+{
+  //toggle yellow LED
+  LEDs_Toggle(LED_YELLOW);
+  //send the current time
+  static Time time;
+  RTC_Get(&time.hours,&time.minutes,&time.seconds);
+  Packet_Put(CMD_TIME_BYTE,time.hours,time.minutes,time.seconds);
+}
+
+
 /*! @brief Runs all functions necessary for Tower to function.
  *
  *  @return bool - TRUE if all components successfully initialized.
@@ -260,6 +277,7 @@ static bool towerInit(void)
   return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
       LEDs_Init() &&
       PIT_Init(CPU_CORE_CLK_HZ, PITCallback, NULL) &&
+      RTC_Init(RTCCallback,NULL) &&
       Flash_Init();
 }
 

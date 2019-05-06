@@ -27,7 +27,7 @@ static void* UserArguments;
 bool RTC_Init(void (*userFunction)(void*), void* userArguments)
 {
   //Initialise local versions for userFunction and userArgument
-    UserFunction 	= userFunction;
+    UserFunction = userFunction;
     UserArguments = userArguments;
 
     // Enable RTC clock in clock gate 6
