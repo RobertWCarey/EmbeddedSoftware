@@ -53,7 +53,7 @@ void PIT_Set(const uint32_t period, const bool restart)
 {
   uint32_t nbTicks = (period/pitClkPeriod)-1;
 
-  if(restart)
+  if (restart)
   {
     PIT_TCTRL0 &= ~PIT_TCTRL_TEN_MASK;
   }
@@ -83,7 +83,7 @@ void __attribute__ ((interrupt)) PIT_ISR(void)
     //Clear Timer Interrupt
     PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
     // Call user function
-    if(UserFunction)
+    if (UserFunction)
       (*UserFunction)(UserArguments);
   ExitCritical();
 }

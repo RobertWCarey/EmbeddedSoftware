@@ -13,6 +13,7 @@
 #include "types.h"
 #include "FTM.h"
 #include "MK70F12.h"
+#include "cpu.h"
 
 //Addresses for function that will store user callback function
 //define an array for multiple channel functions and arguments
@@ -59,12 +60,12 @@ bool FTM_Set(const TFTMChannel* const aFTMChannel)
   FTM0_CnSC(aFTMChannel->channelNb) |= aFTMChannel->timerFunction << FTM_CnSC_MSB_SHIFT;
 
   // Check timer function:
-  if(aFTMChannel->timerFunction == 0) // 0 = Input Capture
+  if (aFTMChannel->timerFunction == 0) // 0 = Input Capture
   {
     // Pass the input detection config into ELSB:ELSA
     FTM0_CnSC(aFTMChannel->channelNb) |=  aFTMChannel->ioType.inputDetection << FTM_CnSC_ELSA_SHIFT;
   }
-  else if(aFTMChannel->timerFunction == 1) // 1 = Output Compare
+  else if (aFTMChannel->timerFunction == 1) // 1 = Output Compare
   {
     // Pass the output action config into ELSB:ELSA
     FTM0_CnSC(aFTMChannel->channelNb) |=  aFTMChannel->ioType.outputAction << FTM_CnSC_ELSA_SHIFT;
@@ -78,6 +79,7 @@ bool FTM_StartTimer(const TFTMChannel* const aFTMChannel)
 
   //Add the delay to the current Count to get channel value CnV which will cause the interrupt when cnt values match
   FTM0_CnV(aFTMChannel->channelNb) = FTM_CnV_VAL((currentCnt + aFTMChannel->delayCount) % (FTM_MOD_MOD_MASK));
+//  FTM0_CnV(aFTMChannel->channelNb) = FTM0_CNT + aFTMChannel->delayCount;
 
   //Initialise local versions for userFunction and userArgument
   UserFunction[aFTMChannel->channelNb] = aFTMChannel->callbackFunction;
@@ -94,16 +96,20 @@ void __attribute__ ((interrupt)) FTM0_ISR(void)
 {
   uint8_t statusReg0 = FTM0_C0SC;
 
+  EnterCritical(); // Entering critical section
+
   // Clear the CHF and execute callback function;
   for (int channelNb = 0; channelNb <= 7; channelNb++)
   {
-    if(FTM0_CnSC(channelNb) & FTM_CnSC_CHF_MASK)
+    if (FTM0_CnSC(channelNb) & FTM_CnSC_CHF_MASK)
     {
       FTM0_CnSC(channelNb) &= (~FTM_CnSC_CHF_MASK);
-      if(UserFunction[channelNb])
+      if (UserFunction[channelNb])
 	(*UserFunction[channelNb])(UserArguments[channelNb]);
     }
   }
+
+  ExitCritical(); // Exiting critical section
 }
 
 /*!

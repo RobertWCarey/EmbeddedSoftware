@@ -265,7 +265,7 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
     // Check if action was successful
     if (success)// If success send same packet
       Packet_Put(Packet_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
-    else// If !success send packet with NACK
+    else // If !success send packet with NACK
     {
       // Send Nack if required
       uint8_t nackCommand = Packet_Command & ~PACKET_ACK_MASK;
@@ -315,7 +315,7 @@ static bool towerInit(void)
 {
   return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
       LEDs_Init() &&
-      PIT_Init(CPU_CORE_CLK_HZ, PITCallback, NULL) &&
+      PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL) &&
       RTC_Init(RTCCallback,NULL) &&
       FTM_Init() &&
       Flash_Init();
