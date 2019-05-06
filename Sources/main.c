@@ -38,6 +38,7 @@
 #include "UART.h"
 #include "LEDs.h"
 #include "Flash.h"
+#include "PIT.h"
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -75,6 +76,9 @@ static const uint8_t PROGRAM_BYTE_RANGE_HI = 0x08;// Highest valid value Param
 // Parameters for 0x08-Read Byte
 static const uint8_t READ_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
 static const uint8_t READ_BYTE_RANGE_HI = 0x07;// Highest valid value Param
+
+// Pit time period (nano seconds)
+static const uint32_t PIT_TIME_PERIOD = 500e6;
 
 /*! @brief Sends out required packets for Tower Startup.
  *
