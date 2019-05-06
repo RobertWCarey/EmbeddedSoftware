@@ -80,6 +80,12 @@ static const uint8_t PROGRAM_BYTE_RANGE_HI = 0x08;// Highest valid value Param
 static const uint8_t READ_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
 static const uint8_t READ_BYTE_RANGE_HI = 0x07;// Highest valid value Param
 
+// Parameters for 0x0C-Time
+static const uint8_t TIME_RANGE_LO = 0x00;// Lowest valid value
+static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
+static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
+static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
+
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 500e6;
 
@@ -187,12 +193,31 @@ static bool readBytePacketHandler()
 
 }
 
-static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
+/*! @brief sets the time for the RTC.
+ *
+ *  @return bool - TRUE if data successfully programmed.
+ */
+static bool timePacketHandler()
 {
-  Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
-  if (addrs->l == 0xffff)
-    Flash_Write16((uint16_t*)addrs, defaultData);
+  // Check lower values for valid range
+  if ((Packet_Parameter1 >= TIME_RANGE_LO) || (Packet_Parameter2 >= TIME_RANGE_LO) || (Packet_Parameter3 >= TIME_RANGE_LO))
+    //Check upper values for valid range
+    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) || (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) || (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
+      {
+	RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
+	return true;
+      }
+
+  return false;
+
 }
+
+//static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
+//{
+//  Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
+//  if (addrs->l == 0xffff)
+//    Flash_Write16((uint16_t*)addrs, defaultData);
+//}
 
 /*! @brief Performs necessary action for any valid packets received.
  *
@@ -227,6 +252,9 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
       break;
     case CMD_READ_BYTE:
       success = readBytePacketHandler();
+      break;
+    case CMD_TIME_BYTE:
+      success = timePacketHandler();
       break;
     default:
       break;

@@ -61,7 +61,11 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
   FIFO_Init(&Tx_Buffer);
   FIFO_Init(&Rx_Buffer);
 
+  //Initialise NVIC for UART2 RX TX
+  //Vector=65, IRQ=49, non-IPR=1
+  //clear any pending interrupts at UART2
   NVICICPR1 = (1 << 17);
+  //Enable interrupts from UART2
   NVICISER1 = (1 << 17);
 
   // Enable UART RIE
