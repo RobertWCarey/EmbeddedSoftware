@@ -32,12 +32,12 @@ bool RTC_Init(void (*userFunction)(void*), void* userArguments)
   //Clear TIF and TOF by writing to TSR
   //Check if TOF or TIF is raised before clearing TSR
   if(RTC_SR & (RTC_SR_TOF_MASK | RTC_SR_TIF_MASK) )
-    RTC_TSR = RTC_TSR_TSR(0);
+    RTC_TSR = RTC_TSR_TSR(1);// re-setting value back to beginning (not zero as recommended by manual, 47.2.1)
 
   //Disable RTC Oscillator
   RTC_CR &= ~RTC_CR_OSCE_MASK;
 
-  //Set Load Capacitance to 18PF
+  //Set Load Capacitance to 18PF (as per schematic)
   RTC_CR |= RTC_CR_SC2P_MASK;
   RTC_CR |= RTC_CR_SC16P_MASK;
 
@@ -62,14 +62,14 @@ bool RTC_Init(void (*userFunction)(void*), void* userArguments)
 
 void RTC_Set(const uint8_t hours, const uint8_t minutes, const uint8_t seconds)
 {
-  //Disable RTC Time Count
- RTC_SR &= ~RTC_SR_TCE_MASK;
+  //Disable RTC Time Count so value can be written
+  RTC_SR &= ~RTC_SR_TCE_MASK;
 
- //write to RTC_TSR
- RTC_TSR = seconds + (minutes*60) + (hours*3600);
+  //write to RTC_TSR
+  RTC_TSR = seconds + (minutes*60) + (hours*3600);
 
- //Enable RTC Time Count
- RTC_SR |= RTC_SR_TCE_MASK;
+  //Enable RTC Time Count
+  RTC_SR |= RTC_SR_TCE_MASK;
 }
 
 void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const seconds)
