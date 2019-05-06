@@ -107,9 +107,7 @@ void UART_Poll(void)
 
 void __attribute__ ((interrupt)) UART_ISR(void)
 {
-
   UART_Poll();
-
 }
 /*!
  * @}

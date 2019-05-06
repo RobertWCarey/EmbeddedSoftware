@@ -344,9 +344,6 @@ int main(void)
   for (;;)
   {
 
-    // Check status of UART
-    //UART_Poll();
-
     // Check if any valid Packets have been received
     if (!Packet_Get())
       continue;// If no valid packet go to start of loop
