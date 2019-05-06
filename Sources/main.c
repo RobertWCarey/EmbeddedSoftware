@@ -238,9 +238,13 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
     }
 }
 
+/*! @brief Interrupt callback function to be called when PIT_ISR occurs
+ *
+ *  @param arg The user argument that comes with the callback
+ */
 void PITCallback(void* arg)
 {
-
+  LEDs_Toggle(LED_GREEN);
 }
 
 /*! @brief Runs all functions necessary for Tower to function.
@@ -285,6 +289,9 @@ int main(void)
     towerStatupPacketHandler(nvTowerNb,nvTowerMode);
   }
   __EI();
+
+  //Set PIT Timer
+  PIT_Set(PIT_TIME_PERIOD, true);
 
   for (;;)
   {
