@@ -84,8 +84,8 @@ void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const second
 void __attribute__ ((interrupt)) RTC_ISR(void)
 {
   // Call user function
-    if(UserFunction)
-      (*UserFunction)(UserArguments);
+  if (UserFunction)
+    (*UserFunction)(UserArguments);
 }
 
 /*!
