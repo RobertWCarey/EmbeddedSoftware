@@ -13,7 +13,7 @@
 #include "types.h"
 #include "FTM.h"
 #include "MK70F12.h"
-#include "cpu.h"
+#include "CPU.h"
 
 //Addresses for function that will store user callback function
 //define an array for multiple channel functions and arguments
@@ -29,6 +29,12 @@ bool FTM_Init()
   // Disable the clock
   FTM0_SC |= FTM_SC_CLKS(0);
 
+  // Disable Timer overflow interrupt
+  FTM0_SC |= ~FTM_SC_TOIE_MASK;
+
+  // FTM to up counting mode
+  FTM0_SC &= ~FTM_SC_CPWMS_MASK;
+
   // Count initial
   FTM0_CNTIN = FTM_CNTIN_INIT(0);
 
@@ -38,6 +44,7 @@ bool FTM_Init()
   // FTM_CNT for counting
   FTM0_CNT = FTM_CNT_COUNT(0);
 
+  // Enable FTM clock source
   // Write to Status and Control in FTM0. 0d2 = 0b10 = Fixed Frequency Clock
   FTM0_SC |= FTM_SC_CLKS(2);
 
@@ -60,14 +67,14 @@ bool FTM_Set(const TFTMChannel* const aFTMChannel)
   FTM0_CnSC(aFTMChannel->channelNb) |= aFTMChannel->timerFunction << FTM_CnSC_MSB_SHIFT;
 
   // Check timer function:
-  if (aFTMChannel->timerFunction == 0) // 0 = Input Capture
+  if (aFTMChannel->timerFunction == TIMER_FUNCTION_INPUT_CAPTURE) // 0 = Input Capture
   {
     // Pass the input detection config into ELSB:ELSA
     FTM0_CnSC(aFTMChannel->channelNb) |=  aFTMChannel->ioType.inputDetection << FTM_CnSC_ELSA_SHIFT;
   }
-  else if (aFTMChannel->timerFunction == 1) // 1 = Output Compare
+  else if (aFTMChannel->timerFunction == TIMER_FUNCTION_OUTPUT_COMPARE) // 1 = Output Compare
   {
-    // Pass the output action config into ELSB:ELSA
+    // Pass the output action config into ELSB:ELSA (Edge or Level Select)
     FTM0_CnSC(aFTMChannel->channelNb) |=  aFTMChannel->ioType.outputAction << FTM_CnSC_ELSA_SHIFT;
   }
 }
@@ -75,11 +82,11 @@ bool FTM_Set(const TFTMChannel* const aFTMChannel)
 bool FTM_StartTimer(const TFTMChannel* const aFTMChannel)
 {
   // Read the current counter value of FTM0
-  uint16_t currentCnt = (FTM0_CNT & FTM_CNT_COUNT_MASK);
+  uint16_t currentCnt = (FTM0_CNT & FTM_CNT_COUNT_MASK); // Mask to ensure only "COUNT" value read
 
   //Add the delay to the current Count to get channel value CnV which will cause the interrupt when cnt values match
+  //FTM_MOD_MOD_MASK is to make sure if the sum is greater than the 16-bit it raps around
   FTM0_CnV(aFTMChannel->channelNb) = FTM_CnV_VAL((currentCnt + aFTMChannel->delayCount) % (FTM_MOD_MOD_MASK));
-//  FTM0_CnV(aFTMChannel->channelNb) = FTM0_CNT + aFTMChannel->delayCount;
 
   //Initialise local versions for userFunction and userArgument
   UserFunction[aFTMChannel->channelNb] = aFTMChannel->callbackFunction;

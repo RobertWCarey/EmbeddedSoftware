@@ -336,8 +336,8 @@ int main(void)
   channelSetup0.channelNb = 0;
   channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
   channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
-  channelSetup0.ioType.inputDetection = 0;
-  channelSetup0.ioType.outputAction = 0;
+  channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
+  channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
   channelSetup0.callbackFunction = FTMCallback;
   channelSetup0.callbackArguments = NULL;
 
