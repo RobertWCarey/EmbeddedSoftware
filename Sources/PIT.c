@@ -66,15 +66,6 @@ bool PIT_Init(const uint32_t moduleClk, void (*userFunction)(void*), void* userA
  */
 void PIT_Set(const uint32_t period, const bool restart)
 {
-  if (restart)
-    {
-      PIT_Enable(0);
-      PIT_LDVAL0 = period;
-      PIT_TCTRL0 |= PIT_TCTRL_TIE_MASK;
-      PIT_Enable(1);
-    }
-  else
-    PIT_LDVAL0 = period;//Number of ticks to be loaded
   uint32_t nbTicks = (period/pitClkPeriod)-1;
 
   if(restart)
@@ -112,12 +103,12 @@ void PIT_Enable(const bool enable)
  */
 void __attribute__ ((interrupt)) PIT_ISR(void)
 {
-  EnterCritical();
+//  EnterCritical();
     //Clear Timer Interrupt
     PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
     // Call user function
     if(UserFunction)
       (*UserFunction)(UserArguments);
-    ExitCritical();
+//    ExitCritical();
 }
 
