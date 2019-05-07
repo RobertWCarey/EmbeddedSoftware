@@ -50,7 +50,7 @@ bool FTM_Init()
 
   // Enable FTM clock source
   // Write to Status and Control in FTM0. 0d2 = 0b10 = Fixed Frequency Clock
-  FTM0_SC = FTM_SC_CLKS(0x2u);
+  FTM0_SC = FTM_SC_CLKS(2);
 
   //Set up interrupt vector
   //Vector=, IRQ=62, non-IPR=1
