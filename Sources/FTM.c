@@ -30,10 +30,10 @@ bool FTM_Init()
   FTM0_SC |= FTM_SC_CLKS(0);
 
   // Disable Timer overflow interrupt
-  FTM0_SC |= ~FTM_SC_TOIE_MASK;
+//  FTM0_SC |= ~FTM_SC_TOIE_MASK;
 
   // FTM to up counting mode
-  FTM0_SC &= ~FTM_SC_CPWMS_MASK;
+//  FTM0_SC &= ~FTM_SC_CPWMS_MASK;
 
   // Count initial
   FTM0_CNTIN = FTM_CNTIN_INIT(0);
