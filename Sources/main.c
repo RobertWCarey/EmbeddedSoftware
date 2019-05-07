@@ -1,6 +1,6 @@
 /* ###################################################################
 **     Filename    : main.c
-**     Project     : Lab2
+**     Project     : Lab3
 **     Processor   : MK70FN1M0VMJ12
 **     Version     : Driver 01.01
 **     Compiler    : GNU C Compiler
@@ -20,7 +20,7 @@
 */
 /*!
 ** @file main.c
-** @version 2.0
+** @version 3.0
 ** @brief
 **         Main module.
 **         This module contains user's application code.
@@ -38,6 +38,9 @@
 #include "UART.h"
 #include "LEDs.h"
 #include "Flash.h"
+#include "PIT.h"
+#include "RTC.h"
+#include "FTM.h"
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -49,6 +52,7 @@ static const uint32_t BAUD_RATE = 115200;
 #define CMD_PROGRAM_BYTE 0x07u
 #define CMD_READ_BYTE 0x08u
 #define CMD_TOWER_MODE 0x0Du
+#define CMD_TIME_BYTE 0xCu
 
 // Parameters for 0x04-Tower Startup
 static const uint8_t TOWER_STARTUP_PARAM = 0x00;
@@ -75,6 +79,15 @@ static const uint8_t PROGRAM_BYTE_RANGE_HI = 0x08;// Highest valid value Param
 // Parameters for 0x08-Read Byte
 static const uint8_t READ_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
 static const uint8_t READ_BYTE_RANGE_HI = 0x07;// Highest valid value Param
+
+// Parameters for 0x0C-Time
+static const uint8_t TIME_RANGE_LO = 0x00;// Lowest valid value
+static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
+static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
+static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
+
+// Pit time period (nano seconds)
+static const uint32_t PIT_TIME_PERIOD = 500e6;
 
 /*! @brief Sends out required packets for Tower Startup.
  *
@@ -159,7 +172,7 @@ static bool prgmBytePacketHandler()
   if ((Packet_Parameter1 < PROGRAM_BYTE_RANGE_LO) || (Packet_Parameter1 > PROGRAM_BYTE_RANGE_HI) || (Packet_Parameter2))
     return false;
   // Check if erase sector has been requested
-  if(Packet_Parameter1 == PROGRAM_BYTE_ERASE)
+  if (Packet_Parameter1 == PROGRAM_BYTE_ERASE)
     return Flash_Erase();
   // Write data to selected address offset
   return Flash_Write8((uint8_t*)(FLASH_DATA_START+Packet_Parameter1),Packet_Parameter3);
@@ -180,12 +193,31 @@ static bool readBytePacketHandler()
 
 }
 
-static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
+/*! @brief sets the time for the RTC.
+ *
+ *  @return bool - TRUE if data successfully programmed.
+ */
+static bool timePacketHandler()
 {
-  Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
-  if(addrs->l == 0xffff)
-    Flash_Write16((uint16_t*)addrs, defaultData);
+  // Check lower values for valid range
+  if ((Packet_Parameter1 >= TIME_RANGE_LO) || (Packet_Parameter2 >= TIME_RANGE_LO) || (Packet_Parameter3 >= TIME_RANGE_LO))
+    //Check upper values for valid range
+    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) || (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) || (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
+      {
+	RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
+	return true;
+      }
+
+  return false;
+
 }
+
+//static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
+//{
+//  Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
+//  if (addrs->l == 0xffff)
+//    Flash_Write16((uint16_t*)addrs, defaultData);
+//}
 
 /*! @brief Performs necessary action for any valid packets received.
  *
@@ -201,7 +233,7 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
   // Variable to record if action was successful
   bool success = 0;
 
-  switch(command)
+  switch (command)
   {
     case CMD_TOWER_STARTUP:
       success = towerStatupPacketHandler(towerNb,towerMode);
@@ -221,6 +253,9 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
     case CMD_READ_BYTE:
       success = readBytePacketHandler();
       break;
+    case CMD_TIME_BYTE:
+      success = timePacketHandler();
+      break;
     default:
       break;
   }
@@ -230,13 +265,47 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
     // Check if action was successful
     if (success)// If success send same packet
       Packet_Put(Packet_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
-    else// If !success send packet with NACK
+    else // If !success send packet with NACK
     {
       // Send Nack if required
       uint8_t nackCommand = Packet_Command & ~PACKET_ACK_MASK;
       Packet_Put(nackCommand,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     }
 }
+
+/*! @brief Interrupt callback function to be called when PIT_ISR occurs
+ *
+ *  @param arg The user argument that comes with the callback
+ */
+void PITCallback(void* arg)
+{
+  LEDs_Toggle(LED_GREEN);
+}
+
+/*! @brief Interrupt callback function to be called when RTC_ISR occurs
+ * Turn on yellow LED and send the time
+ *  @param arg The user argument that comes with the callback
+ */
+void RTCCallback(void* arg)
+{
+  //toggle yellow LED
+  LEDs_Toggle(LED_YELLOW);
+  //send the current time
+  static Time time;
+  RTC_Get(&time.hours,&time.minutes,&time.seconds);
+  Packet_Put(CMD_TIME_BYTE,time.hours,time.minutes,time.seconds);
+}
+
+/*! @brief Interrupt callback function to be called when FTM_ISR occurs (output compare match)
+ * Turn off blue LED
+ *  @param arg The user argument that comes with the callback
+ */
+void FTMCallback(void* arg)
+{
+  //turn off blue LED
+  LEDs_Off(LED_BLUE);
+}
+
 
 /*! @brief Runs all functions necessary for Tower to function.
  *
@@ -246,6 +315,9 @@ static bool towerInit(void)
 {
   return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
       LEDs_Init() &&
+      PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL) &&
+      RTC_Init(RTCCallback,NULL) &&
+      FTM_Init() &&
       Flash_Init();
 }
 
@@ -259,34 +331,54 @@ int main(void)
   volatile uint16union_t *nvTowerNb;
   volatile uint16union_t *nvTowerMode;
 
+  //Configure struct for FTM_Set()
+  TFTMChannel channelSetup0;
+  channelSetup0.channelNb = 0;
+  channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
+  channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
+  channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
+  channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
+  channelSetup0.callbackFunction = FTMCallback;
+  channelSetup0.callbackArguments = NULL;
+
   /*** Processor Expert internal initialization. DON'T REMOVE THIS CODE!!! ***/
   PE_low_level_init();
   /*** End of Processor Expert internal initialization.                    ***/
 
   /* Write your code here */
   // Initialize Tower
+  __DI();
   if (towerInit())
   {
     LEDs_On(LED_ORANGE);
     Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
     Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
-    if(nvTowerNb->l == 0xffff)
+    if (nvTowerNb->l == 0xffff)
       Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
-    if(nvTowerMode->l == 0xffff)
+    if (nvTowerMode->l == 0xffff)
       Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
 
     towerStatupPacketHandler(nvTowerNb,nvTowerMode);
   }
+  __EI();
+
+  //Set PIT Timer
+  PIT_Set(PIT_TIME_PERIOD, true);
+
+  //Set FTM Timer
+  FTM_Set(&channelSetup0);
+
 
   for (;;)
   {
 
-    // Check status of UART
-    UART_Poll();
-
     // Check if any valid Packets have been received
     if (!Packet_Get())
       continue;// If no valid packet go to start of loop
+
+    //Starts a timer and turns on LED
+    FTM_StartTimer(&channelSetup0);
+    LEDs_On(LED_BLUE);
 
     // Deal with any received packets
     cmdHandler(nvTowerNb,nvTowerMode);

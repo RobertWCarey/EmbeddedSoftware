@@ -36,7 +36,8 @@ bool Packet_Init(const uint32_t baudRate, const uint32_t moduleClk)
 bool Packet_Get(void)
 {
   // Read Packet values into variables
-  while(UART_InChar(&Packet_Checksum)){
+  while (UART_InChar(&Packet_Checksum))
+  {
     // Check if a valid packet
     if ( ((returnChecksum(Packet_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3))==Packet_Checksum) && (Packet_Command!=0) )
       return true;

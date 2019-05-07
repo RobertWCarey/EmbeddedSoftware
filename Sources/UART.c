@@ -61,6 +61,16 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
   FIFO_Init(&Tx_Buffer);
   FIFO_Init(&Rx_Buffer);
 
+  //Initialise NVIC for UART2 RX TX
+  //Vector=65, IRQ=49, non-IPR=1
+  //clear any pending interrupts at UART2
+  NVICICPR1 = (1 << 17);
+  //Enable interrupts from UART2
+  NVICISER1 = (1 << 17);
+
+  // Enable UART RIE
+  UART2_C2 |= UART_C2_RIE_MASK;
+
   return true;
 }
 
@@ -71,9 +81,12 @@ bool UART_InChar(uint8_t* const dataPtr)
 
 bool UART_OutChar(const uint8_t data)
 {
-  if (FIFO_Put(&Tx_Buffer,data)){
-    return true;
-  }else
+  if (FIFO_Put(&Tx_Buffer,data))
+    {
+      UART2_C2 |= UART_C2_TIE_MASK;
+      return true;
+    }
+  else
     return false;
 }
 
@@ -89,8 +102,16 @@ void UART_Poll(void)
 
   // Check if Transmit Data Register Empty Flag is set
   if (status & UART_S1_TDRE_MASK)
-    //Write data from Transmit buffer
-    FIFO_Get(&Tx_Buffer,(uint8_t*)&UART2_D);
+    {
+      //Write data from Transmit buffer
+      if (!FIFO_Get(&Tx_Buffer,(uint8_t*)&UART2_D))
+	UART2_C2 &= ~UART_C2_TIE_MASK;
+    }
+}
+
+void __attribute__ ((interrupt)) UART_ISR(void)
+{
+  UART_Poll();
 }
 /*!
  * @}

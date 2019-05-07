@@ -15,6 +15,7 @@
 
 // Include Header Files
 #include "FIFO.h"
+#include "CPU.h"
 
 bool FIFO_Init(TFIFO * const fifo)
 {
@@ -27,9 +28,15 @@ bool FIFO_Init(TFIFO * const fifo)
 
 bool FIFO_Put(TFIFO * const fifo, const uint8_t data)
 {
+  //Entering Critical Section
+  EnterCritical();
+
   // Check if the buffer is full
   if (fifo->NbBytes >= FIFO_SIZE)
-    return false;
+    {
+      ExitCritical(); //End critical section
+      return false;
+    }
 
   // If not full add new data to the buffer
   fifo->Buffer[fifo->Start]=data;
@@ -40,6 +47,7 @@ bool FIFO_Put(TFIFO * const fifo, const uint8_t data)
   if (fifo->Start > FIFO_SIZE)
     fifo->Start = 0;
 
+  ExitCritical(); //End critical section
   return true;
 }
 
@@ -48,6 +56,9 @@ bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr)
   // Check if there is data in the buffer
   if (fifo->NbBytes <= 0)
     return false;
+
+  //Enter critical section
+  EnterCritical();
 
   // If not empty read data
   (*dataPtr) = fifo->Buffer[fifo->End];
@@ -58,6 +69,7 @@ bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr)
   if (fifo->End > FIFO_SIZE)
     fifo->End=0;
 
+  ExitCritical(); //End critical section
   return true;
 }
 

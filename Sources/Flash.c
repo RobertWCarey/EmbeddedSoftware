@@ -17,7 +17,13 @@
 #include "types.h"
 #include "Flash.h"
 
-
+/*! @brief Goes through the sequence of writing to flash.
+ *
+ *  @param ccob Common Command Object contains command, address and data.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool LaunchCommand(TFCCOB* ccob)
 {
   // Check status of Access Error  and Flash Protection Violation
@@ -54,6 +60,14 @@ static bool LaunchCommand(TFCCOB* ccob)
   return true;
 }
 
+/*! @brief sets up write Common Command Object.
+ *
+ *  @param address address where phrase is to be written.
+ *  @param phrase  data to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool WritePhrase(const uint32_t address, const uint64union_t phrase)
 {
   TFCCOB write;
@@ -65,6 +79,13 @@ static bool WritePhrase(const uint32_t address, const uint64union_t phrase)
   LaunchCommand(&write);// Pass address of ccob
 }
 
+/*! @brief sets up erase Common Command Object.
+ *
+ *  @param address address where sector is to be erased.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool EraseSector(const uint32_t address)
 {
   TFCCOB erase;
@@ -75,6 +96,14 @@ static bool EraseSector(const uint32_t address)
   LaunchCommand(&erase);// Pass address of ccob
 }
 
+/*! @brief executes commands to modify phrase.
+ *
+ *  @param address address where phrase is to be placed.
+ *  @param phrase  Modified phrase to be written.
+ *
+ *  @return bool - TRUE when the command has been completed.
+ *  @note Assumes Flash has been initialized.
+ */
 static bool ModifyPhrase(const uint32_t address, const uint64union_t phrase)
 {
   // Erase Sector and then write phrase
@@ -134,7 +163,7 @@ bool Flash_Write32(volatile uint32_t* const address, const uint32_t data)
   uint64union_t phrase;
 
   // Check if the offset location aligns with phrase
-  if(!(offset % SIZE_PHRASE))// Aligned
+  if (!(offset % SIZE_PHRASE))// Aligned
   {
     phrase.s.Hi = data;
     phrase.s.Lo = _FW(FLASH_DATA_START + offset + SIZE_WORD);// pass phrase aligned address
@@ -155,7 +184,7 @@ bool Flash_Write16(volatile uint16_t* const address, const uint16_t data)
   uint32union_t word;
 
   // Check if the offset location aligns with word
-  if(!(offset % SIZE_WORD))// Aligned
+  if (!(offset % SIZE_WORD))// Aligned
   {
     word.s.Hi = _FH(FLASH_DATA_START + offset + SIZE_HALF_WORD);
     word.s.Lo = data;
@@ -173,20 +202,20 @@ bool Flash_Write8(volatile uint8_t* const address, const uint8_t data)
 {
   // Calculate the offset
   uint8_t offset = (uint32_t)address - FLASH_DATA_START;
-  uint16union_t half_word;
+  uint16union_t halfWord;
 
   // Check if the offset location aligns with half-word
-  if(!(offset % SIZE_HALF_WORD))// Aligned
+  if (!(offset % SIZE_HALF_WORD))// Aligned
   {
-    half_word.s.Hi = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
-    half_word.s.Lo = data;
-    return Flash_Write16((uint16_t*)address, half_word.l);// pass half-word aligned address
+    halfWord.s.Hi = _FB(FLASH_DATA_START + offset + SIZE_BYTE);
+    halfWord.s.Lo = data;
+    return Flash_Write16((uint16_t*)address, halfWord.l);// pass half-word aligned address
   }
   else // Not aligned
   {
-    half_word.s.Hi = data;
-    half_word.s.Lo = _FB(FLASH_DATA_START + offset - SIZE_BYTE);
-    return Flash_Write16((uint16_t*)(address - SIZE_BYTE), half_word.l);// pass half-word aligned address
+    halfWord.s.Hi = data;
+    halfWord.s.Lo = _FB(FLASH_DATA_START + offset - SIZE_BYTE);
+    return Flash_Write16((uint16_t*)(address - SIZE_BYTE), halfWord.l);// pass half-word aligned address
   }
 
 }
