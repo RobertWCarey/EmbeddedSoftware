@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup PIT_module PIT module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief Routines for controlling Periodic Interrupt Timer (PIT) on the TWR-K70F120M.

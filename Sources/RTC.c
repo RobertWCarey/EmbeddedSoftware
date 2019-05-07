@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup RTC_module RTC module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief Routines for controlling the Real Time Clock (RTC) on the TWR-K70F120M.

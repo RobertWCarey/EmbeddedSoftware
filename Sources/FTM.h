@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup FTM_module FTM module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief Routines for setting up the FlexTimer module (FTM) on the TWR-K70F120M.
@@ -92,3 +96,6 @@ bool FTM_StartTimer(const TFTMChannel* const aFTMChannel);
 void __attribute__ ((interrupt)) FTM0_ISR(void);
 
 #endif
+/*!
+ * @}
+ */

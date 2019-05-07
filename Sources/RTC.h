@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup RTC_module RTC module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief Routines for controlling the Real Time Clock (RTC) on the TWR-K70F120M.
@@ -51,3 +55,7 @@ void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const second
 void __attribute__ ((interrupt)) RTC_ISR(void);
 
 #endif
+
+/*!
+ * @}
+ */
