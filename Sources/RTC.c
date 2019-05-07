@@ -31,7 +31,7 @@ bool RTC_Init(void (*userFunction)(void*), void* userArguments)
 
   //Clear TIF and TOF by writing to TSR
   //Check if TOF or TIF is raised before clearing TSR
-  if(RTC_SR & (RTC_SR_TOF_MASK | RTC_SR_TIF_MASK) )
+  if (RTC_SR & (RTC_SR_TOF_MASK | RTC_SR_TIF_MASK) )
     RTC_TSR = RTC_TSR_TSR(1);// re-setting value back to beginning (not zero as recommended by manual, 47.2.1)
 
   //Disable RTC Oscillator
@@ -74,12 +74,12 @@ void RTC_Set(const uint8_t hours, const uint8_t minutes, const uint8_t seconds)
 
 void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const seconds)
 {
-  uint32_t TSR = RTC_TSR;
-  TSR = TSR % 86400U;   	/* Seconds left */
-  *hours = TSR / 3600U;     	/* Hours */
-  TSR = TSR % 3600u;        	/* Seconds left */
-  *minutes = TSR / 60U;     	/* Minutes */
-  *seconds = TSR % 60U;     	/* Seconds */
+  uint32_t tsr = RTC_TSR;
+  tsr = tsr % 86400U;   	/* Seconds left */
+  *hours = tsr / 3600U;     	/* Hours */
+  tsr = tsr % 3600u;        	/* Seconds left */
+  *minutes = tsr / 60U;     	/* Minutes */
+  *seconds = tsr % 60U;     	/* Seconds */
 }
 
 void __attribute__ ((interrupt)) RTC_ISR(void)

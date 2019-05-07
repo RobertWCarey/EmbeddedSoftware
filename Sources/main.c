@@ -233,7 +233,7 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
   // Variable to record if action was successful
   bool success = 0;
 
-  switch(command)
+  switch (command)
   {
     case CMD_TOWER_STARTUP:
       success = towerStatupPacketHandler(towerNb,towerMode);

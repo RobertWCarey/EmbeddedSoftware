@@ -14,7 +14,7 @@
 #include "CPU.h"
 
 //PIT Module Clock Period in ns
-static uint8_t pitClkPeriod;
+static uint8_t PitClkPeriod;
 
 static void (*UserFunction)(void*);
 static void* UserArguments;
@@ -29,7 +29,7 @@ bool PIT_Init(const uint32_t moduleClk, void (*userFunction)(void*), void* userA
   SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
 
   //Calculate clk period based on modlueClk value
-  pitClkPeriod = ((1e9)/moduleClk);
+  PitClkPeriod = ((1e9)/moduleClk);
 
   //Enable standard PIT timers
   //Must be done before any setup
@@ -51,7 +51,7 @@ bool PIT_Init(const uint32_t moduleClk, void (*userFunction)(void*), void* userA
 
 void PIT_Set(const uint32_t period, const bool restart)
 {
-  uint32_t nbTicks = (period/pitClkPeriod)-1;
+  uint32_t nbTicks = (period/PitClkPeriod)-1;
 
   if (restart)
   {
