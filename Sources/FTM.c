@@ -34,10 +34,10 @@ bool FTM_Init()
   FTM0_SC |= FTM_SC_CLKS(0);
 
   // Disable Timer overflow interrupt
-//  FTM0_SC |= ~FTM_SC_TOIE_MASK;
+  FTM0_SC |= ~FTM_SC_TOIE_MASK;
 
   // FTM to up counting mode
-//  FTM0_SC &= ~FTM_SC_CPWMS_MASK;
+  FTM0_SC &= ~FTM_SC_CPWMS_MASK;
 
   // Count initial
   FTM0_CNTIN = FTM_CNTIN_INIT(0);
@@ -50,7 +50,7 @@ bool FTM_Init()
 
   // Enable FTM clock source
   // Write to Status and Control in FTM0. 0d2 = 0b10 = Fixed Frequency Clock
-  FTM0_SC |= FTM_SC_CLKS(2);
+  FTM0_SC = FTM_SC_CLKS(2);
 
   //Set up interrupt vector
   //Vector=, IRQ=62, non-IPR=1
@@ -68,7 +68,7 @@ bool FTM_Set(const TFTMChannel* const aFTMChannel)
   FTM0_CnSC(aFTMChannel->channelNb) |= FTM_CnSC_CHIE_MASK;
 
   // TimerFunction = 0 if INPUT CAPTURE, 1 if OUTPUT COMPARE
-  FTM0_CnSC(aFTMChannel->channelNb) |= aFTMChannel->timerFunction << FTM_CnSC_MSB_SHIFT;
+  FTM0_CnSC(aFTMChannel->channelNb) |= aFTMChannel->timerFunction << FTM_CnSC_MSA_SHIFT;
 
   // Check timer function:
   if (aFTMChannel->timerFunction == TIMER_FUNCTION_INPUT_CAPTURE) // 0 = Input Capture
