@@ -16,6 +16,7 @@
 // Include Header Files
 #include "packet.h"
 #include "UART.h"
+#include "CPU.h"
 
 // Acknowledgment bit mask
 const uint8_t PACKET_ACK_MASK = 0x80u;
@@ -53,18 +54,35 @@ bool Packet_Get(void)
 
 bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3)
 {
+  EnterCritical(); // Entering critical section
   // Send bytes of packet into UART
   if (!UART_OutChar(command))
-    return false;
+    {
+      ExitCritical(); // Exiting critical section
+      return false;
+    }
   if (!UART_OutChar(parameter1))
-    return false;
+    {
+      ExitCritical(); // Exiting critical section
+      return false;
+    }
   if (!UART_OutChar(parameter2))
-    return false;
+    {
+      ExitCritical(); // Exiting critical section
+      return false;
+    }
   if (!UART_OutChar(parameter3))
-    return false;
+    {
+      ExitCritical(); // Exiting critical section
+      return false;
+    }
   if (!UART_OutChar(returnChecksum(command,parameter1,parameter2,parameter3)))
-    return false;
+    {
+      ExitCritical(); // Exiting critical section
+      return false;
+    }
 
+  ExitCritical(); // Exiting critical section
   // If all bytes successfully written to UART
   return true;
 }
