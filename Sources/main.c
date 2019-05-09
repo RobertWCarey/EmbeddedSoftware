@@ -200,9 +200,9 @@ static bool readBytePacketHandler()
 static bool timePacketHandler()
 {
   // Check lower values for valid range
-  if ((Packet_Parameter1 >= TIME_RANGE_LO) || (Packet_Parameter2 >= TIME_RANGE_LO) || (Packet_Parameter3 >= TIME_RANGE_LO))
+  if ((Packet_Parameter1 >= TIME_RANGE_LO) && (Packet_Parameter2 >= TIME_RANGE_LO) && (Packet_Parameter3 >= TIME_RANGE_LO))
     //Check upper values for valid range
-    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) || (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) || (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
+    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) && (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) && (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
       {
 	RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
 	return true;
@@ -224,8 +224,12 @@ static bool timePacketHandler()
  *  @param towerNb A variable containing the Tower Number.
  *  @return void.
  */
-static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode)
+static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel)
 {
+  //Starts a timer and turns on LED
+  FTM_StartTimer(aFTMChannel);
+  LEDs_On(LED_BLUE);
+
   // Isolate command packet
   uint8_t command = Packet_Command & ~PACKET_ACK_MASK;
   // Isolate ACK request
@@ -271,6 +275,13 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
       uint8_t nackCommand = Packet_Command & ~PACKET_ACK_MASK;
       Packet_Put(nackCommand,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     }
+
+  // Reset Packet variables
+  Packet_Command = 0x00u;
+  Packet_Parameter1 = 0x00u;
+  Packet_Parameter2 = 0x00u;
+  Packet_Parameter3 = 0x00u;
+  Packet_Checksum = 0x00u;
 }
 
 /*! @brief Interrupt callback function to be called when PIT_ISR occurs
@@ -373,22 +384,11 @@ int main(void)
   {
 
     // Check if any valid Packets have been received
-    if (!Packet_Get())
-      continue;// If no valid packet go to start of loop
+    if (Packet_Get())
+      // Deal with any received packets
+      cmdHandler(nvTowerNb,nvTowerMode,&channelSetup0);
 
-    //Starts a timer and turns on LED
-    FTM_StartTimer(&channelSetup0);
-    LEDs_On(LED_BLUE);
 
-    // Deal with any received packets
-    cmdHandler(nvTowerNb,nvTowerMode);
-
-    // Reset Packet variables
-    Packet_Command = 0x00u;
-    Packet_Parameter1 = 0x00u;
-    Packet_Parameter2 = 0x00u;
-    Packet_Parameter3 = 0x00u;
-    Packet_Checksum = 0x00u;
   }
 
   /*** Don't write any code pass this line, or it will be deleted during code generation. ***/
