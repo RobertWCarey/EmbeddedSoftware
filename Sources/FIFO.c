@@ -57,7 +57,10 @@ bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr)
 
   // Check if there is data in the buffer
   if (fifo->NbBytes <= 0)
-    return false;
+    {
+      ExitCritical(); //End critical section
+      return false;
+    }
 
   // If not empty read data
   (*dataPtr) = fifo->Buffer[fifo->End];

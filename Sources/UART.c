@@ -86,11 +86,12 @@ bool UART_OutChar(const uint8_t data)
   if (FIFO_Put(&TxBuffer,data))
     {
       UART2_C2 |= UART_C2_TIE_MASK;
+      ExitCritical(); // Exiting critical section
       return true;
     }
-  else
-    return false;
+
   ExitCritical(); // Exiting critical section
+  return false;
 }
 
 void UART_Poll(void)
