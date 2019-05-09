@@ -83,13 +83,11 @@ void PIT_Enable(const bool enable)
 
 void __attribute__ ((interrupt)) PIT_ISR(void)
 {
-  EnterCritical();
-    //Clear Timer Interrupt
-    PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
-    // Call user function
-    if (UserFunction)
-      (*UserFunction)(UserArguments);
-  ExitCritical();
+  //Clear Timer Interrupt
+  PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
+  // Call user function
+  if (UserFunction)
+    (*UserFunction)(UserArguments);
 }
 
 /*!
