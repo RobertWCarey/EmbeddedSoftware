@@ -79,6 +79,13 @@ void RTC_Set(const uint8_t hours, const uint8_t minutes, const uint8_t seconds)
 void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const seconds)
 {
   uint32_t tsr = RTC_TSR;
+  /* If it is necessary for software to read the prescaler or seconds counter when they could be incrementing,
+   * it is recommended that two read accesses are performed and that software verifies that the
+   * same data was returned for both reads.
+   */
+  while ( RTC_TSR != tsr)
+    tsr = RTC_TSR;
+
   tsr = tsr % 86400U;   	/* Seconds left */
   *hours = tsr / 3600U;     	/* Hours */
   tsr = tsr % 3600u;        	/* Seconds left */
