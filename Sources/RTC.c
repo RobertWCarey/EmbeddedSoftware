@@ -42,8 +42,7 @@ bool RTC_Init(void (*userFunction)(void*), void* userArguments)
   RTC_CR &= ~RTC_CR_OSCE_MASK;
 
   //Set Load Capacitance to 18PF (as per schematic)
-  RTC_CR |= RTC_CR_SC2P_MASK;
-  RTC_CR |= RTC_CR_SC16P_MASK;
+  RTC_CR |= RTC_CR_SC2P_MASK | RTC_CR_SC16P_MASK;
 
   //Enable RTC Oscillator
   RTC_CR |= RTC_CR_OSCE_MASK;
