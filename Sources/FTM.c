@@ -81,6 +81,8 @@ bool FTM_Set(const TFTMChannel* const aFTMChannel)
     // Pass the output action config into ELSB:ELSA (Edge or Level Select)
     FTM0_CnSC(aFTMChannel->channelNb) |=  aFTMChannel->ioType.outputAction << FTM_CnSC_ELSA_SHIFT;
   }
+
+  return true;
 }
 
 bool FTM_StartTimer(const TFTMChannel* const aFTMChannel)
