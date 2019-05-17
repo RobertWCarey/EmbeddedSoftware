@@ -25,11 +25,16 @@
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-#define I2C0_START_BIT I2C0_C1 |= I2C_C1_MST_MASK;
-#define I2C0_STOP_BIT I2C0_C1 &= ~I2C_C1_MST_MASK;
+#define I2C0_START_BIT I2C0_C1 |= I2C_C1_MST_MASK
+#define I2C0_STOP_BIT I2C0_C1 &= ~I2C_C1_MST_MASK
 
-#define I2C0_TRANSMIT I2C0_C1 |= I2C_C1_TX_MASK;
-#define I2C0_RECIEVE I2C0_C1 &= ~I2C_C1_TX_MASK;
+#define I2C0_REPEAT_START_BIT I2C0_C1 |= I2C_C1_RSTA_MASK
+
+#define I2C0_TRANSMIT I2C0_C1 |= I2C_C1_TX_MASK
+#define I2C0_RECIEVE I2C0_C1 &= ~I2C_C1_TX_MASK
+
+#define I2C0_TRANSMIT_NACK I2C0_C1 |= I2C_C1_TXAK_MASK
+#define I2C0_TRANSMIT_ACK I2C0_C1 &= ~	I2C_C1_TXAK_MASK
 
 static const uint8_t ReadBit = 0x00;
 static const uint8_t WriteBit = 0x01;
@@ -158,28 +163,34 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   I2C0_TRANSMIT;
 
   //Send Start bit
-  I2C0_START_BIT
+  I2C0_START_BIT;
 
   //Send Slave address + Write bit
   I2C0_D = ((SlaveAddress << 1) + WriteBit);
 
   //Wait for transfer to complete
   while (!transferComplete());
+  //Wait for ACK from slave
+//  while (I2C0_S & I2C_S_RXAK_MASK);
 
   //Send Register address
   I2C0_D = registerAddress;
 
   //Wait for transfer to complete
   while (!transferComplete());
+  //Wait for ACK from slave
+//  while (I2C0_S & I2C_S_RXAK_MASK);
 
   //Send data to be written
   I2C0_D = data;
 
   //Wait for transfer to complete
   while (!transferComplete());
+  //Wait for ACK from slave
+//  while (I2C0_S & I2C_S_RXAK_MASK);
 
   //Send Stop bit
-  I2C0_STOP_BIT
+  I2C0_STOP_BIT;
 }
 
 /*! @brief Reads data of a specified length starting from a specified register
@@ -191,7 +202,77 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
  */
 void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
 {
+  //Wait for the bus to clear
+  while (!(I2C0_S & I2C_S_BUSY_MASK));
 
+  //Select transmit mode
+  I2C0_TRANSMIT;
+
+  //Send Start bit
+  I2C0_START_BIT;
+
+  //Send Slave address + Write bit
+  I2C0_D = ((SlaveAddress << 1) + WriteBit);
+
+  //Wait for transfer to complete
+  while (!transferComplete());
+  //Wait for ACK from slave
+//  while (I2C0_S & I2C_S_RXAK_MASK);
+
+  //Send Register address
+  I2C0_D = registerAddress;
+
+  //Wait for transfer to complete
+  while (!transferComplete());
+  //Wait for ACK from slave
+//  while (I2C0_S & I2C_S_RXAK_MASK);
+
+  //Send repeat start bit
+  I2C0_REPEAT_START_BIT;
+
+  //Send Slave address + Read bit
+  I2C0_D = ((SlaveAddress << 1) + ReadBit);
+
+  //Wait for transfer to complete
+  while (!transferComplete());
+  //Wait for ACK from slave
+//  while (I2C0_S & I2C_S_RXAK_MASK);
+
+  //Read the data
+
+  //Special case if nbBytes == 1 set NACK
+  if (nbBytes == 1)
+    I2C0_TRANSMIT_NACK;
+  else
+    I2C0_TRANSMIT_ACK;
+
+  //Perform dummy read from register to initiate receiving of next byte
+  uint8_t dummyByte = I2C0_D;
+
+  //Wait for transfer to complete
+  while (!transferComplete());
+  //Wait for ACK from slave
+//  while (I2C0_S & I2C_S_RXAK_MASK);
+
+  // Start a for loop for the range of data
+  for (int i = 0; i < nbBytes; i++)
+  {
+    //if at the second last byte
+    if (i == nbBytes - 2)
+      I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
+
+    //if at the last byte
+    if (i == nbBytes - 1)
+      I2C0_STOP_BIT; //Send Stop bit
+
+    // Read data into the dynamic array
+    data[i] = I2C0_D;
+
+    //If not at last byte
+    if (i < nbBytes - 1)
+      //Wait for transfer to complete
+      while (!transferComplete());
+  }
 }
 
 /*! @brief Reads data of a specified length starting from a specified register
