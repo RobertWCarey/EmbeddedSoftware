@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup accel_module accel module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief <Write your description here>.
@@ -182,6 +186,69 @@ static union
 #define CTRL_REG5_INT_CFG_TRANS		CTRL_REG5_Union.bits.INT_CFG_TRANS
 #define CTRL_REG5_INT_CFG_FIFO		CTRL_REG5_Union.bits.INT_CFG_FIFO
 #define CTRL_REG5_INT_CFG_ASLP		CTRL_REG5_Union.bits.INT_CFG_ASLP
+
+// SA0 is pulled high so address is based on default values
+static const uint8_t ACCEL_ADDRESS = 0x1D;
+
+//Local global for callback
+static void (*UserFunction)(void*);
+static void* UserArguments;
+
+//I2C baud rate
+static const uint32_t I2C_BAUD_RATE = 100000;
+
+/*! @brief Initializes the accelerometer by calling the initialization routines of the supporting software modules.
+ *
+ *  @param accelSetup is a pointer to an accelerometer setup structure.
+ *  @return bool - TRUE if the accelerometer module was successfully initialized.
+ */
+bool Accel_Init(const TAccelSetup* const accelSetup)
+{
+  //Struct to configure I2C module
+  TI2CModule i2cSetup;
+  i2cSetup.baudRate = I2C_BAUD_RATE;
+  i2cSetup.primarySlaveAddress = ACCEL_ADDRESS;
+  i2cSetup.readCompleteCallbackArguments = accelSetup->dataReadyCallbackArguments;
+  i2cSetup.readCompleteCallbackFunction = accelSetup->readCompleteCallbackFunction;
+
+  //Initilise I2C module
+  I2C_Init(&i2cSetup,accelSetup->moduleClk);
+
+  //Place Accelerometer in standby mode so that registers can be modified.
+  CTRL_REG1_ACTIVE = 0;//Modify reg1 union for standby
+  I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
+
+  //Control Register 1 setup
+
+
+}
+
+/*! @brief Reads X, Y and Z accelerations.
+ *  @param data is a an array of 3 bytes where the X, Y and Z data are stored.
+ */
+void Accel_ReadXYZ(uint8_t data[3])
+{
+
+}
+
+/*! @brief Set the mode of the accelerometer.
+ *  @param mode specifies either polled or interrupt driven operation.
+ */
+void Accel_SetMode(const TAccelMode mode)
+{
+
+}
+
+/*! @brief Interrupt service routine for the accelerometer.
+ *
+ *  The accelerometer has data ready.
+ *  The user callback function will be called.
+ *  @note Assumes the accelerometer has been initialized.
+ */
+void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
+{
+
+}
 
 /*!
  * @}

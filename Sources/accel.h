@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup accel_module accel module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief HAL for the accelerometer.
@@ -70,3 +74,6 @@ void Accel_SetMode(const TAccelMode mode);
 void __attribute__ ((interrupt)) AccelDataReady_ISR(void);
 
 #endif
+/*!
+ * @}
+ */
