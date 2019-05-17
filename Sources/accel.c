@@ -219,8 +219,29 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
 
   //Control Register 1 setup
+  CTRL_REG1_F_READ = 1;//configure for fast read (single byte)
+  CTRL_REG1_DR = 0b111;//Data rate select 1.56Hz
+  I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
 
+  //Control Register 5 setup
+  CTRL_REG5_INT_CFG_DRDY = 1;//Route Data ready interrupt to INT1 (PTB4)
+  I2C_Write(ADDRESS_CTRL_REG5,CTRL_REG5);//write to accelerometer
 
+  //Store callback into local global
+
+  //Enable portB clk gate
+  //interrupt not enabled for pin intentionally
+  //configured in Accel_SetMode
+
+  //Mux port
+
+  //Initilise PORTB NVIC
+
+  //Activate Accelerometer
+  CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
+  I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
+
+  return true;
 }
 
 /*! @brief Reads X, Y and Z accelerations.
