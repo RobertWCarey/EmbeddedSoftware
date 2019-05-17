@@ -25,11 +25,20 @@
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
+#define I2C0_START_BIT I2C0_C1 |= I2C_C1_MST_MASK;
+#define I2C0_STOP_BIT I2C0_C1 &= ~I2C_C1_MST_MASK;
+
+#define I2C0_TRANSMIT I2C0_C1 |= I2C_C1_TX_MASK;
+#define I2C0_RECIEVE I2C0_C1 &= ~I2C_C1_TX_MASK;
+
+static const uint8_t ReadBit = 0x00;
+static const uint8_t WriteBit = 0x01;
+
 //Number of values in the ICR range
 //#define as used to create array
 #define I2C_ICR_RANGE 64
 // All possible SCL Divider Values for the I2C ICR
-const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
+static const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
     {20, 22, 24, 26, 28, 30, 34, 40, 28, 32, 36, 40, 44, 48, 56, 68,
     48, 56, 64, 72, 80, 88, 104, 128, 80, 96, 112, 128, 144, 160,
     192, 240, 160, 192, 224, 256, 288, 320, 384, 480, 320, 384, 448,
@@ -38,6 +47,21 @@ const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
 
 //Private global to store slaveAddress
 static uint8_t SlaveAddress;
+
+static bool transferComplete()
+{
+  //wait for the IICIF flag to be raised
+  while (!(I2C0_S & I2C_S_IICIF_MASK));
+
+  //Clear the flag
+  I2C0_S |= I2C_S_IICIF_MASK;
+
+  //Check if transfer complete is what raised the flag
+  if (I2C0_S & I2C_S_TCF_MASK)
+    return true;
+
+  return false;
+}
 
 /*! @brief Sets up the I2C before first use.
  *
@@ -127,7 +151,35 @@ void I2C_SelectSlaveDevice(const uint8_t slaveAddress)
  */
 void I2C_Write(const uint8_t registerAddress, const uint8_t data)
 {
+  //Wait for the bus to clear
+  while (!(I2C0_S & I2C_S_BUSY_MASK));
 
+  //Select transmit mode
+  I2C0_TRANSMIT;
+
+  //Send Start bit
+  I2C0_START_BIT
+
+  //Send Slave address + Write bit
+  I2C0_D = ((SlaveAddress << 1) + WriteBit);
+
+  //Wait for transfer to complete
+  while (!transferComplete());
+
+  //Send Register address
+  I2C0_D = registerAddress;
+
+  //Wait for transfer to complete
+  while (!transferComplete());
+
+  //Send data to be written
+  I2C0_D = data;
+
+  //Wait for transfer to complete
+  while (!transferComplete());
+
+  //Send Stop bit
+  I2C0_STOP_BIT
 }
 
 /*! @brief Reads data of a specified length starting from a specified register
