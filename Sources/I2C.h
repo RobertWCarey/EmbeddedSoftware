@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup I2C_module I2C module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief I/O routines for the K70 I2C interface.
@@ -70,3 +74,8 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
 void __attribute__ ((interrupt)) I2C_ISR(void);
 
 #endif
+
+/*!
+ * @}
+ */
+
