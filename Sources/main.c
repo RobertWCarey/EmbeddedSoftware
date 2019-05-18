@@ -42,6 +42,7 @@
 #include "RTC.h"
 #include "FTM.h"
 #include "accel.h"
+#include "median.h"
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -97,6 +98,7 @@ static TAccelMode AccelMode = ACCEL_POLL;
 
 //Accelerometer data
 static TAccelData AccelData;
+static uint8_t XValues[3], YValues[3], ZValues[3];
 
 /*! @brief Sends out required packets for Tower Startup.
  *
@@ -299,12 +301,9 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
  */
 void PITCallback(void* arg)
 {
-  LEDs_Toggle(LED_GREEN);
-
-  //Read values
-  Accel_ReadXYZ(AccelData.bytes);
-
-  Packet_Put(CMD_ACCEL_VAL,AccelData.axes.x,AccelData.axes.y,AccelData.axes.z);
+  if (AccelMode == ACCEL_POLL)
+    //Read values
+    Accel_ReadXYZ(AccelData.bytes);
 }
 
 /*! @brief Interrupt callback function to be called when RTC_ISR occurs
@@ -335,13 +334,35 @@ void AccelDataReadyCallback(void* arg)
 {
   //Read values
   Accel_ReadXYZ(AccelData.bytes);
+}
 
-  Packet_Put(CMD_ACCEL_VAL,AccelData.axes.x,AccelData.axes.y,AccelData.axes.z);
+static void shuffleVals(uint8_t array[3], uint8_t value)
+{
+  array[2] = array[1];
+  array[1] = array[0];
+  array[0] = value;
 }
 
 void I2CCallback(void* arg)
 {
+  static TAccelData prevAccelData;
 
+  shuffleVals(XValues,AccelData.axes.x);
+  shuffleVals(YValues,AccelData.axes.y);
+  shuffleVals(ZValues,AccelData.axes.z);
+
+  if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
+    {
+      // Send last median values regardless of changing
+      Packet_Put(CMD_ACCEL_VAL,
+         Median_Filter3(XValues[0], XValues[1], XValues[2]),
+         Median_Filter3(YValues[0], YValues[1], YValues[2]),
+         Median_Filter3(ZValues[0], ZValues[1], ZValues[2]));
+    }
+
+  LEDs_Toggle(LED_GREEN);
+
+  prevAccelData = AccelData;
 }
 
 
