@@ -32,6 +32,7 @@
 // CPU and PE_types are needed for critical section variables and the defintion of NULL pointer
 #include "CPU.h"
 #include "PE_types.h"
+#include "PIT.h"
 
 // Accelerometer registers
 #define ADDRESS_OUT_X_MSB 0x01
@@ -268,7 +269,51 @@ void Accel_ReadXYZ(uint8_t data[3])
  */
 void Accel_SetMode(const TAccelMode mode)
 {
+  //Entering Critical Section
+  EnterCritical();
 
+  //Place Accelerometer in standby mode so that registers can be modified.
+  CTRL_REG1_ACTIVE = 0;//Modify reg1 union for standby
+  I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
+
+  switch (mode)
+  {
+    //Synchronous mode (use PIT interrupt)
+    case ACCEL_INT:
+      //Enable PIT
+      PIT_Enable(true);
+
+      //Disable PortB interrupt (0b0000)
+      PORTB_PCR4 |= PORT_PCR_IRQC(0);
+
+      //Disable Accel data ready interrupt
+      //Control Register 4
+      CTRL_REG4_INT_EN_DRDY = 0;//Disable Data ready interrupt trigger
+      I2C_Write(ADDRESS_CTRL_REG4,CTRL_REG4);//write to accelerometer
+    break;
+
+    //Asynchronous mode (use PORTB interrupt)
+    case ACCEL_POLL:
+      //Disable PIT
+      PIT_Enable(false);
+
+      //Enable PortB interrupt on rising edge (0b1001)
+      PORTB_PCR4 |= PORT_PCR_IRQC(9);
+
+      //Enable Accel data ready interrupt
+      //Control Register 4
+      CTRL_REG4_INT_EN_DRDY = 1;//Enable Data ready interrupt trigger
+      I2C_Write(ADDRESS_CTRL_REG4,CTRL_REG4);//write to accelerometer
+    break;
+    default:
+    break;
+  }
+
+  //Activate Accelerometer
+  CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
+  I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
+
+  ExitCritical(); //End critical section
 }
 
 /*! @brief Interrupt service routine for the accelerometer.
