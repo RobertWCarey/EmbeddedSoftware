@@ -325,7 +325,11 @@ void Accel_SetMode(const TAccelMode mode)
  */
 void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
 {
+  //Clear Flag
+  PORTB_PCR4 |= PORT_PCR_ISF_MASK;
 
+  if(UserFunction)
+    (*UserFunction)(UserArguments);
 }
 
 /*!

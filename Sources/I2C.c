@@ -396,7 +396,6 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
 	  Data[currentByte] = I2C0_D;
 	  currentByte++;
 	}
-
     }
 }
 
