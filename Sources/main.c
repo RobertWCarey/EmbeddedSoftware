@@ -89,15 +89,15 @@ static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
 static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
 static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
 
-
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1000e6;
 
 //Accelerometer mode global
 static TAccelMode AccelMode = ACCEL_POLL;
 
-//Accelerometer data
+//Accelerometer latest data
 static TAccelData AccelData;
+//Last three values for each accelerometer axis
 static uint8_t XValues[3], YValues[3], ZValues[3];
 
 /*! @brief Sends out required packets for Tower Startup.
@@ -330,26 +330,40 @@ void FTMCallback(void* arg)
   LEDs_Off(LED_BLUE);
 }
 
+/*! @brief Interrupt callback function to be called when Accelerometer
+ * @brief data ready interrupt occours, Synchronous mode
+ *
+ *  @param arg The user argument that comes with the callback
+ */
 void AccelDataReadyCallback(void* arg)
 {
   //Read values
   Accel_ReadXYZ(AccelData.bytes);
 }
 
-static void shuffleVals(uint8_t array[3], uint8_t value)
+/*! @brief shifts each value over one position in the array and loads new val
+ *
+ *  @param array[3] The array with values to be shifted
+ *  @param value    The new value to be loaded into the array
+ */
+static void shiftVals(uint8_t array[3], uint8_t value)
 {
   array[2] = array[1];
   array[1] = array[0];
   array[0] = value;
 }
 
+/*! @brief I2C0 callback function, outputs the accelerometer values
+ *
+ *   @param arg The user argument that comes with the callback
+ */
 void I2CCallback(void* arg)
 {
   static TAccelData prevAccelData;
 
-  shuffleVals(XValues,AccelData.axes.x);
-  shuffleVals(YValues,AccelData.axes.y);
-  shuffleVals(ZValues,AccelData.axes.z);
+  shiftVals(XValues,AccelData.axes.x);
+  shiftVals(YValues,AccelData.axes.y);
+  shiftVals(ZValues,AccelData.axes.z);
 
   if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
     {

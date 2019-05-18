@@ -25,23 +25,22 @@
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
+// Definitions for setting I2C0 control register 1
 #define I2C0_START_BIT I2C0_C1 |= I2C_C1_MST_MASK
 #define I2C0_STOP_BIT I2C0_C1 &= ~I2C_C1_MST_MASK
-
 #define I2C0_REPEAT_START_BIT I2C0_C1 |= I2C_C1_RSTA_MASK
-
 #define I2C0_TRANSMIT I2C0_C1 |= I2C_C1_TX_MASK
 #define I2C0_RECIEVE I2C0_C1 &= ~I2C_C1_TX_MASK
-
 #define I2C0_TRANSMIT_NACK I2C0_C1 |= I2C_C1_TXAK_MASK
 #define I2C0_TRANSMIT_ACK I2C0_C1 &= ~	I2C_C1_TXAK_MASK
-
 #define I2C0_INTERRUPT_EN I2C0_C1 |= I2C_C1_IICIE_MASK
 #define I2C0_INTERRUPT_DEN I2C0_C1 &= ~I2C_C1_IICIE_MASK
 
+//Read and write bit for I2C message
 static const uint8_t ReadBit = 0x01;
 static const uint8_t WriteBit = 0x00;
 
+//Local globals for interrupt service routines
 static uint8_t RegisterAddress;
 static uint8_t* Data;
 static uint8_t NbBytes;
@@ -61,6 +60,9 @@ static const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
 //Private global to store slaveAddress
 static uint8_t SlaveAddress;
 
+/*! @brief Waits for Interrupt flag to be raised and then clears it.
+ *
+ */
 static void wait()
 {
   //wait for the IICIF flag to be raised
@@ -108,12 +110,6 @@ static void ResetBusy()
   PORTE_PCR19 = PORT_PCR_MUX(0x04) | PORT_PCR_ODE_MASK;
 }
 
-/*! @brief Sets up the I2C before first use.
- *
- *  @param aI2CModule is a structure containing the operating conditions for the module.
- *  @param moduleClk The module clock in Hz.
- *  @return BOOL - TRUE if the I2C module was successfully initialized.
- */
 bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
 {
   //Load in user functions
@@ -183,21 +179,12 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   return true;
 }
 
-/*! @brief Selects the current slave device
- *
- * @param slaveAddress The slave device address.
- */
 void I2C_SelectSlaveDevice(const uint8_t slaveAddress)
 {
   //Store passed value in private global;
   SlaveAddress = slaveAddress;
 }
 
-/*! @brief Write a byte of data to a specified register
- *
- * @param registerAddress The register address.
- * @param data The 8-bit data to write.
- */
 void I2C_Write(const uint8_t registerAddress, const uint8_t data)
 {
   //Wait for the bus to clear
@@ -231,13 +218,6 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   I2C0_STOP_BIT;
 }
 
-/*! @brief Reads data of a specified length starting from a specified register
- *
- * Uses polling as the method of data reception.
- * @param registerAddress The register address.
- * @param data A pointer to store the bytes that are read.
- * @param nbBytes The number of bytes to read.
- */
 void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
 {
   //Wait for the bus to clear
@@ -304,13 +284,6 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   }
 }
 
-/*! @brief Reads data of a specified length starting from a specified register
- *
- * Uses interrupts as the method of data reception.
- * @param registerAddress The register address.
- * @param data A pointer to store the bytes that are read.
- * @param nbBytes The number of bytes to read.
- */
 void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
 {
   NbBytes = nbBytes;
@@ -363,12 +336,6 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   ExitCritical();
 }
 
-/*! @brief Interrupt service routine for the I2C.
- *
- *  Only used for reading data.
- *  At the end of reception, the user callback function will be called.
- *  @note Assumes the I2C module has been initialized.
- */
 void __attribute__ ((interrupt)) I2C_ISR(void)
 {
   //Clear the flag

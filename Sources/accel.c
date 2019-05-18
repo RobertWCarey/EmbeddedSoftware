@@ -188,6 +188,7 @@ static union
 #define CTRL_REG5_INT_CFG_FIFO		CTRL_REG5_Union.bits.INT_CFG_FIFO
 #define CTRL_REG5_INT_CFG_ASLP		CTRL_REG5_Union.bits.INT_CFG_ASLP
 
+// Accelerometer I2C bus address
 // SA0 is pulled high so address is based on default values
 static const uint8_t ACCEL_ADDRESS = 0x1D;
 
@@ -195,14 +196,9 @@ static const uint8_t ACCEL_ADDRESS = 0x1D;
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-//I2C baud rate
+//Global constant for I2C baud rate
 static const uint32_t I2C_BAUD_RATE = 100000;
 
-/*! @brief Initializes the accelerometer by calling the initialization routines of the supporting software modules.
- *
- *  @param accelSetup is a pointer to an accelerometer setup structure.
- *  @return bool - TRUE if the accelerometer module was successfully initialized.
- */
 bool Accel_Init(const TAccelSetup* const accelSetup)
 {
   //Struct to configure I2C module
@@ -257,17 +253,11 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   return true;
 }
 
-/*! @brief Reads X, Y and Z accelerations.
- *  @param data is a an array of 3 bytes where the X, Y and Z data are stored.
- */
 void Accel_ReadXYZ(uint8_t data[3])
 {
   I2C_IntRead(ADDRESS_OUT_X_MSB, data, sizeof(data)-1);
 }
 
-/*! @brief Set the mode of the accelerometer.
- *  @param mode specifies either polled or interrupt driven operation.
- */
 void Accel_SetMode(const TAccelMode mode)
 {
   //Entering Critical Section
@@ -317,12 +307,6 @@ void Accel_SetMode(const TAccelMode mode)
   ExitCritical(); //End critical section
 }
 
-/*! @brief Interrupt service routine for the accelerometer.
- *
- *  The accelerometer has data ready.
- *  The user callback function will be called.
- *  @note Assumes the accelerometer has been initialized.
- */
 void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
 {
   //Clear Flag

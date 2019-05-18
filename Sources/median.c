@@ -1,3 +1,7 @@
+/*!
+ * @addtogroup median_module median module documentation
+ * @{
+ */
 /*! @file
  *
  *  @brief Median filter.
@@ -45,3 +49,7 @@ uint8_t Median_Filter3(const uint8_t n1, const uint8_t n2, const uint8_t n3)
       }
     }
 }
+
+/*!
+ * @}
+ */
