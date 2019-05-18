@@ -36,8 +36,16 @@ static void* UserArguments;
 #define I2C0_TRANSMIT_NACK I2C0_C1 |= I2C_C1_TXAK_MASK
 #define I2C0_TRANSMIT_ACK I2C0_C1 &= ~	I2C_C1_TXAK_MASK
 
+#define I2C0_INTERRUPT_EN I2C0_C1 |= I2C_C1_IICIE_MASK
+#define I2C0_INTERRUPT_DEN I2C0_C1 &= ~I2C_C1_IICIE_MASK
+
 static const uint8_t ReadBit = 0x01;
 static const uint8_t WriteBit = 0x00;
+
+static uint8_t RegisterAddress;
+static uint8_t* Data;
+static uint8_t NbBytes;
+static uint8_t currentByte = 0;
 
 //Number of values in the ICR range
 //#define as used to create array
@@ -286,16 +294,13 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
     //if at the last byte
     if (i == nbBytes - 1)
       I2C0_STOP_BIT; //Send Stop bit
-
-    //If not at last byte
-    if (i < nbBytes - 1)
+    else
       {
 	// Read data into the dynamic array
 	data[i] = I2C0_D;
 	//Wait for transfer to complete
 	wait();
       }
-
   }
 }
 
@@ -308,7 +313,54 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
  */
 void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
 {
+  NbBytes = nbBytes;
+  RegisterAddress = registerAddress;
+  Data = data;
 
+  //Wait for the bus to clear
+  while (I2C0_S & I2C_S_BUSY_MASK);
+  EnterCritical();
+  //Select transmit mode
+  I2C0_TRANSMIT;
+
+  //Send Start bit
+  I2C0_START_BIT;
+
+  //Send Slave address + Write bit
+  I2C0_D = ((SlaveAddress << 1) | WriteBit);
+
+  //Wait for transfer to complete
+  wait();
+  //Send Register address
+  I2C0_D = registerAddress;
+
+  //Wait for transfer to complete
+  wait();
+
+  //Send repeat start bit
+  I2C0_REPEAT_START_BIT;
+
+  //Send Slave address + Read bit
+  I2C0_D = ((SlaveAddress << 1) | ReadBit);
+
+  //Wait for transfer to complete
+  wait();
+
+  //Switch to recieve mode
+  I2C0_RECIEVE;
+
+  //Special case if nbBytes == 1 set NACK
+  if (nbBytes == 1)
+    I2C0_TRANSMIT_NACK;
+  else
+    I2C0_TRANSMIT_ACK;
+
+  //Perform dummy read from register to initiate receiving of next byte
+  uint8_t dummyByte = I2C0_D;
+
+  //Enable Interrupt for I2C0
+  I2C0_INTERRUPT_EN;
+  ExitCritical();
 }
 
 /*! @brief Interrupt service routine for the I2C.
@@ -319,7 +371,33 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
  */
 void __attribute__ ((interrupt)) I2C_ISR(void)
 {
+  //Clear the flag
+  I2C0_S |= I2C_S_IICIF_MASK;
 
+  //Check that in recieve mode
+  if (!(I2C0_C1 & I2C_C1_TX_MASK) && (I2C0_S & I2C_S_TCF_MASK))
+    {
+      //if at the second last byte
+      if (currentByte == NbBytes - 2)
+	I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
+
+      //if at the last byte
+      if (currentByte == NbBytes - 1)
+	{
+	  I2C0_STOP_BIT; //Send Stop bit
+	  I2C0_INTERRUPT_DEN;//Disable interrupts
+	  currentByte = 0;//Reset currentByte
+	  if(UserFunction)
+	    (*UserFunction)(UserArguments);
+	}
+      else
+	{
+	  // Read data into the dynamic array
+	  Data[currentByte] = I2C0_D;
+	  currentByte++;
+	}
+
+    }
 }
 
 

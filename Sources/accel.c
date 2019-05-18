@@ -252,6 +252,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   //Activate Accelerometer
   CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
   I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
+//  I2C_PollRead(ADDRESS_CTRL_REG1, &CTRL_REG1, sizeof(CTRL_REG1));
 
   return true;
 }
@@ -261,7 +262,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
  */
 void Accel_ReadXYZ(uint8_t data[3])
 {
-  I2C_PollRead(ADDRESS_OUT_X_MSB, data, sizeof(data)-1);
+  I2C_IntRead(ADDRESS_OUT_X_MSB, data, sizeof(data)-1);
 }
 
 /*! @brief Set the mode of the accelerometer.
