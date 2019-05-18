@@ -228,14 +228,25 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   I2C_Write(ADDRESS_CTRL_REG5,CTRL_REG5);//write to accelerometer
 
   //Store callback into local global
+  UserArguments = accelSetup->dataReadyCallbackArguments;
+  UserFunction = accelSetup->dataReadyCallbackFunction;
 
   //Enable portB clk gate
+  SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
+
   //interrupt not enabled for pin intentionally
   //configured in Accel_SetMode
 
-  //Mux port
+  //Mux port PTB Alt1
+  PORTE_PCR4 |= PORT_PCR_MUX(1);
 
   //Initilise PORTB NVIC
+  //Non-IPR=2  IRQ=88
+  //clear any pending interrupts at PORTB
+  NVICICPR2 = (1 << 24);
+  //Enable interrupts from PORTB
+  NVICISER2 = (1 << 24);
+
 
   //Activate Accelerometer
   CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
@@ -249,7 +260,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
  */
 void Accel_ReadXYZ(uint8_t data[3])
 {
-
+  I2C_PollRead(ADDRESS_OUT_X_MSB, data, sizeof(data)-1);
 }
 
 /*! @brief Set the mode of the accelerometer.
