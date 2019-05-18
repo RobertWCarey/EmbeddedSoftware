@@ -41,6 +41,7 @@
 #include "PIT.h"
 #include "RTC.h"
 #include "FTM.h"
+#include "accel.h"
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -53,6 +54,7 @@ static const uint32_t BAUD_RATE = 115200;
 #define CMD_READ_BYTE 0x08u
 #define CMD_TOWER_MODE 0x0Du
 #define CMD_TIME_BYTE 0xCu
+#define CMD_ACCEL_VAL 0x10u
 
 // Parameters for 0x04-Tower Startup
 static const uint8_t TOWER_STARTUP_PARAM = 0x00;
@@ -86,8 +88,15 @@ static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
 static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
 static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
 
+
 // Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 500e6;
+static const uint32_t PIT_TIME_PERIOD = 1000e6;
+
+//Accelerometer mode global
+static TAccelMode AccelMode = ACCEL_POLL;
+
+//Accelerometer data
+static TAccelData AccelData;
 
 /*! @brief Sends out required packets for Tower Startup.
  *
@@ -291,6 +300,11 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
 void PITCallback(void* arg)
 {
   LEDs_Toggle(LED_GREEN);
+
+  //Read values
+  Accel_ReadXYZ(AccelData.bytes);
+
+  Packet_Put(CMD_ACCEL_VAL,AccelData.axes.x,AccelData.axes.y,AccelData.axes.z);
 }
 
 /*! @brief Interrupt callback function to be called when RTC_ISR occurs
@@ -317,6 +331,19 @@ void FTMCallback(void* arg)
   LEDs_Off(LED_BLUE);
 }
 
+void AccelDataReadyCallback(void* arg)
+{
+  //Read values
+  Accel_ReadXYZ(AccelData.bytes);
+
+  Packet_Put(CMD_ACCEL_VAL,AccelData.axes.x,AccelData.axes.y,AccelData.axes.z);
+}
+
+void I2CCallback(void* arg)
+{
+
+}
+
 
 /*! @brief Runs all functions necessary for Tower to function.
  *
@@ -324,11 +351,20 @@ void FTMCallback(void* arg)
  */
 static bool towerInit(void)
 {
+  //Accelerometer setup struct
+  TAccelSetup accelSetup;
+  accelSetup.moduleClk = CPU_BUS_CLK_HZ;
+  accelSetup.dataReadyCallbackArguments = NULL;
+  accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
+  accelSetup.readCompleteCallbackArguments = NULL;
+  accelSetup.readCompleteCallbackFunction = I2CCallback;
+
   return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
       LEDs_Init() &&
       PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL) &&
       RTC_Init(RTCCallback,NULL) &&
       FTM_Init() &&
+      Accel_Init(&accelSetup) &&
       Flash_Init();
 }
 

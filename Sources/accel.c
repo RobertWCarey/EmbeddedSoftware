@@ -209,7 +209,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   TI2CModule i2cSetup;
   i2cSetup.baudRate = I2C_BAUD_RATE;
   i2cSetup.primarySlaveAddress = ACCEL_ADDRESS;
-  i2cSetup.readCompleteCallbackArguments = accelSetup->dataReadyCallbackArguments;
+  i2cSetup.readCompleteCallbackArguments = accelSetup->readCompleteCallbackArguments;
   i2cSetup.readCompleteCallbackFunction = accelSetup->readCompleteCallbackFunction;
 
   //Initilise I2C module
@@ -279,7 +279,7 @@ void Accel_SetMode(const TAccelMode mode)
   switch (mode)
   {
     //Synchronous mode (use PIT interrupt)
-    case ACCEL_INT:
+    case ACCEL_POLL:
       //Enable PIT
       PIT_Enable(true);
 
@@ -293,7 +293,7 @@ void Accel_SetMode(const TAccelMode mode)
     break;
 
     //Asynchronous mode (use PORTB interrupt)
-    case ACCEL_POLL:
+    case ACCEL_INT:
       //Disable PIT
       PIT_Enable(false);
 
