@@ -56,6 +56,7 @@ static const uint32_t BAUD_RATE = 115200;
 #define CMD_TOWER_MODE 0x0Du
 #define CMD_TIME_BYTE 0xCu
 #define CMD_ACCEL_VAL 0x10u
+#define CMD_PROT_MODE 0x0Au
 
 // Parameters for 0x04-Tower Startup
 static const uint8_t TOWER_STARTUP_PARAM = 0x00;
@@ -88,6 +89,12 @@ static const uint8_t TIME_RANGE_LO = 0x00;// Lowest valid value
 static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
 static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
 static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
+
+// Parameters for 0x0A - Protocol Mode
+static const uint8_t PROT_MODE_GET = 1;// Get Param
+static const uint8_t PROT_MODE_SET = 2;// Set Param
+static const uint8_t PROT_MODE_ASYNC = 0;// Asynchronous mode (PIT polling)
+static const uint8_t PROT_MODE_SYNC = 1;// Synchronous mode (Accel interrupt)
 
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1000e6;
@@ -220,15 +227,35 @@ static bool timePacketHandler()
       }
 
   return false;
-
 }
 
-//static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
-//{
-//  Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
-//  if (addrs->l == 0xffff)
-//    Flash_Write16((uint16_t*)addrs, defaultData);
-//}
+/*! @brief Executes Protocol Mode packet handler.
+ *
+ *  @return bool - TRUE if packet successfully sent.
+ */
+static bool protModePacketHandler()
+{
+  // Check offset is valid, and parameter byte is valid
+  if ((Packet_Parameter3 != 0))
+    return false;
+
+  if (Packet_Parameter1 == PROT_MODE_GET)
+    {
+      return Packet_Put(CMD_PROT_MODE, Packet_Parameter1, AccelMode, 0);
+    }
+  else if (Packet_Parameter1 == PROT_MODE_SET)
+    {
+      //Set mode based on packet_parameter2 as long as valid
+      if ((Packet_Parameter2 == PROT_MODE_ASYNC) || (Packet_Parameter2 == PROT_MODE_SYNC))
+	{
+	  Accel_SetMode(Packet_Parameter2);
+	  AccelMode = Packet_Parameter2;
+	  return true;
+	}
+    }
+
+  return false;
+}
 
 /*! @brief Performs necessary action for any valid packets received.
  *
@@ -270,6 +297,9 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
       break;
     case CMD_TIME_BYTE:
       success = timePacketHandler();
+      break;
+    case CMD_PROT_MODE:
+      success = protModePacketHandler();
       break;
     default:
       break;
