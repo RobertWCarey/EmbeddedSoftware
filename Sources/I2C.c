@@ -74,7 +74,7 @@ static void wait()
 
 /*! @brief Manually resets the BUSY bit if a slave happens to be wanting to transact on the I2C bus.
  *
- * Only used for safety if the I2C was abnormally interrupted, e.g. debugging.
+ * Only used for safety if the I2C was abnormally interrupted, e.g. debugging or reset.
  * Sometimes the bus transactions can be "stuck" if the master sends an ACK instead of a NAK (bad code)
  * or the transaction is interrupted by the debugger. In these case a power cycle will restore normality,
  * or you can manually clock the SCL line with SDA high to force the slave to send data and recognise a NAK.
@@ -93,9 +93,11 @@ static void ResetBusy()
   PORTE_PCR19 = PORT_PCR_MUX(1) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
 
   // If the SDA line is low, we clock the SCL line to free it
+  // The SDA only thing holding the SDA low is the slave
+  // Once sufficent SCL clk cycles have elapsed equivilant of a stop bit is sent (SDA high)
   while ((GPIOE_PDIR & (1 << 18)) == 0)
   {
-    // Clear SCL line to a 0
+    // Clear SCL line to a 0 (ie set as output)
     GPIOE_PDDR |= (1 << 19);
     // Delay
     for (uint16_t i = 0; i < 1000; i++);
