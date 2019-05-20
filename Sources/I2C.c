@@ -196,6 +196,7 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
 
+  EnterCritical();
   //Select transmit mode
   I2C0_TRANSMIT;
 
@@ -222,6 +223,7 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
 
   //Send Stop bit
   I2C0_STOP_BIT;
+  ExitCritical();
 }
 
 void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
