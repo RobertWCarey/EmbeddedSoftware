@@ -126,7 +126,7 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
 
   //Mux port for I2C0 on PTE18/19 for Accel SDA/SCL
   //Enable open drain
-  //Configure as internal pullup resitor
+  //Configure as internal pullup resistor
   //Enable internal pullup
   PORTE_PCR18 = PORT_PCR_MUX(4) | PORT_PCR_ODE_MASK | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
   PORTE_PCR19 = PORT_PCR_MUX(4) | PORT_PCR_ODE_MASK | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
@@ -164,7 +164,7 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   I2C0_F |= I2C_F_ICR(closestICR);
   I2C0_F |= I2C_F_MULT(closestMult);
 
-  //Initilise NVIC for I2C0
+  //Initialise NVIC for I2C0
   //Non-IPR=0  IRQ=24
   //clear any pending interrupts at I2C0
   NVICICPR0 = (1 << 24);
@@ -179,7 +179,7 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   //Enable the I2C
   I2C0_C1 |= I2C_C1_IICEN_MASK;
   
-  //Remove any potenal I2C deadlock
+  //Remove any potential I2C deadlock
   ResetDeadLock();
 
   return true;
@@ -260,7 +260,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   //Wait for transfer to complete
   wait();
 
-  //Switch to recieve mode
+  //Switch to receive mode
   I2C0_RECIEVE;
 
   //Special case if nbBytes == 1 set NACK
@@ -338,7 +338,7 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   //Wait for transfer to complete
   wait();
 
-  //Switch to recieve mode
+  //Switch to receive mode
   I2C0_RECIEVE;
 
   //Special case if nbBytes == 1 set NACK
@@ -360,7 +360,7 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
   //Clear the flag
   I2C0_S |= I2C_S_IICIF_MASK;
 
-  //Check that in recieve mode
+  //Check that in receive mode
   if (!(I2C0_C1 & I2C_C1_TX_MASK) && (I2C0_S & I2C_S_TCF_MASK))
     {
       //if at the second last byte
