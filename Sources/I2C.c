@@ -176,6 +176,8 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
 
   //Enable the I2C
   I2C0_C1 |= I2C_C1_IICEN_MASK;
+  
+  //Remove any potenal I2C deadlock
   ResetBusy();
 
   return true;
@@ -199,7 +201,7 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   I2C0_START_BIT;
 
   //Send Slave address + Write bit
-  I2C0_D = ((SlaveAddress << 1) + WriteBit);
+  I2C0_D = ((SlaveAddress << 1) | WriteBit);
 
   //Wait for transfer to complete
   wait();
@@ -222,8 +224,11 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
 
 void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
 {
+  
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
+
+  EnterCritical();
 
   //Select transmit mode
   I2C0_TRANSMIT;
@@ -273,17 +278,21 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
     if (i == nbBytes - 2)
       I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
 
+    // Read data into the dynamic array
+    data[i] = I2C0_D;
+
     //if at the last byte
     if (i == nbBytes - 1)
       I2C0_STOP_BIT; //Send Stop bit
     else
       {
-	// Read data into the dynamic array
-	data[i] = I2C0_D;
-	//Wait for transfer to complete
-	wait();
+      	//Wait for transfer to complete
+      	wait();
       }
   }
+
+  ExitCritical();
+
 }
 
 void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
@@ -306,6 +315,7 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
 
   //Wait for transfer to complete
   wait();
+  
   //Send Register address
   I2C0_D = registerAddress;
 
@@ -350,6 +360,9 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
       if (currentByte == NbBytes - 2)
 	I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
 
+      // Read data into the dynamic array
+      Data[currentByte] = I2C0_D;
+
       //if at the last byte
       if (currentByte == NbBytes - 1)
 	{
@@ -361,8 +374,6 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
 	}
       else
 	{
-	  // Read data into the dynamic array
-	  Data[currentByte] = I2C0_D;
 	  currentByte++;
 	}
     }
