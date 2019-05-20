@@ -95,6 +95,7 @@ static const uint8_t PROT_MODE_GET = 1;// Get Param
 static const uint8_t PROT_MODE_SET = 2;// Set Param
 static const uint8_t PROT_MODE_ASYNC = 0;// Asynchronous mode (PIT polling)
 static const uint8_t PROT_MODE_SYNC = 1;// Synchronous mode (Accel interrupt)
+static const uint8_t PROT_MODE_PARAM3 = 0;// Parameter 3 for 0x0A
 
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1000e6;
@@ -119,7 +120,8 @@ static bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,vol
     return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
       Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
       Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
-      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi);
+      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi)&&
+      Packet_Put(CMD_PROT_MODE, 0, AccelMode, 0);
 
   // If invalid params return false
   return false;
@@ -222,6 +224,7 @@ static bool timePacketHandler()
     //Check upper values for valid range
     if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) && (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) && (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
       {
+	// Update the current RTC value
 	RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
 	return true;
       }
@@ -236,19 +239,24 @@ static bool timePacketHandler()
 static bool protModePacketHandler()
 {
   // Check offset is valid, and parameter byte is valid
-  if ((Packet_Parameter3 != 0))
+  if ((Packet_Parameter3 != PROT_MODE_PARAM3))
     return false;
 
-  if (Packet_Parameter1 == PROT_MODE_GET)
+  // Check for Valid get parameters
+  if ( (Packet_Parameter1 == PROT_MODE_GET) && !(Packet_Parameter2) )
     {
-      return Packet_Put(CMD_PROT_MODE, Packet_Parameter1, AccelMode, 0);
+      // Send current mode
+      return Packet_Put(CMD_PROT_MODE, PROT_MODE_GET, AccelMode, PROT_MODE_PARAM3);
     }
+  // Check for valid Set parameters
   else if (Packet_Parameter1 == PROT_MODE_SET)
     {
       //Set mode based on packet_parameter2 as long as valid
       if ((Packet_Parameter2 == PROT_MODE_ASYNC) || (Packet_Parameter2 == PROT_MODE_SYNC))
 	{
+	  // Update accelerometer mode
 	  Accel_SetMode(Packet_Parameter2);
+	  // Update variable storing current mode
 	  AccelMode = Packet_Parameter2;
 	  return true;
 	}
