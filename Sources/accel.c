@@ -188,6 +188,8 @@ static union
 #define CTRL_REG5_INT_CFG_FIFO		CTRL_REG5_Union.bits.INT_CFG_FIFO
 #define CTRL_REG5_INT_CFG_ASLP		CTRL_REG5_Union.bits.INT_CFG_ASLP
 
+static uint8_t debugByte;
+
 // Accelerometer I2C bus address
 // SA0 is pulled high so address is based on default values
 static const uint8_t ACCEL_ADDRESS = 0x1D;
@@ -235,7 +237,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   //configured in Accel_SetMode
 
   //Mux port PTB Alt1
-  PORTE_PCR4 |= PORT_PCR_MUX(1);
+  PORTB_PCR4 |= PORT_PCR_MUX(1);
 
   //Initilise PORTB NVIC
   //Non-IPR=2  IRQ=88
@@ -248,7 +250,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   //Activate Accelerometer
   CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
   I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
-//  I2C_PollRead(ADDRESS_CTRL_REG1, &CTRL_REG1, sizeof(CTRL_REG1));
+//  I2C_PollRead(ADDRESS_CTRL_REG1, &debugByte, sizeof(debugByte));
 
   return true;
 }
@@ -288,8 +290,8 @@ void Accel_SetMode(const TAccelMode mode)
       //Disable PIT
       PIT_Enable(false);
 
-      //Enable PortB interrupt on rising edge (0b1001)
-      PORTB_PCR4 |= PORT_PCR_IRQC(9);
+      //Enable PortB interrupt on falling edge (0b1010)
+      PORTB_PCR4 |= PORT_PCR_IRQC(10);
 
       //Enable Accel data ready interrupt
       //Control Register 4
