@@ -1,6 +1,6 @@
 /* ###################################################################
 **     Filename    : main.c
-**     Project     : Lab3
+**     Project     : Lab4
 **     Processor   : MK70FN1M0VMJ12
 **     Version     : Driver 01.01
 **     Compiler    : GNU C Compiler
@@ -20,7 +20,7 @@
 */
 /*!
 ** @file main.c
-** @version 3.0
+** @version 4.0
 ** @brief
 **         Main module.
 **         This module contains user's application code.
@@ -41,6 +41,8 @@
 #include "PIT.h"
 #include "RTC.h"
 #include "FTM.h"
+#include "accel.h"
+#include "median.h"
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -53,6 +55,8 @@ static const uint32_t BAUD_RATE = 115200;
 #define CMD_READ_BYTE 0x08u
 #define CMD_TOWER_MODE 0x0Du
 #define CMD_TIME_BYTE 0xCu
+#define CMD_ACCEL_VAL 0x10u
+#define CMD_PROT_MODE 0x0Au
 
 // Parameters for 0x04-Tower Startup
 static const uint8_t TOWER_STARTUP_PARAM = 0x00;
@@ -86,8 +90,23 @@ static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
 static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
 static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
 
+// Parameters for 0x0A - Protocol Mode
+static const uint8_t PROT_MODE_GET = 1;// Get Param
+static const uint8_t PROT_MODE_SET = 2;// Set Param
+static const uint8_t PROT_MODE_ASYNC = 0;// Asynchronous mode (PIT polling)
+static const uint8_t PROT_MODE_SYNC = 1;// Synchronous mode (Accel interrupt)
+static const uint8_t PROT_MODE_PARAM3 = 0;// Parameter 3 for 0x0A
+
 // Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 500e6;
+static const uint32_t PIT_TIME_PERIOD = 1000e6;
+
+//Accelerometer mode global
+static TAccelMode AccelMode = ACCEL_POLL;
+
+//Accelerometer latest data
+static TAccelData AccelData;
+//Last three values for each accelerometer axis
+static uint8_t XValues[3], YValues[3], ZValues[3];
 
 /*! @brief Sends out required packets for Tower Startup.
  *
@@ -101,7 +120,8 @@ static bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,vol
     return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
       Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
       Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
-      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi);
+      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi)&&
+      Packet_Put(CMD_PROT_MODE, 0, AccelMode, 0);
 
   // If invalid params return false
   return false;
@@ -200,32 +220,62 @@ static bool readBytePacketHandler()
 static bool timePacketHandler()
 {
   // Check lower values for valid range
-  if ((Packet_Parameter1 >= TIME_RANGE_LO) || (Packet_Parameter2 >= TIME_RANGE_LO) || (Packet_Parameter3 >= TIME_RANGE_LO))
+  if ((Packet_Parameter1 >= TIME_RANGE_LO) && (Packet_Parameter2 >= TIME_RANGE_LO) && (Packet_Parameter3 >= TIME_RANGE_LO))
     //Check upper values for valid range
-    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) || (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) || (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
+    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) && (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) && (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
       {
+	// Update the current RTC value
 	RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
 	return true;
       }
 
   return false;
-
 }
 
-//static void flashSetup(volatile uint16union_t * const addrs, uint16_t defaultData)
-//{
-//  Flash_AllocateVar((void*)&addrs, sizeof(*addrs));
-//  if (addrs->l == 0xffff)
-//    Flash_Write16((uint16_t*)addrs, defaultData);
-//}
+/*! @brief Executes Protocol Mode packet handler.
+ *
+ *  @return bool - TRUE if packet successfully sent.
+ */
+static bool protModePacketHandler()
+{
+  // Check offset is valid, and parameter byte is valid
+  if ((Packet_Parameter3 != PROT_MODE_PARAM3))
+    return false;
+
+  // Check for Valid get parameters
+  if ( (Packet_Parameter1 == PROT_MODE_GET) && !(Packet_Parameter2) )
+    {
+      // Send current mode
+      return Packet_Put(CMD_PROT_MODE, PROT_MODE_GET, AccelMode, PROT_MODE_PARAM3);
+    }
+  // Check for valid Set parameters
+  else if (Packet_Parameter1 == PROT_MODE_SET)
+    {
+      //Set mode based on packet_parameter2 as long as valid
+      if ((Packet_Parameter2 == PROT_MODE_ASYNC) || (Packet_Parameter2 == PROT_MODE_SYNC))
+	{
+	  // Update accelerometer mode
+	  Accel_SetMode(Packet_Parameter2);
+	  // Update variable storing current mode
+	  AccelMode = Packet_Parameter2;
+	  return true;
+	}
+    }
+
+  return false;
+}
 
 /*! @brief Performs necessary action for any valid packets received.
  *
  *  @param towerNb A variable containing the Tower Number.
  *  @return void.
  */
-static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode)
+static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel)
 {
+  //Starts a timer and turns on LED
+  FTM_StartTimer(aFTMChannel);
+  LEDs_On(LED_BLUE);
+
   // Isolate command packet
   uint8_t command = Packet_Command & ~PACKET_ACK_MASK;
   // Isolate ACK request
@@ -256,6 +306,9 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
     case CMD_TIME_BYTE:
       success = timePacketHandler();
       break;
+    case CMD_PROT_MODE:
+      success = protModePacketHandler();
+      break;
     default:
       break;
   }
@@ -271,6 +324,13 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
       uint8_t nackCommand = Packet_Command & ~PACKET_ACK_MASK;
       Packet_Put(nackCommand,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     }
+
+  // Reset Packet variables
+  Packet_Command = 0x00u;
+  Packet_Parameter1 = 0x00u;
+  Packet_Parameter2 = 0x00u;
+  Packet_Parameter3 = 0x00u;
+  Packet_Checksum = 0x00u;
 }
 
 /*! @brief Interrupt callback function to be called when PIT_ISR occurs
@@ -279,7 +339,9 @@ static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16un
  */
 void PITCallback(void* arg)
 {
-  LEDs_Toggle(LED_GREEN);
+  if (AccelMode == ACCEL_POLL)
+    //Read values
+    Accel_ReadXYZ(AccelData.bytes);
 }
 
 /*! @brief Interrupt callback function to be called when RTC_ISR occurs
@@ -306,6 +368,56 @@ void FTMCallback(void* arg)
   LEDs_Off(LED_BLUE);
 }
 
+/*! @brief Interrupt callback function to be called when Accelerometer
+ * @brief data ready interrupt occours, Synchronous mode
+ *
+ *  @param arg The user argument that comes with the callback
+ */
+void AccelDataReadyCallback(void* arg)
+{
+  if (AccelMode == ACCEL_INT)
+    //Read values
+    Accel_ReadXYZ(AccelData.bytes);
+}
+
+/*! @brief shifts each value over one position in the array and loads new val
+ *
+ *  @param array[3] The array with values to be shifted
+ *  @param value    The new value to be loaded into the array
+ */
+static void shiftVals(uint8_t array[3], uint8_t value)
+{
+  array[2] = array[1];
+  array[1] = array[0];
+  array[0] = value;
+}
+
+/*! @brief I2C0 callback function, outputs the accelerometer values
+ *
+ *   @param arg The user argument that comes with the callback
+ */
+void I2CCallback(void* arg)
+{
+  static TAccelData prevAccelData;
+
+  shiftVals(XValues,AccelData.axes.x);
+  shiftVals(YValues,AccelData.axes.y);
+  shiftVals(ZValues,AccelData.axes.z);
+
+  if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
+    {
+      // Send last median values regardless of changing
+      Packet_Put(CMD_ACCEL_VAL,
+         Median_Filter3(XValues[0], XValues[1], XValues[2]),
+         Median_Filter3(YValues[0], YValues[1], YValues[2]),
+         Median_Filter3(ZValues[0], ZValues[1], ZValues[2]));
+    }
+
+  LEDs_Toggle(LED_GREEN);
+
+  prevAccelData = AccelData;
+}
+
 
 /*! @brief Runs all functions necessary for Tower to function.
  *
@@ -313,11 +425,20 @@ void FTMCallback(void* arg)
  */
 static bool towerInit(void)
 {
+  //Accelerometer setup struct
+  TAccelSetup accelSetup;
+  accelSetup.moduleClk = CPU_BUS_CLK_HZ;
+  accelSetup.dataReadyCallbackArguments = NULL;
+  accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
+  accelSetup.readCompleteCallbackArguments = NULL;
+  accelSetup.readCompleteCallbackFunction = I2CCallback;
+
   return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
       LEDs_Init() &&
       PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL) &&
       RTC_Init(RTCCallback,NULL) &&
       FTM_Init() &&
+      Accel_Init(&accelSetup) &&
       Flash_Init();
 }
 
@@ -373,22 +494,11 @@ int main(void)
   {
 
     // Check if any valid Packets have been received
-    if (!Packet_Get())
-      continue;// If no valid packet go to start of loop
+    if (Packet_Get())
+      // Deal with any received packets
+      cmdHandler(nvTowerNb,nvTowerMode,&channelSetup0);
 
-    //Starts a timer and turns on LED
-    FTM_StartTimer(&channelSetup0);
-    LEDs_On(LED_BLUE);
 
-    // Deal with any received packets
-    cmdHandler(nvTowerNb,nvTowerMode);
-
-    // Reset Packet variables
-    Packet_Command = 0x00u;
-    Packet_Parameter1 = 0x00u;
-    Packet_Parameter2 = 0x00u;
-    Packet_Parameter3 = 0x00u;
-    Packet_Checksum = 0x00u;
   }
 
   /*** Don't write any code pass this line, or it will be deleted during code generation. ***/

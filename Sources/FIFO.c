@@ -53,12 +53,14 @@ bool FIFO_Put(TFIFO * const fifo, const uint8_t data)
 
 bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr)
 {
+  EnterCritical(); //Enter critical section
+
   // Check if there is data in the buffer
   if (fifo->NbBytes <= 0)
-    return false;
-
-  //Enter critical section
-  EnterCritical();
+    {
+      ExitCritical(); //End critical section
+      return false;
+    }
 
   // If not empty read data
   (*dataPtr) = fifo->Buffer[fifo->End];

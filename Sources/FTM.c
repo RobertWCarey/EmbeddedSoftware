@@ -81,6 +81,8 @@ bool FTM_Set(const TFTMChannel* const aFTMChannel)
     // Pass the output action config into ELSB:ELSA (Edge or Level Select)
     FTM0_CnSC(aFTMChannel->channelNb) |=  aFTMChannel->ioType.outputAction << FTM_CnSC_ELSA_SHIFT;
   }
+
+  return true;
 }
 
 bool FTM_StartTimer(const TFTMChannel* const aFTMChannel)
@@ -96,10 +98,6 @@ bool FTM_StartTimer(const TFTMChannel* const aFTMChannel)
   UserFunction[aFTMChannel->channelNb] = aFTMChannel->callbackFunction;
   UserArguments[aFTMChannel->channelNb] = aFTMChannel->callbackArguments;
 
-  //Execute the callback function
-  if (aFTMChannel->callbackFunction)
-    (*aFTMChannel->callbackFunction)(aFTMChannel->callbackArguments);
-
   return true;
 }
 
@@ -107,20 +105,17 @@ void __attribute__ ((interrupt)) FTM0_ISR(void)
 {
   uint8_t statusReg0 = FTM0_C0SC;
 
-  EnterCritical(); // Entering critical section
-
   // Clear the CHF and execute callback function;
   for (int channelNb = 0; channelNb <= 7; channelNb++)
   {
     if (FTM0_CnSC(channelNb) & FTM_CnSC_CHF_MASK)
     {
-      FTM0_CnSC(channelNb) &= (~FTM_CnSC_CHF_MASK);
+      FTM0_CnSC(channelNb) &= ~FTM_CnSC_CHF_MASK;
       if (UserFunction[channelNb])
 	(*UserFunction[channelNb])(UserArguments[channelNb]);
     }
   }
 
-  ExitCritical(); // Exiting critical section
 }
 
 /*!

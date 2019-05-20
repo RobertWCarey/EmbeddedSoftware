@@ -16,9 +16,10 @@
 #include "UART.h"
 #include "MK70F12.h"
 #include "FIFO.h"
+#include "CPU.h"
 
 // Declare Transmit and Receive buffers
-static TFIFO Tx_Buffer, Rx_Buffer;
+static TFIFO TxBuffer, RxBuffer;
 
 bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
 {
@@ -58,8 +59,8 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
   UART2_C2 |= UART_C2_TE_MASK;
 
   // Declare Buffers
-  FIFO_Init(&Tx_Buffer);
-  FIFO_Init(&Rx_Buffer);
+  FIFO_Init(&TxBuffer);
+  FIFO_Init(&RxBuffer);
 
   //Initialise NVIC for UART2 RX TX
   //Vector=65, IRQ=49, non-IPR=1
@@ -76,18 +77,21 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
 
 bool UART_InChar(uint8_t* const dataPtr)
 {
-  return FIFO_Get(&Rx_Buffer,dataPtr);
+  return FIFO_Get(&RxBuffer,dataPtr);
 }
 
 bool UART_OutChar(const uint8_t data)
 {
-  if (FIFO_Put(&Tx_Buffer,data))
+  EnterCritical(); // Entering critical section
+  if (FIFO_Put(&TxBuffer,data))
     {
       UART2_C2 |= UART_C2_TIE_MASK;
+      ExitCritical(); // Exiting critical section
       return true;
     }
-  else
-    return false;
+
+  ExitCritical(); // Exiting critical section
+  return false;
 }
 
 void UART_Poll(void)
@@ -98,13 +102,13 @@ void UART_Poll(void)
   // Check if Receive Data Register Full Flag is set
   if (status & UART_S1_RDRF_MASK)
     // Read data from UART into Receive buffer
-    FIFO_Put(&Rx_Buffer,UART2_D);
+    FIFO_Put(&RxBuffer,UART2_D);
 
   // Check if Transmit Data Register Empty Flag is set
   if (status & UART_S1_TDRE_MASK)
     {
       //Write data from Transmit buffer
-      if (!FIFO_Get(&Tx_Buffer,(uint8_t*)&UART2_D))
+      if (!FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
 	UART2_C2 &= ~UART_C2_TIE_MASK;
     }
 }

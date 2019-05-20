@@ -38,15 +38,24 @@ bool RTC_Init(void (*userFunction)(void*), void* userArguments)
   if (RTC_SR & (RTC_SR_TOF_MASK | RTC_SR_TIF_MASK) )
     RTC_TSR = RTC_TSR_TSR(1);// re-setting value back to beginning (not zero as recommended by manual, 47.2.1)
 
-  //Disable RTC Oscillator
-  RTC_CR &= ~RTC_CR_OSCE_MASK;
+  //Check if load capacitor values have already been set
+  if (!(RTC_LR & RTC_LR_CRL_MASK))
+    {
+      //Disable RTC Oscillator
+      RTC_CR &= ~RTC_CR_OSCE_MASK;
 
-  //Set Load Capacitance to 18PF (as per schematic)
-  RTC_CR |= RTC_CR_SC2P_MASK;
-  RTC_CR |= RTC_CR_SC16P_MASK;
+      //Set Load Capacitance to 18PF (as per schematic)
+      RTC_CR |= RTC_CR_SC2P_MASK | RTC_CR_SC16P_MASK;
 
-  //Enable RTC Oscillator
-  RTC_CR |= RTC_CR_OSCE_MASK;
+      //Lock control register to indicate load capacitor values have already been set
+      RTC_LR &= ~RTC_LR_CRL_MASK;
+
+      //Enable RTC Oscillator
+      RTC_CR |= RTC_CR_OSCE_MASK;
+
+      //Wait for oscillator to stabilise
+      for(uint16_t i = 0; i<0xFFFF;i++);
+    }
 
   // Enable RTC Time Seconds Interrupt
   RTC_IER |= RTC_IER_TSIE_MASK;
@@ -79,6 +88,13 @@ void RTC_Set(const uint8_t hours, const uint8_t minutes, const uint8_t seconds)
 void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const seconds)
 {
   uint32_t tsr = RTC_TSR;
+  /* If it is necessary for software to read the prescaler or seconds counter when they could be incrementing,
+   * it is recommended that two read accesses are performed and that software verifies that the
+   * same data was returned for both reads.
+   */
+  while ( RTC_TSR != tsr)
+    tsr = RTC_TSR;
+
   tsr = tsr % 86400U;   	/* Seconds left */
   *hours = tsr / 3600U;     	/* Hours */
   tsr = tsr % 3600u;        	/* Seconds left */
