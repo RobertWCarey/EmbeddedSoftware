@@ -44,7 +44,7 @@ static const uint8_t WriteBit = 0x00;
 static uint8_t RegisterAddress;
 static uint8_t* Data;
 static uint8_t NbBytes;
-static uint8_t currentByte = 0;
+static uint8_t CurrentByte = 0;
 
 //Number of values in the ICR range
 //#define as used to create array
@@ -364,27 +364,27 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
   if (!(I2C0_C1 & I2C_C1_TX_MASK) && (I2C0_S & I2C_S_TCF_MASK))
     {
       //if at the second last byte
-      if (currentByte == NbBytes - 2)
+      if (CurrentByte == NbBytes - 2)
 	I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
 
 
 
       //if at the last byte
-      if (currentByte == NbBytes - 1)
+      if (CurrentByte == NbBytes - 1)
 	{
 	  I2C0_STOP_BIT; //Send Stop bit
 	  I2C0_INTERRUPT_DEN;//Disable interrupts
 	  // Read data into the dynamic array
-	  Data[currentByte] = I2C0_D;
-	  currentByte = 0;//Reset currentByte
+	  Data[CurrentByte] = I2C0_D;
+	  CurrentByte = 0;//Reset currentByte
 	  if(UserFunction)
 	    (*UserFunction)(UserArguments);
 	}
       else
 	{
 	  // Read data into the dynamic array
-	  Data[currentByte] = I2C0_D;
-	  currentByte++;
+	  Data[CurrentByte] = I2C0_D;
+	  CurrentByte++;
 	}
     }
 }
