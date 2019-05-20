@@ -63,7 +63,7 @@ static uint8_t SlaveAddress;
 /*! @brief Waits for Interrupt flag to be raised and then clears it.
  *
  */
-static void wait()
+static void Wait()
 {
   //wait for the IICIF flag to be raised
   while (!(I2C0_S & I2C_S_IICIF_MASK));
@@ -207,19 +207,19 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   I2C0_D = ((SlaveAddress << 1) | WriteBit);
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   //Send Register address
   I2C0_D = registerAddress;
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   //Send data to be written
   I2C0_D = data;
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   //Send Stop bit
   I2C0_STOP_BIT;
@@ -244,12 +244,12 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   I2C0_D = ((SlaveAddress << 1) | WriteBit);
 
   //Wait for transfer to complete
-  wait();
+  Wait();
   //Send Register address
   I2C0_D = registerAddress;
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   //Send repeat start bit
   I2C0_REPEAT_START_BIT;
@@ -258,7 +258,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   I2C0_D = ((SlaveAddress << 1) | ReadBit);
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   //Switch to receive mode
   I2C0_RECIEVE;
@@ -273,7 +273,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   uint8_t dummyByte = I2C0_D;
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   // Start a for loop for the range of data
   for (int i = 0; i < nbBytes; i++)
@@ -294,7 +294,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
 	// Read data into the dynamic array
 	data[i] = I2C0_D;
 	//Wait for transfer to complete
-      	wait();
+      	Wait();
       }
   }
 
@@ -321,13 +321,13 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   I2C0_D = ((SlaveAddress << 1) | WriteBit);
 
   //Wait for transfer to complete
-  wait();
+  Wait();
   
   //Send Register address
   I2C0_D = registerAddress;
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   //Send repeat start bit
   I2C0_REPEAT_START_BIT;
@@ -336,7 +336,7 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   I2C0_D = ((SlaveAddress << 1) | ReadBit);
 
   //Wait for transfer to complete
-  wait();
+  Wait();
 
   //Switch to receive mode
   I2C0_RECIEVE;
