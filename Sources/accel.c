@@ -4,18 +4,13 @@
  */
 /*! @file
  *
- *  @brief <Write your description here>.
+ *  @brief Routines for the accelerometer
  *
- *  <Write your description here>.
+ *  This contains the functions for communicating with the accelerometer
  *
- *  @author <Write your name here>
- *  @date <Write the date here>
+ *  @author Robert Carey
+ *  @date 2019-05-20
  */
-
-/*!
- *  @addtogroup <Your group here>
- *  @{
-*/
 
 // Accelerometer functions
 #include "accel.h"
@@ -188,9 +183,6 @@ static union
 #define CTRL_REG5_INT_CFG_FIFO		CTRL_REG5_Union.bits.INT_CFG_FIFO
 #define CTRL_REG5_INT_CFG_ASLP		CTRL_REG5_Union.bits.INT_CFG_ASLP
 
-static uint8_t debugByte;
-static uint8_t* debugArray[10];
-
 // Accelerometer I2C bus address
 // SA0 is pulled high so address is based on default values
 static const uint8_t ACCEL_ADDRESS = 0x1D;
@@ -211,7 +203,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   i2cSetup.readCompleteCallbackArguments = accelSetup->readCompleteCallbackArguments;
   i2cSetup.readCompleteCallbackFunction = accelSetup->readCompleteCallbackFunction;
 
-  //Initilise I2C module
+  //Initialise I2C module
   I2C_Init(&i2cSetup,accelSetup->moduleClk);
 
   //Place Accelerometer in standby mode so that registers can be modified.
@@ -240,7 +232,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   //Mux port PTB Alt1
   PORTB_PCR4 |= PORT_PCR_MUX(1);
 
-  //Initilise PORTB NVIC
+  //Initialise PORTB NVIC
   //Non-IPR=2  IRQ=88
   //clear any pending interrupts at PORTB
   NVICICPR2 = (1 << 24);
@@ -257,7 +249,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
 
 void Accel_ReadXYZ(uint8_t data[3])
 {
-  I2C_IntRead(ADDRESS_OUT_X_MSB, data, (sizeof(data)/sizeof(data[0])) );
+  I2C_IntRead(ADDRESS_OUT_X_MSB, data, (sizeof (data)/sizeof (data[0])) );
 }
 
 void Accel_SetMode(const TAccelMode mode)
@@ -314,7 +306,7 @@ void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
   //Clear Flag
   PORTB_PCR4 |= PORT_PCR_ISF_MASK;
 
-  if(UserFunction)
+  if (UserFunction)
     (*UserFunction)(UserArguments);
 }
 

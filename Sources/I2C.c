@@ -377,7 +377,7 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
 	  // Read data into the dynamic array
 	  Data[CurrentByte] = I2C0_D;
 	  CurrentByte = 0;//Reset currentByte
-	  if(UserFunction)
+	  if (UserFunction)
 	    (*UserFunction)(UserArguments);
 	}
       else
