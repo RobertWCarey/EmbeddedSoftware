@@ -375,8 +375,9 @@ void FTMCallback(void* arg)
  */
 void AccelDataReadyCallback(void* arg)
 {
-  //Read values
-  Accel_ReadXYZ(AccelData.bytes);
+  if (AccelMode == ACCEL_INT)
+    //Read values
+    Accel_ReadXYZ(AccelData.bytes);
 }
 
 /*! @brief shifts each value over one position in the array and loads new val

@@ -74,12 +74,12 @@ static void wait()
 
 /*! @brief Manually resets the BUSY bit if a slave happens to be wanting to transact on the I2C bus.
  *
- * Only used for safety if the I2C was abnormally interrupted, e.g. debugging or reset.
- * Sometimes the bus transactions can be "stuck" if the master sends an ACK instead of a NAK (bad code)
- * or the transaction is interrupted by the debugger. In these case a power cycle will restore normality,
- * or you can manually clock the SCL line with SDA high to force the slave to send data and recognise a NAK.
+ * If the I2C communications were interrupt i.e. during debugging or reset.
+ * The slave will not release the bus until it sees the required NACK/StopBit
+ * Power cycle can reset this or the SCL line can manually be clocked with the SDA high from the master.
+ * This will force the slave to recognise the NACK
  */
-static void ResetBusy()
+static void ResetDeadLock()
 {
   // Configure pins as inputs
   GPIOE_PDDR &= ~(1 << 18);
@@ -93,8 +93,8 @@ static void ResetBusy()
   PORTE_PCR19 = PORT_PCR_MUX(1) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
 
   // If the SDA line is low, we clock the SCL line to free it
-  // The SDA only thing holding the SDA low is the slave
-  // Once sufficent SCL clk cycles have elapsed equivilant of a stop bit is sent (SDA high)
+  // Only thing holding the SDA low is the slave
+  // Once sufficient SCL clk cycles have elapsed equivalent of a stop bit is sent (SDA high)
   while ((GPIOE_PDIR & (1 << 18)) == 0)
   {
     // Clear SCL line to a 0 (ie set as output)
@@ -108,8 +108,8 @@ static void ResetBusy()
   }
 
   // Return pins to I2C functionality
-  PORTE_PCR18 = PORT_PCR_MUX(0x04) | PORT_PCR_ODE_MASK;
-  PORTE_PCR19 = PORT_PCR_MUX(0x04) | PORT_PCR_ODE_MASK;
+  PORTE_PCR18 = PORT_PCR_MUX(4) | PORT_PCR_ODE_MASK | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
+  PORTE_PCR19 = PORT_PCR_MUX(4) | PORT_PCR_ODE_MASK | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
 }
 
 bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
@@ -148,9 +148,11 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
       //Cycle through the possible mult values
       for (int j = 0; j < 3; j++)
 	{
+	  //Calculate difference for current values
 	  uint32_t diff = abs(I2C_SCLDividerValues[i] * pow(2,j) - targetSCLDiv);
 	  if (diff < minDiff)
 	    {
+	      //Update values
 	      minDiff = diff;
 	      closestMult = j;
 	      closestICR = i;
@@ -178,7 +180,7 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   I2C0_C1 |= I2C_C1_IICEN_MASK;
   
   //Remove any potenal I2C deadlock
-  ResetBusy();
+  ResetDeadLock();
 
   return true;
 }

@@ -189,6 +189,7 @@ static union
 #define CTRL_REG5_INT_CFG_ASLP		CTRL_REG5_Union.bits.INT_CFG_ASLP
 
 static uint8_t debugByte;
+static uint8_t* debugArray[10];
 
 // Accelerometer I2C bus address
 // SA0 is pulled high so address is based on default values
@@ -219,7 +220,7 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
 
   //Control Register 1 setup
   CTRL_REG1_F_READ = 1;//configure for fast read (single byte)
-  CTRL_REG1_DR = 0b111;//Data rate select 1.56Hz
+  CTRL_REG1_DR = DATE_RATE_1_56_HZ;//Data rate select 1.56Hz
   I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
 
   //Control Register 5 setup
@@ -250,14 +251,13 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   //Activate Accelerometer
   CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
   I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
-//  I2C_PollRead(ADDRESS_CTRL_REG1, &debugByte, sizeof(debugByte));
 
   return true;
 }
 
 void Accel_ReadXYZ(uint8_t data[3])
 {
-  I2C_IntRead(ADDRESS_OUT_X_MSB, data, sizeof(data)-1);
+  I2C_IntRead(ADDRESS_OUT_X_MSB, data, (sizeof(data)/sizeof(data[0])) );
 }
 
 void Accel_SetMode(const TAccelMode mode)
