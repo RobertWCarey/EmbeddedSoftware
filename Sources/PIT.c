@@ -76,9 +76,9 @@ void PIT_Set(const uint32_t period, const bool restart)
 void PIT_Enable(const bool enable)
 {
   if (enable)
-    PIT_MCR |= PIT_MCR_MDIS_MASK;
+    PIT_MCR &= ~PIT_MCR_MDIS_MASK;// Set MDIS = 0 to enable PIT timer
   else
-    PIT_MCR &= ~PIT_MCR_MDIS_MASK;
+    PIT_MCR |= PIT_MCR_MDIS_MASK;// Set MDIS = 1 to disable timer
 }
 
 void __attribute__ ((interrupt)) PIT_ISR(void)
