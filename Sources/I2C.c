@@ -37,8 +37,8 @@ static void* UserArguments;
 #define I2C0_INTERRUPT_DEN I2C0_C1 &= ~I2C_C1_IICIE_MASK
 
 //Read and write bit for I2C message
-static const uint8_t ReadBit = 0x01;
-static const uint8_t WriteBit = 0x00;
+static const uint8_t READBIT = 0x01;
+static const uint8_t WRITEBIT = 0x00;
 
 //Local globals for interrupt service routines
 static uint8_t RegisterAddress;
@@ -144,21 +144,21 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
 
   //Cycle through all the ICR range
   for (int i = 0; i < I2C_ICR_RANGE; i++)
+  {
+    //Cycle through the possible mult values
+    for (int j = 0; j < 3; j++)
     {
-      //Cycle through the possible mult values
-      for (int j = 0; j < 3; j++)
-	{
-	  //Calculate difference for current values
-	  uint32_t diff = abs(I2C_SCLDividerValues[i] * pow(2,j) - targetSCLDiv);
-	  if (diff < minDiff)
-	    {
-	      //Update values
-	      minDiff = diff;
-	      closestMult = j;
-	      closestICR = i;
-	    }
-	}
+      //Calculate difference for current values
+      uint32_t diff = abs(I2C_SCLDividerValues[i] * pow(2,j) - targetSCLDiv);
+      if (diff < minDiff)
+      {
+	//Update values
+	minDiff = diff;
+	closestMult = j;
+	closestICR = i;
+      }
     }
+  }
 
   //load calculated values into the freq divider register
   I2C0_F |= I2C_F_ICR(closestICR);
@@ -204,7 +204,7 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   I2C0_START_BIT;
 
   //Send Slave address + Write bit
-  I2C0_D = ((SlaveAddress << 1) | WriteBit);
+  I2C0_D = ((SlaveAddress << 1) | WRITEBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -241,7 +241,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   I2C0_START_BIT;
 
   //Send Slave address + Write bit
-  I2C0_D = ((SlaveAddress << 1) | WriteBit);
+  I2C0_D = ((SlaveAddress << 1) | WRITEBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -255,7 +255,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   I2C0_REPEAT_START_BIT;
 
   //Send Slave address + Read bit
-  I2C0_D = ((SlaveAddress << 1) | ReadBit);
+  I2C0_D = ((SlaveAddress << 1) | READBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -284,18 +284,18 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
 
     //if at the last byte
     if (i == nbBytes - 1)
-      {
-	I2C0_STOP_BIT; //Send Stop bit
-	// Read data into the dynamic array
-	data[i] = I2C0_D;
-      }
+    {
+      I2C0_STOP_BIT; //Send Stop bit
+      // Read data into the dynamic array
+      data[i] = I2C0_D;
+    }
     else
-      {
-	// Read data into the dynamic array
-	data[i] = I2C0_D;
-	//Wait for transfer to complete
-      	Wait();
-      }
+    {
+      // Read data into the dynamic array
+      data[i] = I2C0_D;
+      //Wait for transfer to complete
+      Wait();
+    }
   }
 
   ExitCritical();
@@ -318,7 +318,7 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   I2C0_START_BIT;
 
   //Send Slave address + Write bit
-  I2C0_D = ((SlaveAddress << 1) | WriteBit);
+  I2C0_D = ((SlaveAddress << 1) | WRITEBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -333,7 +333,7 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   I2C0_REPEAT_START_BIT;
 
   //Send Slave address + Read bit
-  I2C0_D = ((SlaveAddress << 1) | ReadBit);
+  I2C0_D = ((SlaveAddress << 1) | READBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -362,31 +362,29 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
 
   //Check that in receive mode
   if (!(I2C0_C1 & I2C_C1_TX_MASK) && (I2C0_S & I2C_S_TCF_MASK))
+  {
+    //if at the second last byte
+    if (CurrentByte == NbBytes - 2)
+      I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
+
+    //if at the last byte
+    if (CurrentByte == NbBytes - 1)
     {
-      //if at the second last byte
-      if (CurrentByte == NbBytes - 2)
-	I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
-
-
-
-      //if at the last byte
-      if (CurrentByte == NbBytes - 1)
-	{
-	  I2C0_STOP_BIT; //Send Stop bit
-	  I2C0_INTERRUPT_DEN;//Disable interrupts
-	  // Read data into the dynamic array
-	  Data[CurrentByte] = I2C0_D;
-	  CurrentByte = 0;//Reset currentByte
-	  if (UserFunction)
-	    (*UserFunction)(UserArguments);
-	}
-      else
-	{
-	  // Read data into the dynamic array
-	  Data[CurrentByte] = I2C0_D;
-	  CurrentByte++;
-	}
+      I2C0_STOP_BIT; //Send Stop bit
+      I2C0_INTERRUPT_DEN;//Disable interrupts
+      // Read data into the dynamic array
+      Data[CurrentByte] = I2C0_D;
+      CurrentByte = 0;//Reset currentByte
+      if (UserFunction)
+	(*UserFunction)(UserArguments);
     }
+    else
+    {
+      // Read data into the dynamic array
+      Data[CurrentByte] = I2C0_D;
+      CurrentByte++;
+    }
+  }
 }
 
 
