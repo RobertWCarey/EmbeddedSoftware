@@ -44,6 +44,14 @@
 #include "accel.h"
 #include "median.h"
 
+#include "OS.h"
+
+// Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
+#define THREAD_STACK_SIZE 100
+
+// Thread stacks
+OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);
+
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
 
@@ -425,6 +433,17 @@ void I2CCallback(void* arg)
  */
 static bool towerInit(void)
 {
+
+}
+
+
+/*! @brief Initialises the modules to support the LEDs and low power timer.
+ *
+ *  @param pData is not used but is required by the OS to create a thread.
+ *  @note This thread deletes itself after running for the first time.
+ */
+static void InitModulesThread(void* pData)
+{
   //Accelerometer setup struct
   TAccelSetup accelSetup;
   accelSetup.moduleClk = CPU_BUS_CLK_HZ;
@@ -433,73 +452,95 @@ static bool towerInit(void)
   accelSetup.readCompleteCallbackArguments = NULL;
   accelSetup.readCompleteCallbackFunction = I2CCallback;
 
-  return Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ) &&
-      LEDs_Init() &&
-      PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL) &&
-      RTC_Init(RTCCallback,NULL) &&
-      FTM_Init() &&
-      Accel_Init(&accelSetup) &&
-      Flash_Init();
+  Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ);
+  LEDs_Init();
+  PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
+  RTC_Init(RTCCallback,NULL);
+  FTM_Init();
+  Accel_Init(&accelSetup);
+  Flash_Init();
+
+  // We only do this once - therefore delete this thread
+  OS_ThreadDelete(OS_PRIORITY_SELF);
 }
+
+
 
 /*lint -save  -e970 Disable MISRA rule (6.3) checking. */
 int main(void)
 /*lint -restore Enable MISRA rule (6.3) checking. */
 {
+  OS_ERROR error;
   /* Write your local variable definition here */
-  uint16_t defaultTowerNb = 9382;
-  uint16_t defaultTowerMode = 1;
-  volatile uint16union_t *nvTowerNb;
-  volatile uint16union_t *nvTowerMode;
-
-  //Configure struct for FTM_Set()
-  TFTMChannel channelSetup0;
-  channelSetup0.channelNb = 0;
-  channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
-  channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
-  channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
-  channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
-  channelSetup0.callbackFunction = FTMCallback;
-  channelSetup0.callbackArguments = NULL;
+//  uint16_t defaultTowerNb = 9382;
+//  uint16_t defaultTowerMode = 1;
+//  volatile uint16union_t *nvTowerNb;
+//  volatile uint16union_t *nvTowerMode;
+//
+//  //Configure struct for FTM_Set()
+//  TFTMChannel channelSetup0;
+//  channelSetup0.channelNb = 0;
+//  channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
+//  channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
+//  channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
+//  channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
+//  channelSetup0.callbackFunction = FTMCallback;
+//  channelSetup0.callbackArguments = NULL;
 
   /*** Processor Expert internal initialization. DON'T REMOVE THIS CODE!!! ***/
   PE_low_level_init();
   /*** End of Processor Expert internal initialization.                    ***/
 
   /* Write your code here */
-  // Initialize Tower
-  __DI();
-  if (towerInit())
-  {
-    LEDs_On(LED_ORANGE);
-    Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
-    Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
-    if (nvTowerNb->l == 0xffff)
-      Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
-    if (nvTowerMode->l == 0xffff)
-      Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
 
-    towerStatupPacketHandler(nvTowerNb,nvTowerMode);
-  }
-  __EI();
+  // Initialize the RTOS - with flashing the orange LED "heartbeat"
+  OS_Init(CPU_CORE_CLK_HZ, true);
 
-  //Set PIT Timer
-  PIT_Set(PIT_TIME_PERIOD, true);
-
-  //Set FTM Timer
-  FTM_Set(&channelSetup0);
+  // Create module initialisation thread
+  error = OS_ThreadCreate(InitModulesThread,
+                          NULL,
+                          &InitModulesThreadStack[THREAD_STACK_SIZE - 1],
+		          0); // Highest priority
 
 
-  for (;;)
-  {
-
-    // Check if any valid Packets have been received
-    if (Packet_Get())
-      // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode,&channelSetup0);
 
 
-  }
+  // Start multithreading - never returns!
+  OS_Start();
+
+//  // Initialize Tower
+//  __DI();
+//  if (towerInit())
+//  {
+//    LEDs_On(LED_ORANGE);
+//    Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
+//    Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
+//    if (nvTowerNb->l == 0xffff)
+//      Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
+//    if (nvTowerMode->l == 0xffff)
+//      Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
+//
+//    towerStatupPacketHandler(nvTowerNb,nvTowerMode);
+//  }
+//  __EI();
+//
+//  //Set PIT Timer
+//  PIT_Set(PIT_TIME_PERIOD, true);
+//
+//  //Set FTM Timer
+//  FTM_Set(&channelSetup0);
+
+
+//  for (;;)
+//  {
+//
+//    // Check if any valid Packets have been received
+//    if (Packet_Get())
+//      // Deal with any received packets
+//      cmdHandler(nvTowerNb,nvTowerMode,&channelSetup0);
+//
+//
+//  }
 
   /*** Don't write any code pass this line, or it will be deleted during code generation. ***/
   /*** RTOS startup code. Macro PEX_RTOS_START is defined by the RTOS component. DON'T MODIFY THIS CODE!!! ***/
