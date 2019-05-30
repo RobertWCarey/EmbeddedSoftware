@@ -27,7 +27,6 @@
 // CPU and PE_types are needed for critical section variables and the defintion of NULL pointer
 #include "CPU.h"
 #include "PE_types.h"
-#include "PIT.h"
 
 // Accelerometer registers
 #define ADDRESS_OUT_X_MSB 0x01
@@ -265,9 +264,6 @@ void Accel_SetMode(const TAccelMode mode)
   {
     //Synchronous mode (use PIT interrupt)
     case ACCEL_POLL:
-      //Enable PIT
-      PIT_Enable(true);
-
       //Disable PortB interrupt (0b0000)
       PORTB_PCR4 |= PORT_PCR_IRQC(0);
 
@@ -279,9 +275,6 @@ void Accel_SetMode(const TAccelMode mode)
 
     //Asynchronous mode (use PORTB interrupt)
     case ACCEL_INT:
-      //Disable PIT
-      PIT_Enable(false);
-
       //Enable PortB interrupt on falling edge (0b1010)
       PORTB_PCR4 |= PORT_PCR_IRQC(10);
 
