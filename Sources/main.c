@@ -46,11 +46,19 @@
 
 #include "OS.h"
 
+const uint16_t defaultTowerNb = 9382;
+const uint16_t defaultTowerMode = 1;
+volatile uint16union_t *nvTowerNb;
+volatile uint16union_t *nvTowerMode;
+
 // Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
-#define THREAD_STACK_SIZE 100
+#define THREAD_STACK_SIZE 1024
 
 // Thread stacks
 OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART receive thread. */
+OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
 
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
@@ -125,11 +133,11 @@ static bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,vol
 {
   // Check that params are valid
   if ( (Packet_Parameter1 == TOWER_STARTUP_PARAM) && (Packet_Parameter2 == TOWER_STARTUP_PARAM) && (Packet_Parameter3 == TOWER_STARTUP_PARAM) )
-    return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
-      Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
-      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
-      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi)&&
-      Packet_Put(CMD_PROT_MODE, 0, AccelMode, 0);
+    return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM);// &&
+//      Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
+//      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
+//      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi)&&
+//      Packet_Put(CMD_PROT_MODE, 0, AccelMode, 0);
 
   // If invalid params return false
   return false;
@@ -281,7 +289,7 @@ static bool protModePacketHandler()
 static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel)
 {
   //Starts a timer and turns on LED
-  FTM_StartTimer(aFTMChannel);
+//  FTM_StartTimer(aFTMChannel);
   LEDs_On(LED_BLUE);
 
   // Isolate command packet
@@ -376,6 +384,23 @@ void FTMCallback(void* arg)
   LEDs_Off(LED_BLUE);
 }
 
+//Configure struct for FTM_Set()
+ TFTMChannel channelSetup0 = {0,
+			      (1 * CPU_MCGFF_CLK_HZ_CONFIG_0),
+			      TIMER_FUNCTION_OUTPUT_COMPARE,
+//			      TIMER_INPUT_OFF,
+			      TIMER_OUTPUT_DISCONNECT,
+			      FTMCallback,
+			      NULL};
+//    channelSetup0.channelNb = 0;
+//    channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
+//    channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
+//    channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
+//    channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
+//    channelSetup0.callbackFunction = FTMCallback;
+//    channelSetup0.callbackArguments = NULL;
+
+
 /*! @brief Interrupt callback function to be called when Accelerometer
  * @brief data ready interrupt occours, Synchronous mode
  *
@@ -445,25 +470,48 @@ static bool towerInit(void)
 static void InitModulesThread(void* pData)
 {
   //Accelerometer setup struct
-  TAccelSetup accelSetup;
-  accelSetup.moduleClk = CPU_BUS_CLK_HZ;
-  accelSetup.dataReadyCallbackArguments = NULL;
-  accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
-  accelSetup.readCompleteCallbackArguments = NULL;
-  accelSetup.readCompleteCallbackFunction = I2CCallback;
+//  TAccelSetup accelSetup;
+//  accelSetup.moduleClk = CPU_BUS_CLK_HZ;
+//  accelSetup.dataReadyCallbackArguments = NULL;
+//  accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
+//  accelSetup.readCompleteCallbackArguments = NULL;
+//  accelSetup.readCompleteCallbackFunction = I2CCallback;
 
+  OS_DisableInterrupts();//Disable Interrupts
   Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ);
   LEDs_Init();
-  PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
-  RTC_Init(RTCCallback,NULL);
-  FTM_Init();
-  Accel_Init(&accelSetup);
+//  PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
+//  RTC_Init(RTCCallback,NULL);
+//  FTM_Init();
+//  Accel_Init(&accelSetup);
   Flash_Init();
+
+
+  Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
+  Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
+  if (nvTowerNb->l == 0xffff)
+    Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
+  if (nvTowerMode->l == 0xffff)
+    Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
+
+  towerStatupPacketHandler(nvTowerNb,nvTowerMode);
+
+
+  OS_EnableInterrupts();//Enable Interrupts
 
   // We only do this once - therefore delete this thread
   OS_ThreadDelete(OS_PRIORITY_SELF);
 }
 
+static void PacketHandleThread(void* pData)
+{
+  for (;;)
+  {
+    if (Packet_Get())
+      // Deal with any received packets
+      cmdHandler(nvTowerNb,nvTowerMode,&channelSetup0);
+  }
+}
 
 
 /*lint -save  -e970 Disable MISRA rule (6.3) checking. */
@@ -501,7 +549,20 @@ int main(void)
                           NULL,
                           &InitModulesThreadStack[THREAD_STACK_SIZE - 1],
 		          0); // Highest priority
-
+  error = OS_ThreadCreate(
+			  UARTTxThread,
+			  NULL,
+			  &UARTTxThreadStack[THREAD_STACK_SIZE - 1],
+			  2);
+  error = OS_ThreadCreate(
+			  UARTRxThread,
+			  NULL,
+			  &UARTRxThreadStack[THREAD_STACK_SIZE - 1],
+			  1);
+  error = OS_ThreadCreate(PacketHandleThread, // Lowest priority
+  			  NULL,
+  			  &PacketHandleThreadStack[THREAD_STACK_SIZE - 1],
+  			  7);
 
 
 

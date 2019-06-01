@@ -14,15 +14,21 @@
 
 // Include Header Files
 #include "UART.h"
-#include "MK70F12.h"
-#include "FIFO.h"
-#include "CPU.h"
 
 // Declare Transmit and Receive buffers
 static TFIFO TxBuffer, RxBuffer;
 
+static uint8_t RxData;
+
+OS_ECB *TxSemaphore; /*!< Binary semaphore for signaling that data transmission */
+OS_ECB *RxSemaphore;  /*!< Binary semaphore for signaling receiving of data */
+
 bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
 {
+  //Create semaphores
+  TxSemaphore = OS_SemaphoreCreate(0);
+  RxSemaphore = OS_SemaphoreCreate(0);
+
   // Enable UART2 Clock
   SIM_SCGC4 |= SIM_SCGC4_UART2_MASK;
   // Enable PORTE Clock
@@ -75,6 +81,31 @@ bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
   return true;
 }
 
+
+void UARTRxThread(void* pData)
+{
+  for(;;)
+  {
+    //wait for RXFIFO
+    OS_SemaphoreWait(RxSemaphore,0);
+//    OS_DisableInterrupts(); // Entering critical section
+    FIFO_Put(&RxBuffer, RxData);
+//    OS_EnableInterrupts();
+  }
+}
+
+void UARTTxThread(void* pData)
+{
+  for(;;)
+  {
+    //wait for Txfifo
+    OS_SemaphoreWait(TxSemaphore,0);
+    FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D);
+
+  }
+}
+
+
 bool UART_InChar(uint8_t* const dataPtr)
 {
   return FIFO_Get(&RxBuffer,dataPtr);
@@ -82,41 +113,47 @@ bool UART_InChar(uint8_t* const dataPtr)
 
 bool UART_OutChar(const uint8_t data)
 {
-  EnterCritical(); // Entering critical section
+  OS_DisableInterrupts(); // Entering critical section
   if (FIFO_Put(&TxBuffer,data))
     {
       UART2_C2 |= UART_C2_TIE_MASK;
-      ExitCritical(); // Exiting critical section
+      OS_EnableInterrupts(); // Exiting critical section
       return true;
     }
 
-  ExitCritical(); // Exiting critical section
+  OS_EnableInterrupts(); // Exiting critical section
   return false;
 }
 
-void UART_Poll(void)
+
+void __attribute__ ((interrupt)) UART_ISR(void)
 {
+  OS_ISREnter();
+
   // Retrieve State of UART2 status register 1
   uint8_t status = UART2_S1;
 
   // Check if Receive Data Register Full Flag is set
   if (status & UART_S1_RDRF_MASK)
     // Read data from UART into Receive buffer
-    FIFO_Put(&RxBuffer,UART2_D);
+    OS_SemaphoreSignal(RxSemaphore);
+    RxData = UART2_D;
+//    FIFO_Put(&RxBuffer,UART2_D);
 
   // Check if Transmit Data Register Empty Flag is set
-  if (status & UART_S1_TDRE_MASK)
+  if ((status & UART_S1_TDRE_MASK) && (UART2_C2 & UART_C2_TIE_MASK))
     {
       //Write data from Transmit buffer
-      if (!FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
-	UART2_C2 &= ~UART_C2_TIE_MASK;
+//      if (!FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
+      OS_SemaphoreSignal(TxSemaphore);
+
+      UART2_C2 &= ~UART_C2_TIE_MASK;
     }
+
+  OS_ISRExit();
 }
 
-void __attribute__ ((interrupt)) UART_ISR(void)
-{
-  UART_Poll();
-}
+
 /*!
  * @}
  */

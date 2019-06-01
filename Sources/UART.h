@@ -18,6 +18,13 @@
 
 // new types
 #include "types.h"
+#include "MK70F12.h"
+#include "FIFO.h"
+#include "CPU.h"
+#include "OS.h"
+
+void UARTTxThread(void* pData);
+void UARTRxThread(void* pData);
 
 /*! @brief Sets up the UART interface before first use.
  *
