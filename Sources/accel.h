@@ -17,6 +17,7 @@
 
 // New types
 #include "types.h"
+#include "OS.h"
 
 typedef enum
 {
@@ -47,6 +48,7 @@ typedef union
 
 #pragma pack(pop)
 
+void AccelThread(void* pData);
 
 /*! @brief Initializes the accelerometer by calling the initialization routines of the supporting software modules.
  *

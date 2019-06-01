@@ -62,9 +62,9 @@ bool FIFO_Put(TFIFO * const fifo, const uint8_t data)
 
 bool FIFO_Get(TFIFO * const fifo, uint8_t * const dataPtr)
 {
-  OS_ERROR error;
+
   //wait for byte to become available
-  error = OS_SemaphoreWait(fifo->ItemsAvailable,0);
+  OS_SemaphoreWait(fifo->ItemsAvailable,0);
 //  if(error)
 //    return false;
   //obtain exclusive access to the FIFO (after byte is available to ensure buffer access isn't locked)

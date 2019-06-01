@@ -17,6 +17,12 @@
 
 // new types
 #include "types.h"
+#include "OS.h"
+#include "math.h"
+#include "stdlib.h"
+#include "types.h"
+#include "MK70F12.h"
+#include "Cpu.h"
 
 typedef struct
 {
@@ -25,6 +31,9 @@ typedef struct
   void (*readCompleteCallbackFunction)(void*);  /*!< The user's read complete callback function. */
   void* readCompleteCallbackArguments;          /*!< The user's read complete callback function arguments. */
 } TI2CModule;
+
+
+void I2CThread(void* pData);
 
 /*! @brief Sets up the I2C before first use.
  *

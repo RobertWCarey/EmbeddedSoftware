@@ -104,6 +104,7 @@ static union
 
 #define ADDRESS_CTRL_REG3 0x2C
 
+
 static union
 {
   uint8_t byte;			/*!< The CTRL_REG3 bits accessed as a byte. */
@@ -193,8 +194,22 @@ static void* UserArguments;
 //Global constant for I2C baud rate
 static const uint32_t I2C_BAUD_RATE = 100000;
 
+
+#define THREAD_STACK_SIZE 1024
+OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);
+
+static OS_ECB *AccelDataReadySemaphore;
+
 bool Accel_Init(const TAccelSetup* const accelSetup)
 {
+  OS_ERROR error;
+  AccelDataReadySemaphore = OS_SemaphoreCreate(0);
+
+  error = OS_ThreadCreate(AccelThread,
+     			  NULL,
+     			  &AccelThreadStack[THREAD_STACK_SIZE - 1],
+     			  4);
+
   //Struct to configure I2C module
   TI2CModule i2cSetup;
   i2cSetup.baudRate = I2C_BAUD_RATE;
@@ -294,13 +309,27 @@ void Accel_SetMode(const TAccelMode mode)
   ExitCritical(); //End critical section
 }
 
+void AccelThread(void* pData)
+{
+  for (;;)
+  {
+    OS_SemaphoreWait(AccelDataReadySemaphore,0);
+
+    if (UserFunction)
+      (*UserFunction)(UserArguments);
+
+  }
+}
+
 void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
 {
+  OS_ISREnter();
   //Clear Flag
   PORTB_PCR4 |= PORT_PCR_ISF_MASK;
-
-  if (UserFunction)
-    (*UserFunction)(UserArguments);
+  OS_SemaphoreSignal(AccelDataReadySemaphore);
+//  if (UserFunction)
+//    (*UserFunction)(UserArguments);
+  OS_ISRExit();
 }
 
 /*!

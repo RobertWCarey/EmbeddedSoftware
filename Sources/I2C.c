@@ -15,15 +15,14 @@
 
 // new types
 #include "I2C.h"
-#include "math.h"
-#include "stdlib.h"
-#include "types.h"
-#include "MK70F12.h"
-#include "Cpu.h"
+#include "LEDs.h"
+
 
 //Variable to place user defined functions passed form aI2CModule
 static void (*UserFunction)(void*);
 static void* UserArguments;
+
+static OS_ECB *I2CReadCompleteSemaphore;
 
 // Definitions for setting I2C0 control register 1
 #define I2C0_START_BIT I2C0_C1 |= I2C_C1_MST_MASK
@@ -35,6 +34,8 @@ static void* UserArguments;
 #define I2C0_TRANSMIT_ACK I2C0_C1 &= ~	I2C_C1_TXAK_MASK
 #define I2C0_INTERRUPT_EN I2C0_C1 |= I2C_C1_IICIE_MASK
 #define I2C0_INTERRUPT_DEN I2C0_C1 &= ~I2C_C1_IICIE_MASK
+
+
 
 //Read and write bit for I2C message
 static const uint8_t READBIT = 0x01;
@@ -59,6 +60,9 @@ static const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
 
 //Private global to store slaveAddress
 static uint8_t SlaveAddress;
+
+#define THREAD_STACK_SIZE 1024
+OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
 
 /*! @brief Waits for Interrupt flag to be raised and then clears it.
  *
@@ -117,6 +121,16 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   //Load in user functions
   UserFunction = aI2CModule->readCompleteCallbackFunction;
   UserArguments = aI2CModule->readCompleteCallbackArguments;
+
+
+  OS_ERROR error;
+  I2CReadCompleteSemaphore = OS_SemaphoreCreate(0);
+
+  error = OS_ThreadCreate(
+    			  I2CThread,
+    			  NULL,
+    			  &I2CThreadStack[THREAD_STACK_SIZE - 1],
+    			  3);
 
   //Enable clk gate for I2C0
   SIM_SCGC4 |= SIM_SCGC4_IIC0_MASK;
@@ -196,7 +210,6 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
 
-  EnterCritical();
   //Select transmit mode
   I2C0_TRANSMIT;
 
@@ -223,7 +236,6 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
 
   //Send Stop bit
   I2C0_STOP_BIT;
-  ExitCritical();
 }
 
 void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
@@ -231,8 +243,6 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
-
-  EnterCritical();
 
   //Select transmit mode
   I2C0_TRANSMIT;
@@ -298,8 +308,6 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
     }
   }
 
-  ExitCritical();
-
 }
 
 void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
@@ -310,7 +318,6 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
 
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
-  EnterCritical();
   //Select transmit mode
   I2C0_TRANSMIT;
 
@@ -352,13 +359,28 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
 
   //Enable Interrupt for I2C0
   I2C0_INTERRUPT_EN;
-  ExitCritical();
+}
+
+void I2CThread(void* pData)
+{
+  for (;;)
+  {
+    OS_SemaphoreWait(I2CReadCompleteSemaphore,0);
+
+    LEDs_Toggle(LED_GREEN);
+
+    if (UserFunction)
+      (*UserFunction)(UserArguments);
+
+  }
 }
 
 void __attribute__ ((interrupt)) I2C_ISR(void)
 {
+  OS_ISREnter();
   //Clear the flag
   I2C0_S |= I2C_S_IICIF_MASK;
+
 
   //Check that in receive mode
   if (!(I2C0_C1 & I2C_C1_TX_MASK) && (I2C0_S & I2C_S_TCF_MASK))
@@ -375,8 +397,9 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
       // Read data into the dynamic array
       Data[CurrentByte] = I2C0_D;
       CurrentByte = 0;//Reset currentByte
-      if (UserFunction)
-	(*UserFunction)(UserArguments);
+//      if (UserFunction)
+//	(*UserFunction)(UserArguments);
+      OS_SemaphoreSignal(I2CReadCompleteSemaphore);
     }
     else
     {
@@ -385,6 +408,8 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
       CurrentByte++;
     }
   }
+
+  OS_ISRExit();
 }
 
 

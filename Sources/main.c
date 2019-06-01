@@ -60,6 +60,7 @@ OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
 
+
 // Baud Rate
 static const uint32_t BAUD_RATE = 115200;
 
@@ -470,22 +471,25 @@ static bool towerInit(void)
 static void InitModulesThread(void* pData)
 {
   //Accelerometer setup struct
-//  TAccelSetup accelSetup;
-//  accelSetup.moduleClk = CPU_BUS_CLK_HZ;
-//  accelSetup.dataReadyCallbackArguments = NULL;
-//  accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
-//  accelSetup.readCompleteCallbackArguments = NULL;
-//  accelSetup.readCompleteCallbackFunction = I2CCallback;
+  TAccelSetup accelSetup;
+  accelSetup.moduleClk = CPU_BUS_CLK_HZ;
+  accelSetup.dataReadyCallbackArguments = NULL;
+  accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
+  accelSetup.readCompleteCallbackArguments = NULL;
+  accelSetup.readCompleteCallbackFunction = I2CCallback;
 
   OS_DisableInterrupts();//Disable Interrupts
   Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ);
   LEDs_Init();
-//  PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
+  PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
 //  RTC_Init(RTCCallback,NULL);
 //  FTM_Init();
-//  Accel_Init(&accelSetup);
+  Accel_Init(&accelSetup);
   Flash_Init();
 
+
+  //Set PIT Timer
+  PIT_Set(PIT_TIME_PERIOD, true);
 
   Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
   Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
@@ -512,6 +516,7 @@ static void PacketHandleThread(void* pData)
       cmdHandler(nvTowerNb,nvTowerMode,&channelSetup0);
   }
 }
+
 
 
 /*lint -save  -e970 Disable MISRA rule (6.3) checking. */

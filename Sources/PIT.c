@@ -23,8 +23,21 @@ static uint8_t PitClkPeriod;
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
+#define THREAD_STACK_SIZE 1024
+OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);
+
+static OS_ECB *PITSemaphore;
+
 bool PIT_Init(const uint32_t moduleClk, void (*userFunction)(void*), void* userArguments)
 {
+  OS_ERROR error;
+  PITSemaphore = OS_SemaphoreCreate(0);
+
+  error = OS_ThreadCreate(PITThread,
+			NULL,
+			&PITThreadStack[THREAD_STACK_SIZE - 1],
+			5);
+
   //Initialise local versions for userFunction and userArgument
   UserFunction = userFunction;
   UserArguments = userArguments;
@@ -81,13 +94,30 @@ void PIT_Enable(const bool enable)
     PIT_MCR |= PIT_MCR_MDIS_MASK;// Set MDIS = 1 to disable timer
 }
 
+void PITThread(void* pData)
+{
+  for (;;)
+  {
+    OS_SemaphoreWait(PITSemaphore,0);
+
+    if (UserFunction)
+      (*UserFunction)(UserArguments);
+
+  }
+}
+
 void __attribute__ ((interrupt)) PIT_ISR(void)
 {
+  OS_ISREnter();
   //Clear Timer Interrupt
   PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
+
+  OS_SemaphoreSignal(PITSemaphore);
+
+  OS_ISRExit();
   // Call user function
-  if (UserFunction)
-    (*UserFunction)(UserArguments);
+//  if (UserFunction)
+//    (*UserFunction)(UserArguments);
 }
 
 /*!

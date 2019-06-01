@@ -17,8 +17,9 @@
 
 // new types
 #include "types.h"
+#include "OS.h"
 
-
+void PITThread(void* pData);
 
 /*! @brief Sets up the PIT before first use.
  *
