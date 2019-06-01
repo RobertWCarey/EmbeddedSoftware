@@ -441,11 +441,13 @@ void I2CCallback(void* arg)
   if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
     {
       // Send last median values regardless of changing
+//      Packet_Put(CMD_ACCEL_VAL,0x64,0x64,0x64);
       Packet_Put(CMD_ACCEL_VAL,
          Median_Filter3(XValues[0], XValues[1], XValues[2]),
          Median_Filter3(YValues[0], YValues[1], YValues[2]),
          Median_Filter3(ZValues[0], ZValues[1], ZValues[2]));
     }
+
 
   LEDs_Toggle(LED_GREEN);
 

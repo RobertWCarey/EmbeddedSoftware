@@ -33,6 +33,7 @@ typedef struct
 } TI2CModule;
 
 
+
 void I2CThread(void* pData);
 
 /*! @brief Sets up the I2C before first use.

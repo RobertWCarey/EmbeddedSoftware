@@ -15,7 +15,6 @@
 
 // new types
 #include "I2C.h"
-#include "LEDs.h"
 
 
 //Variable to place user defined functions passed form aI2CModule
@@ -366,8 +365,6 @@ void I2CThread(void* pData)
   for (;;)
   {
     OS_SemaphoreWait(I2CReadCompleteSemaphore,0);
-
-    LEDs_Toggle(LED_GREEN);
 
     if (UserFunction)
       (*UserFunction)(UserArguments);
