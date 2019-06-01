@@ -98,9 +98,14 @@ void UARTTxThread(void* pData)
 {
   for(;;)
   {
+
     //wait for Txfifo
     OS_SemaphoreWait(TxSemaphore,0);
-    FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D);
+    if (UART2_S1 & UART_S1_TDRE_MASK) // Clear TDRE flag by reading it
+    {
+	FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D);
+	UART2_C2 |= UART_C2_TIE_MASK; // Re-enable transmission interrupt
+    }
 
   }
 }
@@ -133,22 +138,29 @@ void __attribute__ ((interrupt)) UART_ISR(void)
   // Retrieve State of UART2 status register 1
   uint8_t status = UART2_S1;
 
-  // Check if Receive Data Register Full Flag is set
-  if (status & UART_S1_RDRF_MASK)
-    // Read data from UART into Receive buffer
-    OS_SemaphoreSignal(RxSemaphore);
-    RxData = UART2_D;
-//    FIFO_Put(&RxBuffer,UART2_D);
-
   // Check if Transmit Data Register Empty Flag is set
-  if ((status & UART_S1_TDRE_MASK) && (UART2_C2 & UART_C2_TIE_MASK))
+  if(UART2_C2 & UART_C2_TIE_MASK)
     {
-      //Write data from Transmit buffer
-//      if (!FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
-      OS_SemaphoreSignal(TxSemaphore);
+      if (status & UART_S1_TDRE_MASK)
+	{
 
-      UART2_C2 &= ~UART_C2_TIE_MASK;
+	  UART2_C2 &= ~UART_C2_TIE_MASK;
+	  //Write data from Transmit buffer
+    //      if (!FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
+	  OS_SemaphoreSignal(TxSemaphore);
+
+
+	}
     }
+
+  // Check if Receive Data Register Full Flag is set
+    if (status & UART_S1_RDRF_MASK)
+      {
+      // Read data from UART into Receive buffer
+      OS_SemaphoreSignal(RxSemaphore);
+      RxData = UART2_D;
+  //    FIFO_Put(&RxBuffer,UART2_D);
+      }
 
   OS_ISRExit();
 }
