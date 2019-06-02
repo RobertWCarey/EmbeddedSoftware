@@ -19,6 +19,8 @@
 // New types
 #include "types.h"
 #include "OS.h"
+#include "UART.h"
+#include "CPU.h"
 
 // Packet structure
 #define PACKET_NB_BYTES 5
@@ -59,10 +61,10 @@ typedef union
 
 typedef struct
 {
-  uint32_t UARTModuleClk;				/*!< The module clock rate in Hz. */
-  uint32_t UARTBaudRate;
-  TOSThreadParams* UARTTxParams;
-  TOSThreadParams* UARTRxParams;
+  uint32_t UARTModuleClk;				  /*!< The UART module clock rate in Hz. */
+  uint32_t UARTBaudRate;          /*!< The UART desired baud rate in bits/sec. */
+  TOSThreadParams* UARTTxParams;  /*!< Thread parameters for UARTTxThread. */
+  TOSThreadParams* UARTRxParams;  /*!< Thread parameters for UARTRxThread. */
 } TPacketSetup;
 
 #define Packet_Command     Packet.packetStruct.command

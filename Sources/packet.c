@@ -15,8 +15,6 @@
 
 // Include Header Files
 #include "packet.h"
-#include "UART.h"
-#include "CPU.h"
 
 // Acknowledgment bit mask
 const uint8_t PACKET_ACK_MASK = 0x80u;
@@ -31,11 +29,13 @@ static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, c
 
 bool Packet_Init(const TPacketSetup* const packetSetup)
 {
+  // UART setup struct
   TUARTSetup UARTSetup;
   UARTSetup.baudRate = packetSetup->UARTBaudRate;
   UARTSetup.moduleClk = packetSetup->UARTModuleClk;
   UARTSetup.TxParams = packetSetup->UARTTxParams;
   UARTSetup.RxParams = packetSetup->UARTRxParams;
+
   return UART_Init(&UARTSetup);
 }
 
