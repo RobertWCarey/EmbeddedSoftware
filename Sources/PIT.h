@@ -18,6 +18,9 @@
 // new types
 #include "types.h"
 #include "OS.h"
+#include "MK70F12.h"
+#include "types.h"
+#include "CPU.h"
 
 void PITThread(void* pData);
 

@@ -17,6 +17,12 @@
 
 // new types
 #include "types.h"
+#include "OS.h"
+#include "MK70F12.h"
+#include "stddef.h"
+
+
+void RTCThread(void* pData);
 
 /*! @brief Initializes the RTC before first use.
  *

@@ -14,15 +14,25 @@
 
 
 // new types
-#include "types.h"
-#include "MK70F12.h"
+
 #include "RTC.h"
+
 
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
+#define THREAD_STACK_SIZE 1024
+OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);
+
+static OS_ECB *RTCSemaphore;
+
 bool RTC_Init(void (*userFunction)(void*), void* userArguments)
 {
+  OS_ERROR error;
+  RTCSemaphore = OS_SemaphoreCreate(0);
+
+  error = OS_ThreadCreate(RTCThread,NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],6);
+
   //Initialise local versions for userFunction and userArgument
   UserFunction = userFunction;
   UserArguments = userArguments;
@@ -102,11 +112,24 @@ void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const second
   *seconds = tsr % 60U;     	/* Seconds */
 }
 
+void RTCThread(void* pData)
+{
+  for (;;)
+  {
+    OS_SemaphoreWait(RTCSemaphore,0);
+
+    if (UserFunction)
+      (*UserFunction)(UserArguments);
+
+  }
+}
+
 void __attribute__ ((interrupt)) RTC_ISR(void)
 {
   // Call user function
-  if (UserFunction)
-    (*UserFunction)(UserArguments);
+//  if (UserFunction)
+//    (*UserFunction)(UserArguments);
+  OS_SemaphoreSignal(RTCSemaphore);
 }
 
 /*!

@@ -483,7 +483,7 @@ static void InitModulesThread(void* pData)
   Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ);
   LEDs_Init();
   PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
-//  RTC_Init(RTCCallback,NULL);
+  RTC_Init(RTCCallback,NULL);
 //  FTM_Init();
   Accel_Init(&accelSetup);
   Flash_Init();

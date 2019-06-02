@@ -13,9 +13,7 @@
  */
 
 #include "PIT.h"
-#include "MK70F12.h"
-#include "types.h"
-#include "CPU.h"
+
 
 //PIT Module Clock Period in ns
 static uint8_t PitClkPeriod;
