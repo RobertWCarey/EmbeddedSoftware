@@ -23,6 +23,14 @@
 #include "CPU.h"
 #include "OS.h"
 
+typedef struct
+{
+  uint32_t moduleClk;				/*!< The module clock rate in Hz. */
+  uint32_t baudRate;
+  TOSThreadParams* TxParams;
+  TOSThreadParams* RxParams;
+} TUARTSetup;
+
 void UARTTxThread(void* pData);
 void UARTRxThread(void* pData);
 
@@ -32,7 +40,7 @@ void UARTRxThread(void* pData);
  *  @param moduleClk The module clock rate in Hz.
  *  @return bool - TRUE if the UART was successfully initialized.
  */
-bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk);
+bool UART_Init(const TUARTSetup* const UARTSetup);
  
 /*! @brief Get a character from the receive FIFO if it is not empty.
  *

@@ -30,10 +30,15 @@ static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, c
   return (command^parameter1^parameter2^parameter3);
 }
 
-bool Packet_Init(const uint32_t baudRate, const uint32_t moduleClk)
+bool Packet_Init(const TPacketSetup* const packetSetup)
 {
   PacketAccess = OS_SemaphoreCreate(1);
-  return UART_Init(baudRate,moduleClk);
+  TUARTSetup UARTSetup;
+  UARTSetup.baudRate = packetSetup->UARTBaudRate;
+  UARTSetup.moduleClk = packetSetup->UARTModuleClk;
+  UARTSetup.TxParams = packetSetup->UARTTxParams;
+  UARTSetup.RxParams = packetSetup->UARTRxParams;
+  return UART_Init(&UARTSetup);
 }
 
 bool Packet_Get(void)

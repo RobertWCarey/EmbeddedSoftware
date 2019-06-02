@@ -20,14 +20,28 @@ static TFIFO TxBuffer, RxBuffer;
 
 static uint8_t RxData;
 
-OS_ECB *TxSemaphore; /*!< Binary semaphore for signaling that data transmission */
-OS_ECB *RxSemaphore;  /*!< Binary semaphore for signaling receiving of data */
+static OS_ECB *TxSemaphore; /*!< Binary semaphore for signaling that data transmission */
+static OS_ECB *RxSemaphore;  /*!< Binary semaphore for signaling receiving of data */
 
-bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk)
+bool UART_Init(const TUARTSetup* const UARTSetup)
 {
+  const uint32_t baudRate = UARTSetup->baudRate;
+  const uint32_t moduleClk = UARTSetup->moduleClk;
+
   //Create semaphores
   TxSemaphore = OS_SemaphoreCreate(0);
   RxSemaphore = OS_SemaphoreCreate(0);
+
+  OS_ERROR error;
+
+  error = OS_ThreadCreate(UARTTxThread,
+			  UARTSetup->TxParams->pData,
+			  UARTSetup->TxParams->pStack,
+			  UARTSetup->TxParams->priority);
+  error = OS_ThreadCreate(UARTRxThread,
+  			  UARTSetup->RxParams->pData,
+  			  UARTSetup->RxParams->pStack,
+  			  UARTSetup->RxParams->priority);
 
   // Enable UART2 Clock
   SIM_SCGC4 |= SIM_SCGC4_UART2_MASK;
