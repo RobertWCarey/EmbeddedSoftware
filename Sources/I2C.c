@@ -12,16 +12,14 @@
  *  @date 2019-05-17
  */
 
-
 // new types
 #include "I2C.h"
-
 
 //Variable to place user defined functions passed form aI2CModule
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-static OS_ECB *I2CReadCompleteSemaphore;
+static OS_ECB *I2CReadCompleteSemaphore;/*!< Incrementing semaphore for I2CThread execution */
 
 // Definitions for setting I2C0 control register 1
 #define I2C0_START_BIT I2C0_C1 |= I2C_C1_MST_MASK
@@ -33,8 +31,6 @@ static OS_ECB *I2CReadCompleteSemaphore;
 #define I2C0_TRANSMIT_ACK I2C0_C1 &= ~	I2C_C1_TXAK_MASK
 #define I2C0_INTERRUPT_EN I2C0_C1 |= I2C_C1_IICIE_MASK
 #define I2C0_INTERRUPT_DEN I2C0_C1 &= ~I2C_C1_IICIE_MASK
-
-
 
 //Read and write bit for I2C message
 static const uint8_t READBIT = 0x01;
@@ -57,7 +53,7 @@ static const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
     512, 579, 640, 768, 960, 640, 768, 896, 1024, 1152, 1280, 1536,
     1920, 1280, 1536, 1792, 2048, 2304, 2560, 3072, 3840};
 
-//Private global to store slaveAddress
+//Local global to store slaveAddress
 static uint8_t SlaveAddress;
 
 /*! @brief Waits for Interrupt flag to be raised and then clears it.
@@ -118,10 +114,13 @@ bool I2C_Init(const TI2CSetup* const aI2CModule)
   UserFunction = aI2CModule->readCompleteCallbackFunction;
   UserArguments = aI2CModule->readCompleteCallbackArguments;
 
-
+  // Local variable to store any errors for OS
   OS_ERROR error;
+
+  // Create Semaphore
   I2CReadCompleteSemaphore = OS_SemaphoreCreate(0);
 
+  // Create I2C thread
   error = OS_ThreadCreate(I2CThread,
 			  aI2CModule->ThreadParams->pData,
 			  aI2CModule->ThreadParams->pStack,
@@ -307,6 +306,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
 
 void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
 {
+  // Load values into local globals
   NbBytes = nbBytes;
   RegisterAddress = registerAddress;
   Data = data;
@@ -360,8 +360,10 @@ void I2CThread(void* pData)
 {
   for (;;)
   {
+    //wait for ISR to trigger semaphore to indicate that read has completed
     OS_SemaphoreWait(I2CReadCompleteSemaphore,0);
 
+    // Execute the passed callback function
     if (UserFunction)
       (*UserFunction)(UserArguments);
 
@@ -371,9 +373,9 @@ void I2CThread(void* pData)
 void __attribute__ ((interrupt)) I2C_ISR(void)
 {
   OS_ISREnter();
+
   //Clear the flag
   I2C0_S |= I2C_S_IICIF_MASK;
-
 
   //Check that in receive mode
   if (!(I2C0_C1 & I2C_C1_TX_MASK) && (I2C0_S & I2C_S_TCF_MASK))
@@ -390,8 +392,7 @@ void __attribute__ ((interrupt)) I2C_ISR(void)
       // Read data into the dynamic array
       Data[CurrentByte] = I2C0_D;
       CurrentByte = 0;//Reset currentByte
-//      if (UserFunction)
-//	(*UserFunction)(UserArguments);
+      //Signal semaphore to indicate that read has completed
       OS_SemaphoreSignal(I2CReadCompleteSemaphore);
     }
     else
