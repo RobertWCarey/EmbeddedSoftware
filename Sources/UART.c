@@ -22,8 +22,8 @@ static TFIFO TxBuffer, RxBuffer;
 // Used so that flag can be cleared in ISR
 static uint8_t RxData;
 
-static OS_ECB *TxSemaphore; /*!< Binary semaphore for signaling that data transmission */
-static OS_ECB *RxSemaphore;  /*!< Binary semaphore for signaling receiving of data */
+static OS_ECB *TxSemaphore;   /*!< Binary semaphore for signaling data transmission */
+static OS_ECB *RxSemaphore;   /*!< Binary semaphore for signaling receiving of data */
 
 void UARTRxThread(void* pData)
 {
