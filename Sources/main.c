@@ -43,19 +43,30 @@
 #include "FTM.h"
 #include "accel.h"
 #include "median.h"
-
 #include "ComProt.h"
-
 #include "OS.h"
 
-const uint16_t defaultTowerNb = 9382;
-const uint16_t defaultTowerMode = 1;
+// Pointers to non-volatile storage locations
 volatile uint16union_t *nvTowerNb;
 volatile uint16union_t *nvTowerMode;
+
+// Baud Rate (bps)
+static const uint32_t BAUD_RATE = 115200;
+
+// Pit time period (nano seconds)
+static const uint32_t PIT_TIME_PERIOD = 1000e6;
+
+//Accelerometer mode global
+static TAccelMode AccelMode = ACCEL_POLL;
+//Accelerometer latest data
+static TAccelData AccelData;
+//Last three values for each accelerometer axis
+static uint8_t XValues[3], YValues[3], ZValues[3];
 
 // Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
 #define THREAD_STACK_SIZE 1024
 
+// Enumeration to store thread priorities
 typedef enum
 {
   InitModulesThreadPriority,
@@ -65,8 +76,8 @@ typedef enum
   AccelThreadPriority,
   PITThreadPriority,
   RTCThreadPriority,
-  PacketThreadPriority,
-  FTMThreadPriority
+  FTMThreadPriority,
+  PacketThreadPriority
 } TThreadPriority;
 
 // Thread stacks
@@ -99,19 +110,6 @@ TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],
 TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],FTMThreadPriority};
 // Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
-
-// Baud Rate (bps)
-static const uint32_t BAUD_RATE = 115200;
-
-// Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 1000e6;
-
-//Accelerometer mode global
-static TAccelMode AccelMode = ACCEL_POLL;
-//Accelerometer latest data
-static TAccelData AccelData;
-//Last three values for each accelerometer axis
-static uint8_t XValues[3], YValues[3], ZValues[3];
 
 /*! @brief Interrupt callback function to be called when PIT_ISR occurs
  *
@@ -185,13 +183,13 @@ void I2CCallback(void* arg)
   shiftVals(ZValues,AccelData.axes.z);
 
   if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
-    {
-      // Send last median values regardless of changing
-      Packet_Put(CMD_ACCEL_VAL,
-         Median_Filter3(XValues[0], XValues[1], XValues[2]),
-         Median_Filter3(YValues[0], YValues[1], YValues[2]),
-         Median_Filter3(ZValues[0], ZValues[1], ZValues[2]));
-    }
+  {
+    // Send last median values regardless of changing
+    Packet_Put(CMD_ACCEL_VAL,
+       Median_Filter3(XValues[0], XValues[1], XValues[2]),
+       Median_Filter3(YValues[0], YValues[1], YValues[2]),
+       Median_Filter3(ZValues[0], ZValues[1], ZValues[2]));
+  }
 
   LEDs_Toggle(LED_GREEN);
 
@@ -200,11 +198,15 @@ void I2CCallback(void* arg)
 
 /*! @brief Initialises the modules to support the Tower modules.
  *
- *  @param pData is not used but is required by the OS to create a thread.
+ *  @param pData is used to store the FTM0 Channel0 data.
  *  @note This thread deletes itself after running for the first time.
  */
 static void InitModulesThread(void* pData)
 {
+  //Default settings
+  const uint16_t defaultTowerNb = 9382; //Tower Mode no.
+  const uint16_t defaultTowerMode = 1; //Tower Version no.
+
   //Accelerometer setup struct
   TAccelSetup accelSetup;
   accelSetup.moduleClk = CPU_BUS_CLK_HZ;
@@ -222,20 +224,23 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-  //PIT setup Struct
+  //PIT setup struct
   TPITSetup pitSetup;
   pitSetup.moduleClk = CPU_BUS_CLK_HZ;
   pitSetup.CallbackFunction = PITCallback;
   pitSetup.CallbackArguments = NULL;
   pitSetup.ThreadParams = &PIT_ThreadParams;
 
-  //RTC setup Struct
+  //RTC setup struct
   TRTCSetup rtcSetup;
   rtcSetup.CallbackFunction = RTCCallback;
   rtcSetup.CallbackArguments = NULL;
   rtcSetup.ThreadParams = &RTC_ThreadParams;
 
-  OS_DisableInterrupts();//Disable Interrupts
+  //Disable Interrupts
+  OS_DisableInterrupts();
+
+  //Initilise Modules
   Packet_Init(&packetSetup);
   LEDs_Init();
   PIT_Init(&pitSetup);
@@ -244,13 +249,13 @@ static void InitModulesThread(void* pData)
   Accel_Init(&accelSetup);
   Flash_Init();
 
-
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);
 
   //Set FTM Timer
   FTM_Set(pData);
 
+  //Assign non-volatile memory locations
   Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
   Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
   if (nvTowerNb->l == 0xffff)
@@ -258,19 +263,25 @@ static void InitModulesThread(void* pData)
   if (nvTowerMode->l == 0xffff)
     Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
 
+  //Send start-up packet
   towerStatupPacketHandler(nvTowerNb,nvTowerMode,&AccelMode);
 
-
-  OS_EnableInterrupts();//Enable Interrupts
+  //Enable Interrupts
+  OS_EnableInterrupts();
 
   // We only do this once - therefore delete this thread
   OS_ThreadDelete(OS_PRIORITY_SELF);
 }
 
+/*! @brief Checks for any valid packets and then handles them.
+ *
+ *  @param pData is used to store the FTM0 Channel0 data.
+ */
 static void PacketHandleThread(void* pData)
 {
   for (;;)
   {
+    // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
       cmdHandler(nvTowerNb,nvTowerMode,pData,&AccelMode);
@@ -283,6 +294,7 @@ int main(void)
 /*lint -restore Enable MISRA rule (6.3) checking. */
 {
   /* Write your local variable definition here */
+  // Local variable to store any errors for OS
   OS_ERROR error;
 
   //Configure struct for FTM_Set()
@@ -317,8 +329,6 @@ int main(void)
 			  PacketHandleThreadParams.pData,
 			  PacketHandleThreadParams.pStack,
 			  PacketHandleThreadParams.priority);
-
-
 
   // Start multithreading - never returns!
   OS_Start();

@@ -18,13 +18,41 @@
 // Declare Transmit and Receive buffers
 static TFIFO TxBuffer, RxBuffer;
 
+// Variable to store current data in data reg
+// Used so that flag can be cleared in ISR
 static uint8_t RxData;
 
 static OS_ECB *TxSemaphore; /*!< Binary semaphore for signaling that data transmission */
 static OS_ECB *RxSemaphore;  /*!< Binary semaphore for signaling receiving of data */
 
+void UARTRxThread(void* pData)
+{
+  for(;;)
+  {
+    //wait for ISR to trigger semaphore to indicate data has been received
+    OS_SemaphoreWait(RxSemaphore,0);
+    // Place received data into receiving buffer
+    FIFO_Put(&RxBuffer, RxData);
+  }
+}
+
+void UARTTxThread(void* pData)
+{
+  for(;;)
+  {
+    //wait for ISR to trigger semaphore to indicate data is ready to be sent
+    OS_SemaphoreWait(TxSemaphore,0);
+
+    // Check if there are still items in the transmit buffer
+    if(FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
+      // Re-enable transmission interrupt
+      UART2_C2 |= UART_C2_TIE_MASK;
+  }
+}
+
 bool UART_Init(const TUARTSetup* const UARTSetup)
 {
+  // assigning values to local constants
   const uint32_t baudRate = UARTSetup->baudRate;
   const uint32_t moduleClk = UARTSetup->moduleClk;
 
@@ -32,12 +60,15 @@ bool UART_Init(const TUARTSetup* const UARTSetup)
   TxSemaphore = OS_SemaphoreCreate(0);
   RxSemaphore = OS_SemaphoreCreate(0);
 
+  // Local variable to store any errors for OS
   OS_ERROR error;
 
+  // Create Transmission thread
   error = OS_ThreadCreate(UARTTxThread,
 			  UARTSetup->TxParams->pData,
 			  UARTSetup->TxParams->pStack,
 			  UARTSetup->TxParams->priority);
+  // Create Receive thread
   error = OS_ThreadCreate(UARTRxThread,
   			  UARTSetup->RxParams->pData,
   			  UARTSetup->RxParams->pStack,
@@ -96,49 +127,25 @@ bool UART_Init(const TUARTSetup* const UARTSetup)
 }
 
 
-void UARTRxThread(void* pData)
-{
-  for(;;)
-  {
-    //wait for RXFIFO
-    OS_SemaphoreWait(RxSemaphore,0);
-//    OS_DisableInterrupts(); // Entering critical section
-    FIFO_Put(&RxBuffer, RxData);
-//    OS_EnableInterrupts();
-  }
-}
-
-void UARTTxThread(void* pData)
-{
-  for(;;)
-  {
-
-    //wait for Txfifo
-    OS_SemaphoreWait(TxSemaphore,0);
-    if (UART2_S1 & UART_S1_TDRE_MASK) // Clear TDRE flag by reading it
-    {
-	FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D);
-	UART2_C2 |= UART_C2_TIE_MASK; // Re-enable transmission interrupt
-    }
-
-  }
-}
-
-
 bool UART_InChar(uint8_t* const dataPtr)
 {
+  // Retrieve data from receive buffer
+  // Return bool value to indicate success
   return FIFO_Get(&RxBuffer,dataPtr);
 }
 
 bool UART_OutChar(const uint8_t data)
 {
   OS_DisableInterrupts(); // Entering critical section
+
+  // If data can be placed in transmit buffer
   if (FIFO_Put(&TxBuffer,data))
-    {
-      UART2_C2 |= UART_C2_TIE_MASK;
-      OS_EnableInterrupts(); // Exiting critical section
-      return true;
-    }
+  {
+    //Enable transmit interrupt
+    UART2_C2 |= UART_C2_TIE_MASK;
+    OS_EnableInterrupts(); // Exiting critical section
+    return true;
+  }
 
   OS_EnableInterrupts(); // Exiting critical section
   return false;
@@ -147,36 +154,34 @@ bool UART_OutChar(const uint8_t data)
 
 void __attribute__ ((interrupt)) UART_ISR(void)
 {
-  OS_ISREnter();
+  OS_ISREnter();// Entering ISR
 
   // Retrieve State of UART2 status register 1
   uint8_t status = UART2_S1;
 
   // Check if Transmit Data Register Empty Flag is set
   if(UART2_C2 & UART_C2_TIE_MASK)
+  {
+    // Check that Data reg is ready to transmit
+    if (status & UART_S1_TDRE_MASK)
     {
-      if (status & UART_S1_TDRE_MASK)
-	{
-
-	  UART2_C2 &= ~UART_C2_TIE_MASK;
-	  //Write data from Transmit buffer
-    //      if (!FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
-	  OS_SemaphoreSignal(TxSemaphore);
-
-
-	}
+      // Disable transmit interrupt
+      UART2_C2 &= ~UART_C2_TIE_MASK;
+      // Signal semaphore to allow UARTTxThread to run
+      OS_SemaphoreSignal(TxSemaphore);
     }
+  }
 
   // Check if Receive Data Register Full Flag is set
-    if (status & UART_S1_RDRF_MASK)
-      {
-      // Read data from UART into Receive buffer
-      OS_SemaphoreSignal(RxSemaphore);
-      RxData = UART2_D;
-  //    FIFO_Put(&RxBuffer,UART2_D);
-      }
+  if (status & UART_S1_RDRF_MASK)
+  {
+    // Read data from UART into Receive buffer to clear flag
+    RxData = UART2_D;
+    // Signal semaphore to allow UARTRxThread to run
+    OS_SemaphoreSignal(RxSemaphore);
+  }
 
-  OS_ISRExit();
+  OS_ISRExit();// Exiting ISR
 }
 
 
