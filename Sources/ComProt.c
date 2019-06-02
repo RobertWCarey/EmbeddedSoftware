@@ -1,17 +1,16 @@
-/* @addtogroup FTM_module FTM module documentation
+/* @addtogroup CmdProt_module Command Protocol module documentation
  * @{
  */
 /*! @file
  *
- *  @brief Routines for setting up the FlexTimer module (FTM) on the TWR-K70F120M.
+ *  @brief Function for communicating using the PMcL Tower Communication Protocol.
  *
- *  This contains the functions for operating the FlexTimer module (FTM).
+ *  This contains the functions for communicating via the PMcL Communication Protocol.
  *
- *  @author PMcL
- *  @date 2015-09-04
+ *  @author Robert Carey
+ *  @date 2019-06-02
  */
 
-// new types
 #include "ComProt.h"
 
 // Parameters for 0x04-Tower Startup

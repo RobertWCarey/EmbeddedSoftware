@@ -1,20 +1,19 @@
-/* @addtogroup FTM_module FTM module documentation
+/* @addtogroup CmdProt_module Command Protocol module documentation
  * @{
  */
 /*! @file
  *
- *  @brief Routines for setting up the FlexTimer module (FTM) on the TWR-K70F120M.
+ *  @brief Function for communicating using the PMcL Tower Communication Protocol.
  *
- *  This contains the functions for operating the FlexTimer module (FTM).
+ *  This contains the functions for communicating via the PMcL Communication Protocol.
  *
- *  @author PMcL
- *  @date 2015-09-04
+ *  @author Robert Carey
+ *  @date 2019-06-02
  */
 
 #ifndef ComProt_H
 #define ComProt_H
 
-// new types
 #include "types.h"
 #include "Cpu.h"
 #include "Events.h"
@@ -34,26 +33,31 @@
 
 
 // Command Values
-#define CMD_TOWER_STARTUP 0x04u
-#define CMD_SPECIAL_TOWER_VERSION 0x09u
-#define CMD_TOWER_NUMBER 0x0Bu
-#define CMD_PROGRAM_BYTE 0x07u
-#define CMD_READ_BYTE 0x08u
-#define CMD_TOWER_MODE 0x0Du
-#define CMD_TIME_BYTE 0xCu
-#define CMD_ACCEL_VAL 0x10u
-#define CMD_PROT_MODE 0x0Au
+#define CMD_TOWER_STARTUP 0x04u         /* "Tower Startup" */
+#define CMD_SPECIAL_TOWER_VERSION 0x09u /* "Special - Tower Version" */
+#define CMD_TOWER_NUMBER 0x0Bu          /* "Tower Number" */
+#define CMD_PROGRAM_BYTE 0x07u          /* "Flash - Program Byte" */
+#define CMD_READ_BYTE 0x08u             /* "Flash - Read Byte" */
+#define CMD_TOWER_MODE 0x0Du            /* "Tower Mode" */
+#define CMD_TIME_BYTE 0xCu              /* "Time" / "Set Time" */
+#define CMD_ACCEL_VAL 0x10u             /* "Accelerometer - Value" */
+#define CMD_PROT_MODE 0x0Au             /* "Protocol - Mode" */
 
 /*! @brief Performs necessary action for any valid packets received.
  *
- *  @param towerNb A variable containing the Tower Number.
+ *  @param towerNb A pointer to the Tower Number.
+ *  @param towerNb A pointer to the Tower Mode.
+ *  @param towerNb A pointer to the the current FTMxChannely setup struct x=FTM no. y=Channel no..
+ *  @param towerNb A pointer to the current accelerometer mode.
  *  @return void.
  */
 void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel, TAccelMode* const AccelMode);
 
 /*! @brief Sends out required packets for Tower Startup.
  *
- *  @param towerNb A variable containing the Tower Number.
+ *  @param towerNb A pointer to the Tower Number.
+ *  @param towerNb A pointer to the Tower Mode.
+ *  @param towerNb A pointer to the current accelerometer mode.
  *  @return bool - TRUE if all packets were successfully sent.
  */
 bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode, const TAccelMode* AccelMode);
