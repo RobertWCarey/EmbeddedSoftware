@@ -176,12 +176,15 @@ static void shiftVals(uint8_t array[3], uint8_t value)
  */
 void I2CCallback(void* arg)
 {
+  // Static variable to store the previously read Accel Data
   static TAccelData prevAccelData;
 
+  // Load in the latest values
   shiftVals(XValues,AccelData.axes.x);
   shiftVals(YValues,AccelData.axes.y);
   shiftVals(ZValues,AccelData.axes.z);
 
+  //Check if the values have change || in sychronous mode
   if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
   {
     // Send last median values regardless of changing
@@ -193,6 +196,7 @@ void I2CCallback(void* arg)
 
   LEDs_Toggle(LED_GREEN);
 
+  // Store current value
   prevAccelData = AccelData;
 }
 
@@ -307,6 +311,7 @@ int main(void)
   channelSetup0.callbackFunction = FTMCallback;
   channelSetup0.callbackArguments = NULL;
 
+  // Store FTM0 Channel0 data into thread data for later use
   PacketHandleThreadParams.pData = &channelSetup0;
   InitModulesThreadParams.pData = &channelSetup0;
 
@@ -325,6 +330,7 @@ int main(void)
 			  InitModulesThreadParams.pStack,
 			  InitModulesThreadParams.priority); // Highest priority
 
+  // Create the packet handling thread
   error = OS_ThreadCreate(PacketHandleThread, // Lowest priority
 			  PacketHandleThreadParams.pData,
 			  PacketHandleThreadParams.pStack,
