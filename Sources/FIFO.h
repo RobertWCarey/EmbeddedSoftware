@@ -21,20 +21,19 @@
 #include "OS.h"
 #include "CPU.h"
 
-// Number of bytes in a FIFO
-#define FIFO_SIZE 255
+// Number of positions in a FIFO
+#define FIFO_SIZE 256
 /*!
  * @struct TFIFO
  */
 typedef struct
 {
-  uint16_t Start;		/*!< The index of the position of the oldest data in the FIFO */
-  uint16_t End; 		/*!< The index of the next available empty position in the FIFO */
-//  uint16_t volatile NbBytes;	/*!< The number of bytes currently stored in the FIFO */
+uint16_t Start;		            /*!< The index of the position of the oldest data in the FIFO */
+  uint16_t End; 		          /*!< The index of the next available empty position in the FIFO */
   uint8_t Buffer[FIFO_SIZE];	/*!< The actual array of bytes to store the data */
-  OS_ECB* SpaceAvailable;
-  OS_ECB* ItemsAvailable;
-  OS_ECB* BufferAccess;
+  OS_ECB* SpaceAvailable;     /*!< Incremental Semaphore for spaces in the buffer */
+  OS_ECB* ItemsAvailable;     /*!< Incremental Semaphore for items in the buffer */
+  OS_ECB* BufferAccess;       /*!< Binary Semaphore for access to the buffer */
 } TFIFO;
 
 /*! @brief Initialize the FIFO before first use.
