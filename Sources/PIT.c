@@ -15,19 +15,24 @@
 #include "PIT.h"
 
 
-//PIT Module Clock Period in ns
+// Local global to store PIT Module Clock Period in ns
 static uint8_t PitClkPeriod;
 
+// Local globals to store callback function
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-static OS_ECB *PITSemaphore;
+static OS_ECB *PITSemaphore; /*!< Incrementing semaphore for PITThread execution */
 
 bool PIT_Init(const TPITSetup* const PITSetup)
 {
+  // Local variable to store any errors for OS
   OS_ERROR error;
+
+  //Create semaphore
   PITSemaphore = OS_SemaphoreCreate(0);
 
+  // Create PIT thread
   error = OS_ThreadCreate(PITThread,
 			  PITSetup->ThreadParams->pData,
 			  PITSetup->ThreadParams->pStack,
@@ -57,7 +62,6 @@ bool PIT_Init(const TPITSetup* const PITSetup)
   //Enable interrupts from PIT0
   NVICISER2 = (1 << 4);
 
-
   return true;
 }
 
@@ -66,9 +70,8 @@ void PIT_Set(const uint32_t period, const bool restart)
   uint32_t nbTicks = (period/PitClkPeriod)-1;
 
   if (restart)
-  {
+    //Disable PIT
     PIT_TCTRL0 &= ~PIT_TCTRL_TEN_MASK;
-  }
 
   //Load value
   PIT_LDVAL0 = PIT_LDVAL_TSV(nbTicks);
@@ -93,8 +96,10 @@ void PITThread(void* pData)
 {
   for (;;)
   {
+    //wait for ISR to trigger semaphore to indicate loaded time has elapsed
     OS_SemaphoreWait(PITSemaphore,0);
 
+    // Execute the passed callback function
     if (UserFunction)
       (*UserFunction)(UserArguments);
 
@@ -104,15 +109,14 @@ void PITThread(void* pData)
 void __attribute__ ((interrupt)) PIT_ISR(void)
 {
   OS_ISREnter();
+
   //Clear Timer Interrupt
   PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
 
+  //Signal semaphore to indicate loaded time has elapsed
   OS_SemaphoreSignal(PITSemaphore);
 
   OS_ISRExit();
-  // Call user function
-//  if (UserFunction)
-//    (*UserFunction)(UserArguments);
 }
 
 /*!

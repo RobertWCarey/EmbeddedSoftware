@@ -24,10 +24,10 @@
 
 typedef struct
 {
-  uint32_t moduleClk;				/*!< The module clock rate in Hz. */
+  uint32_t moduleClk;				        /*!< The module clock rate in Hz. */
   void (*CallbackFunction)(void*);	/*!< The user's callback function. */
-  void* CallbackArguments;		/*!< The user's callback function arguments. */
-  TOSThreadParams* ThreadParams;
+  void* CallbackArguments;		      /*!< The user's callback function arguments. */
+  TOSThreadParams* ThreadParams;    /*!< Thread parameters for PITThread. */
 } TPITSetup;
 
 void PITThread(void* pData);
