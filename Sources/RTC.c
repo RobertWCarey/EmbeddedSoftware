@@ -13,21 +13,23 @@
  */
 
 
-// new types
-
 #include "RTC.h"
 
-
+// Local globals to store callback function
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-static OS_ECB *RTCSemaphore;
+static OS_ECB *RTCSemaphore; /*!< Incrementing semaphore for RTCThread execution */
 
 bool RTC_Init(const TRTCSetup* const RTCSetup)
 {
+  // Local variable to store any errors for OS
   OS_ERROR error;
+
+  //Create semaphore
   RTCSemaphore = OS_SemaphoreCreate(0);
 
+  //Create RTC thread
   error = OS_ThreadCreate(RTCThread,
   			  RTCSetup->ThreadParams->pData,
   			  RTCSetup->ThreadParams->pStack,
@@ -116,8 +118,10 @@ void RTCThread(void* pData)
 {
   for (;;)
   {
+    //wait for ISR to trigger semaphore to indicate loaded time has elapsed
     OS_SemaphoreWait(RTCSemaphore,0);
 
+    // Execute the passed callback function
     if (UserFunction)
       (*UserFunction)(UserArguments);
 
@@ -126,10 +130,12 @@ void RTCThread(void* pData)
 
 void __attribute__ ((interrupt)) RTC_ISR(void)
 {
-  // Call user function
-//  if (UserFunction)
-//    (*UserFunction)(UserArguments);
+  OS_ISREnter();
+
+  //Signal semaphore to indicate loaded time has elapsed
   OS_SemaphoreSignal(RTCSemaphore);
+
+  OS_ISRExit();
 }
 
 /*!

@@ -23,9 +23,9 @@
 
 typedef struct
 {
-  void (*CallbackFunction)(void*);	/*!< The user's read complete callback function. */
-  void* CallbackArguments;		/*!< The user's read complete callback function arguments. */
-  TOSThreadParams* ThreadParams;
+  void (*CallbackFunction)(void*);	/*!< The user's callback function. */
+  void* CallbackArguments;		      /*!< The user's callback function arguments. */
+  TOSThreadParams* ThreadParams;    /*!< Thread parameters for RTCThread. */
 } TRTCSetup;
 
 
