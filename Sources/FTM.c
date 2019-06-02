@@ -27,21 +27,18 @@ static void* UserArguments[8];
 
 static bool Execute[8];
 
-#define THREAD_STACK_SIZE 1024
-OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);
-
 static OS_ECB *FTMSemaphore;
 
 
-bool FTM_Init()
+bool FTM_Init(const TOSThreadParams* const ThreadParams)
 {
   OS_ERROR error;
   FTMSemaphore = OS_SemaphoreCreate(0);
 
   error = OS_ThreadCreate(FTMThread,
-		      NULL,
-		      &FTMThreadStack[THREAD_STACK_SIZE - 1],
-		      8);
+			  ThreadParams->pData,
+			  ThreadParams->pStack,
+			  ThreadParams->priority);
 
   // Enable FTM0 in Clock gate
   SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK;

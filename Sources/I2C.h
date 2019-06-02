@@ -28,10 +28,11 @@ typedef struct
 {
   uint8_t primarySlaveAddress;
   uint32_t baudRate;
+  uint32_t moduleClk;
   void (*readCompleteCallbackFunction)(void*);  /*!< The user's read complete callback function. */
   void* readCompleteCallbackArguments;          /*!< The user's read complete callback function arguments. */
-} TI2CModule;
-
+  TOSThreadParams* ThreadParams;
+} TI2CSetup;
 
 
 void I2CThread(void* pData);
@@ -42,7 +43,7 @@ void I2CThread(void* pData);
  *  @param moduleClk The module clock in Hz.
  *  @return BOOL - TRUE if the I2C module was successfully initialized.
  */
-bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk);
+bool I2C_Init(const TI2CSetup* const aI2CSetup);
 
 /*! @brief Selects the current slave device
  *

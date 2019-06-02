@@ -60,9 +60,6 @@ static const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
 //Private global to store slaveAddress
 static uint8_t SlaveAddress;
 
-#define THREAD_STACK_SIZE 1024
-OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
-
 /*! @brief Waits for Interrupt flag to be raised and then clears it.
  *
  */
@@ -115,7 +112,7 @@ static void ResetDeadLock()
   PORTE_PCR19 = PORT_PCR_MUX(4) | PORT_PCR_ODE_MASK | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
 }
 
-bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
+bool I2C_Init(const TI2CSetup* const aI2CModule)
 {
   //Load in user functions
   UserFunction = aI2CModule->readCompleteCallbackFunction;
@@ -125,11 +122,10 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   OS_ERROR error;
   I2CReadCompleteSemaphore = OS_SemaphoreCreate(0);
 
-  error = OS_ThreadCreate(
-    			  I2CThread,
-    			  NULL,
-    			  &I2CThreadStack[THREAD_STACK_SIZE - 1],
-    			  3);
+  error = OS_ThreadCreate(I2CThread,
+			  aI2CModule->ThreadParams->pData,
+			  aI2CModule->ThreadParams->pStack,
+			  aI2CModule->ThreadParams->priority);
 
   //Enable clk gate for I2C0
   SIM_SCGC4 |= SIM_SCGC4_IIC0_MASK;
@@ -147,7 +143,7 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   //Configure the baud rate for the I2C
 
   //The desired divider value
-  uint32_t targetSCLDiv = moduleClk / aI2CModule->baudRate;
+  uint32_t targetSCLDiv = aI2CModule->moduleClk / aI2CModule->baudRate;
 
   //Used to store the smallest error
   uint32_t minDiff = 0xFFFFFFFF;

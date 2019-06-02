@@ -74,13 +74,33 @@ OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
+OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
+OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);
 
+// Thread Parameters
+// Initilisation of modules thread parameters
 TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_STACK_SIZE - 1],InitModulesThreadPriority};
+// UART receive thread parameters
+TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
+// UART transmit thread parameters
+TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
+// I2C thread parameters
+TOSThreadParams I2C_ThreadParams = {NULL,&I2CThreadStack[THREAD_STACK_SIZE - 1],I2CThreadPriority};
+// Accelerometer thread parameters
+TOSThreadParams Accel_ThreadParams = {NULL,&AccelThreadStack[THREAD_STACK_SIZE - 1],AccelThreadPriority};
+// Periodic Interrupt Timer thread parameters
+TOSThreadParams PIT_ThreadParams = {NULL,&PITThreadStack[THREAD_STACK_SIZE - 1],PITThreadPriority};
+// Real Time Clock thread parameters
+TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],RTCThreadPriority};
+// Flexible Timer Module thread parameters
+TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],FTMThreadPriority};
+// Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
-TOSThreadParams UARTTxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
-TOSThreadParams UARTRxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 
-// Baud Rate
+// Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
 
 // Pit time period (nano seconds)
@@ -88,15 +108,10 @@ static const uint32_t PIT_TIME_PERIOD = 1000e6;
 
 //Accelerometer mode global
 static TAccelMode AccelMode = ACCEL_POLL;
-
 //Accelerometer latest data
 static TAccelData AccelData;
 //Last three values for each accelerometer axis
 static uint8_t XValues[3], YValues[3], ZValues[3];
-
-
-
-
 
 /*! @brief Interrupt callback function to be called when PIT_ISR occurs
  *
@@ -132,16 +147,6 @@ void FTMCallback(void* arg)
   //turn off blue LED
   LEDs_Off(LED_BLUE);
 }
-
-//TFTMChannel channelSetup0;
-//Configure struct for FTM_Set()
-// TFTMChannel channelSetup0 = {0,
-//			      (1 * CPU_MCGFF_CLK_HZ_CONFIG_0),
-//			      TIMER_FUNCTION_OUTPUT_COMPARE,
-////			      TIMER_INPUT_OFF,
-//			      TIMER_OUTPUT_DISCONNECT,
-//			      FTMCallback,
-//			      NULL};
 
 /*! @brief Interrupt callback function to be called when Accelerometer
  * @brief data ready interrupt occours, Synchronous mode
@@ -207,20 +212,35 @@ static void InitModulesThread(void* pData)
   accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
   accelSetup.readCompleteCallbackArguments = NULL;
   accelSetup.readCompleteCallbackFunction = I2CCallback;
+  accelSetup.I2CThreadParams = &I2C_ThreadParams;
+  accelSetup.ThreadParams = &Accel_ThreadParams;
 
   //Packet setup struct
   TPacketSetup packetSetup;
   packetSetup.UARTBaudRate = BAUD_RATE;
   packetSetup.UARTModuleClk = CPU_BUS_CLK_HZ;
-  packetSetup.UARTTxParams = &UARTTxThreadParams;
-  packetSetup.UARTRxParams = &UARTRxThreadParams;
+  packetSetup.UARTTxParams = &UART_TxThreadParams;
+  packetSetup.UARTRxParams = &UART_RxThreadParams;
+
+  //PIT setup Struct
+  TPITSetup pitSetup;
+  pitSetup.moduleClk = CPU_BUS_CLK_HZ;
+  pitSetup.CallbackFunction = PITCallback;
+  pitSetup.CallbackArguments = NULL;
+  pitSetup.ThreadParams = &PIT_ThreadParams;
+
+  //RTC setup Struct
+  TRTCSetup rtcSetup;
+  rtcSetup.CallbackFunction = RTCCallback;
+  rtcSetup.CallbackArguments = NULL;
+  rtcSetup.ThreadParams = &RTC_ThreadParams;
 
   OS_DisableInterrupts();//Disable Interrupts
   Packet_Init(&packetSetup);
   LEDs_Init();
-  PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
-  RTC_Init(RTCCallback,NULL);
-  FTM_Init();
+  PIT_Init(&pitSetup);
+  RTC_Init(&rtcSetup);
+  FTM_Init(&FTM_ThreadParams);
   Accel_Init(&accelSetup);
   Flash_Init();
 

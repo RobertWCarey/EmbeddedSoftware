@@ -22,6 +22,14 @@
 #include "types.h"
 #include "CPU.h"
 
+typedef struct
+{
+  uint32_t moduleClk;				/*!< The module clock rate in Hz. */
+  void (*CallbackFunction)(void*);	/*!< The user's callback function. */
+  void* CallbackArguments;		/*!< The user's callback function arguments. */
+  TOSThreadParams* ThreadParams;
+} TPITSetup;
+
 void PITThread(void* pData);
 
 /*! @brief Sets up the PIT before first use.
@@ -33,7 +41,7 @@ void PITThread(void* pData);
  *  @return bool - TRUE if the PIT was successfully initialized.
  *  @note Assumes that moduleClk has a period which can be expressed as an integral number of nanoseconds.
  */
-bool PIT_Init(const uint32_t moduleClk, void (*userFunction)(void*), void* userArguments);
+bool PIT_Init(const TPITSetup* const PITSetup);
 
 /*! @brief Sets the value of the desired period of the PIT.
  *

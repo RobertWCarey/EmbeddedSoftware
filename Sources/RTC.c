@@ -21,21 +21,21 @@
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-#define THREAD_STACK_SIZE 1024
-OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);
-
 static OS_ECB *RTCSemaphore;
 
-bool RTC_Init(void (*userFunction)(void*), void* userArguments)
+bool RTC_Init(const TRTCSetup* const RTCSetup)
 {
   OS_ERROR error;
   RTCSemaphore = OS_SemaphoreCreate(0);
 
-  error = OS_ThreadCreate(RTCThread,NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],6);
+  error = OS_ThreadCreate(RTCThread,
+  			  RTCSetup->ThreadParams->pData,
+  			  RTCSetup->ThreadParams->pStack,
+  			  RTCSetup->ThreadParams->priority);
 
   //Initialise local versions for userFunction and userArgument
-  UserFunction = userFunction;
-  UserArguments = userArguments;
+  UserFunction = RTCSetup->CallbackFunction;
+  UserArguments = RTCSetup->CallbackArguments;
 
   // Enable RTC clock in clock gate 6
   SIM_SCGC6 |= SIM_SCGC6_RTC_MASK;

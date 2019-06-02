@@ -194,10 +194,6 @@ static void* UserArguments;
 //Global constant for I2C baud rate
 static const uint32_t I2C_BAUD_RATE = 100000;
 
-
-#define THREAD_STACK_SIZE 1024
-OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);
-
 static OS_ECB *AccelDataReadySemaphore;
 
 bool Accel_Init(const TAccelSetup* const accelSetup)
@@ -206,19 +202,21 @@ bool Accel_Init(const TAccelSetup* const accelSetup)
   AccelDataReadySemaphore = OS_SemaphoreCreate(0);
 
   error = OS_ThreadCreate(AccelThread,
-     			  NULL,
-     			  &AccelThreadStack[THREAD_STACK_SIZE - 1],
-     			  4);
+     			  accelSetup->ThreadParams->pData,
+			  accelSetup->ThreadParams->pStack,
+			  accelSetup->ThreadParams->priority);
 
   //Struct to configure I2C module
-  TI2CModule i2cSetup;
+  TI2CSetup i2cSetup;
   i2cSetup.baudRate = I2C_BAUD_RATE;
+  i2cSetup.moduleClk = accelSetup->moduleClk;
   i2cSetup.primarySlaveAddress = ACCEL_ADDRESS;
   i2cSetup.readCompleteCallbackArguments = accelSetup->readCompleteCallbackArguments;
   i2cSetup.readCompleteCallbackFunction = accelSetup->readCompleteCallbackFunction;
+  i2cSetup.ThreadParams = accelSetup->I2CThreadParams;
 
   //Initialise I2C module
-  I2C_Init(&i2cSetup,accelSetup->moduleClk);
+  I2C_Init(&i2cSetup);
 
   //Place Accelerometer in standby mode so that registers can be modified.
   CTRL_REG1_ACTIVE = 0;//Modify reg1 union for standby

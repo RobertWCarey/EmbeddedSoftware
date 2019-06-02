@@ -32,6 +32,8 @@ typedef struct
   void* dataReadyCallbackArguments;		/*!< The user's data ready callback function arguments. */
   void (*readCompleteCallbackFunction)(void*);	/*!< The user's read complete callback function. */
   void* readCompleteCallbackArguments;		/*!< The user's read complete callback function arguments. */
+  TOSThreadParams* ThreadParams;
+  TOSThreadParams* I2CThreadParams;
 } TAccelSetup;
 
 #pragma pack(push)

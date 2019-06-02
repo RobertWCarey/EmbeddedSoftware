@@ -21,30 +21,27 @@ static uint8_t PitClkPeriod;
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-#define THREAD_STACK_SIZE 1024
-OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);
-
 static OS_ECB *PITSemaphore;
 
-bool PIT_Init(const uint32_t moduleClk, void (*userFunction)(void*), void* userArguments)
+bool PIT_Init(const TPITSetup* const PITSetup)
 {
   OS_ERROR error;
   PITSemaphore = OS_SemaphoreCreate(0);
 
   error = OS_ThreadCreate(PITThread,
-			NULL,
-			&PITThreadStack[THREAD_STACK_SIZE - 1],
-			5);
+			  PITSetup->ThreadParams->pData,
+			  PITSetup->ThreadParams->pStack,
+			  PITSetup->ThreadParams->priority);
 
   //Initialise local versions for userFunction and userArgument
-  UserFunction = userFunction;
-  UserArguments = userArguments;
+  UserFunction = PITSetup->CallbackFunction;
+  UserArguments = PITSetup->CallbackArguments;
 
   // Enable PIT Clock
   SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
 
   //Calculate clk period based on modlueClk value
-  PitClkPeriod = ((1e9)/moduleClk);
+  PitClkPeriod = ((1e9)/PITSetup->moduleClk);
 
   //Enable standard PIT timers
   //Must be done before any setup

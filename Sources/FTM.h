@@ -62,7 +62,7 @@ void FTMThread(void* pData);
  *  Enables the FTM as a free running 16-bit counter.
  *  @return bool - TRUE if the FTM was successfully initialized.
  */
-bool FTM_Init();
+bool FTM_Init(const TOSThreadParams* const ThreadParams);
 
 /*! @brief Sets up a timer channel.
  *

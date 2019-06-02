@@ -21,6 +21,13 @@
 #include "MK70F12.h"
 #include "stddef.h"
 
+typedef struct
+{
+  void (*CallbackFunction)(void*);	/*!< The user's read complete callback function. */
+  void* CallbackArguments;		/*!< The user's read complete callback function arguments. */
+  TOSThreadParams* ThreadParams;
+} TRTCSetup;
+
 
 void RTCThread(void* pData);
 
@@ -32,7 +39,7 @@ void RTCThread(void* pData);
  *  @param userArguments is a pointer to the user arguments to use with the user callback function.
  *  @return bool - TRUE if the RTC was successfully initialized.
  */
-bool RTC_Init(void (*userFunction)(void*), void* userArguments);
+bool RTC_Init(const TRTCSetup* const RTCSetup);
 
 /*! @brief Sets the value of the real time clock.
  *
