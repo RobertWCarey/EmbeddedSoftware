@@ -134,11 +134,11 @@ static bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,vol
 {
   // Check that params are valid
   if ( (Packet_Parameter1 == TOWER_STARTUP_PARAM) && (Packet_Parameter2 == TOWER_STARTUP_PARAM) && (Packet_Parameter3 == TOWER_STARTUP_PARAM) )
-    return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM);// &&
-//      Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
-//      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
-//      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi)&&
-//      Packet_Put(CMD_PROT_MODE, 0, AccelMode, 0);
+    return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
+      Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
+      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
+      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi)&&
+      Packet_Put(CMD_PROT_MODE, 0, AccelMode, 0);
 
   // If invalid params return false
   return false;
@@ -441,7 +441,6 @@ void I2CCallback(void* arg)
   if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
     {
       // Send last median values regardless of changing
-//      Packet_Put(CMD_ACCEL_VAL,0x64,0x64,0x64);
       Packet_Put(CMD_ACCEL_VAL,
          Median_Filter3(XValues[0], XValues[1], XValues[2]),
          Median_Filter3(YValues[0], YValues[1], YValues[2]),
