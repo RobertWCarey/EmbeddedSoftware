@@ -35,8 +35,7 @@ void RTCThread(void* pData);
  *
  *  Sets up the control register for the RTC and locks it.
  *  Enables the RTC and sets an interrupt every second.
- *  @param userFunction is a pointer to a user callback function.
- *  @param userArguments is a pointer to the user arguments to use with the user callback function.
+ *  @param RTCSetup is a pointer to an RTC setup structure.
  *  @return bool - TRUE if the RTC was successfully initialized.
  */
 bool RTC_Init(const TRTCSetup* const RTCSetup);
