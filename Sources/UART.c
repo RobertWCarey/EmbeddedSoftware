@@ -43,9 +43,16 @@ void UARTTxThread(void* pData)
     //wait for ISR to trigger semaphore to indicate data is ready to be sent
     OS_SemaphoreWait(TxSemaphore,0);
 
-    // Check if there are still items in the transmit buffer
-    if(FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
-      // Re-enable transmission interrupt
+    // Check if transmit is ready
+    // Prevents unsuccessful writes/transmits
+    if (UART2_S1 & UART_S1_TDRE_MASK)
+    {
+      // Check if there are still items in the transmit buffer
+      if(FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
+        // Re-enable transmission interrupt
+        UART2_C2 |= UART_C2_TIE_MASK;
+    }
+    else
       UART2_C2 |= UART_C2_TIE_MASK;
   }
 }
