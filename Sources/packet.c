@@ -63,10 +63,10 @@ bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t p
 {
   // Send bytes of packet into UART
   if (UART_OutChar(command) &&
-      UART_OutChar(parameter1) &&
-      UART_OutChar(parameter2) &&
-      UART_OutChar(parameter3) &&
-      UART_OutChar(returnChecksum(command,parameter1,parameter2,parameter3)))
+    UART_OutChar(parameter1) &&
+    UART_OutChar(parameter2) &&
+    UART_OutChar(parameter3) &&
+    UART_OutChar(returnChecksum(command,parameter1,parameter2,parameter3)))
   {
     //If all packet successfully sent
     return true;
