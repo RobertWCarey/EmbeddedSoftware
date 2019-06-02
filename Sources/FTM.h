@@ -55,6 +55,8 @@ typedef struct
 } TFTMChannel;
 
 
+void FTMThread(void* pData);
+
 /*! @brief Sets up the FTM before first use.
  *
  *  Enables the FTM as a free running 16-bit counter.

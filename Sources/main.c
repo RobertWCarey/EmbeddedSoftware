@@ -290,7 +290,7 @@ static bool protModePacketHandler()
 static void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel)
 {
   //Starts a timer and turns on LED
-//  FTM_StartTimer(aFTMChannel);
+  FTM_StartTimer(aFTMChannel);
   LEDs_On(LED_BLUE);
 
   // Isolate command packet
@@ -384,7 +384,7 @@ void FTMCallback(void* arg)
   //turn off blue LED
   LEDs_Off(LED_BLUE);
 }
-
+//TFTMChannel channelSetup0;
 //Configure struct for FTM_Set()
  TFTMChannel channelSetup0 = {0,
 			      (1 * CPU_MCGFF_CLK_HZ_CONFIG_0),
@@ -479,18 +479,31 @@ static void InitModulesThread(void* pData)
   accelSetup.readCompleteCallbackArguments = NULL;
   accelSetup.readCompleteCallbackFunction = I2CCallback;
 
+  //Configure struct for FTM_Set()
+//  TFTMChannel channelSetup0;
+//  channelSetup0.channelNb = 0;
+//  channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
+//  channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
+//  channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
+//  channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
+//  channelSetup0.callbackFunction = FTMCallback;
+//  channelSetup0.callbackArguments = NULL;
+
   OS_DisableInterrupts();//Disable Interrupts
   Packet_Init(BAUD_RATE,CPU_BUS_CLK_HZ);
   LEDs_Init();
   PIT_Init(CPU_BUS_CLK_HZ, PITCallback, NULL);
   RTC_Init(RTCCallback,NULL);
-//  FTM_Init();
+  FTM_Init();
   Accel_Init(&accelSetup);
   Flash_Init();
 
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);
+
+  //Set FTM Timer
+  FTM_Set(&channelSetup0);
 
   Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
   Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));

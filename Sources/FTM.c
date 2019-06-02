@@ -18,15 +18,31 @@
 #include "FTM.h"
 #include "MK70F12.h"
 #include "CPU.h"
+#include "OS.h"
 
 //Addresses for function that will store user callback function
 //define an array for multiple channel functions and arguments
 static void (*UserFunction[8])(void*);
 static void* UserArguments[8];
 
+static bool Execute[8];
+
+#define THREAD_STACK_SIZE 1024
+OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);
+
+static OS_ECB *FTMSemaphore;
+
 
 bool FTM_Init()
 {
+  OS_ERROR error;
+  FTMSemaphore = OS_SemaphoreCreate(0);
+
+  error = OS_ThreadCreate(FTMThread,
+		      NULL,
+		      &FTMThreadStack[THREAD_STACK_SIZE - 1],
+		      8);
+
   // Enable FTM0 in Clock gate
   SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK;
 
@@ -101,6 +117,22 @@ bool FTM_StartTimer(const TFTMChannel* const aFTMChannel)
   return true;
 }
 
+void FTMThread(void* pData)
+{
+  for (;;)
+  {
+    OS_SemaphoreWait(FTMSemaphore,0);
+//    sizeof (data)/sizeof (data[0])
+    for (int i = 0; i <= 7; i++)
+      {
+	if (Execute[i])
+	  if (UserFunction[i])
+	    (*UserFunction[i])(UserArguments[i]);
+      }
+
+  }
+}
+
 void __attribute__ ((interrupt)) FTM0_ISR(void)
 {
   uint8_t statusReg0 = FTM0_C0SC;
@@ -111,8 +143,10 @@ void __attribute__ ((interrupt)) FTM0_ISR(void)
     if (FTM0_CnSC(channelNb) & FTM_CnSC_CHF_MASK)
     {
       FTM0_CnSC(channelNb) &= ~FTM_CnSC_CHF_MASK;
-      if (UserFunction[channelNb])
-	(*UserFunction[channelNb])(UserArguments[channelNb]);
+      Execute[channelNb] = true;
+      OS_SemaphoreSignal(FTMSemaphore);
+//      if (UserFunction[channelNb])
+//	(*UserFunction[channelNb])(UserArguments[channelNb]);
     }
   }
 
