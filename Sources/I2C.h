@@ -17,22 +17,32 @@
 
 // new types
 #include "types.h"
+#include "OS.h"
+#include "math.h"
+#include "stdlib.h"
+#include "types.h"
+#include "MK70F12.h"
+#include "Cpu.h"
 
 typedef struct
 {
-  uint8_t primarySlaveAddress;
-  uint32_t baudRate;
+  uint8_t primarySlaveAddress;                  /*!< The Slave address used unless I2C_SelectSlaveDevice() is called. */
+  uint32_t baudRate;                            /*!< The desired baud rate in bits/sec. */
+  uint32_t moduleClk;                           /*!< The module clock rate in Hz. */
   void (*readCompleteCallbackFunction)(void*);  /*!< The user's read complete callback function. */
   void* readCompleteCallbackArguments;          /*!< The user's read complete callback function arguments. */
-} TI2CModule;
+  TOSThreadParams* ThreadParams;                /*!< Thread parameters for RTCThread. */
+} TI2CSetup;
+
+
+void I2CThread(void* pData);
 
 /*! @brief Sets up the I2C before first use.
  *
- *  @param aI2CModule is a structure containing the operating conditions for the module.
- *  @param moduleClk The module clock in Hz.
+ *  @param aI2Cetup is a pointer to an I2C setup structure.
  *  @return BOOL - TRUE if the I2C module was successfully initialized.
  */
-bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk);
+bool I2C_Init(const TI2CSetup* const aI2CSetup);
 
 /*! @brief Selects the current slave device
  *

@@ -17,6 +17,7 @@
 
 // New types
 #include "types.h"
+#include "OS.h"
 
 typedef enum
 {
@@ -26,11 +27,13 @@ typedef enum
 
 typedef struct
 {
-  uint32_t moduleClk;				/*!< The module clock rate in Hz. */
-  void (*dataReadyCallbackFunction)(void*);	/*!< The user's data ready callback function. */
-  void* dataReadyCallbackArguments;		/*!< The user's data ready callback function arguments. */
+  uint32_t moduleClk;				                    /*!< The module clock rate in Hz. */
+  void (*dataReadyCallbackFunction)(void*);	    /*!< The user's data ready callback function. */
+  void* dataReadyCallbackArguments;		          /*!< The user's data ready callback function arguments. */
   void (*readCompleteCallbackFunction)(void*);	/*!< The user's read complete callback function. */
-  void* readCompleteCallbackArguments;		/*!< The user's read complete callback function arguments. */
+  void* readCompleteCallbackArguments;		      /*!< The user's read complete callback function arguments. */
+  TOSThreadParams* ThreadParams;                /*!< Thread parameters for AccelThread. */
+  TOSThreadParams* I2CThreadParams;             /*!< Thread parameters for I2CThread. */
 } TAccelSetup;
 
 #pragma pack(push)
@@ -47,6 +50,7 @@ typedef union
 
 #pragma pack(pop)
 
+void AccelThread(void* pData);
 
 /*! @brief Initializes the accelerometer by calling the initialization routines of the supporting software modules.
  *

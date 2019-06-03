@@ -13,19 +13,31 @@
  */
 
 
-// new types
-#include "types.h"
-#include "MK70F12.h"
 #include "RTC.h"
 
+// Local globals to store callback function
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-bool RTC_Init(void (*userFunction)(void*), void* userArguments)
+static OS_ECB *RTCSemaphore; /*!< Incrementing semaphore for RTCThread execution */
+
+bool RTC_Init(const TRTCSetup* const RTCSetup)
 {
+  // Local variable to store any errors for OS
+  OS_ERROR error;
+
+  //Create semaphore
+  RTCSemaphore = OS_SemaphoreCreate(0);
+
+  //Create RTC thread
+  error = OS_ThreadCreate(RTCThread,
+  			  RTCSetup->ThreadParams->pData,
+  			  RTCSetup->ThreadParams->pStack,
+  			  RTCSetup->ThreadParams->priority);
+
   //Initialise local versions for userFunction and userArgument
-  UserFunction = userFunction;
-  UserArguments = userArguments;
+  UserFunction = RTCSetup->CallbackFunction;
+  UserArguments = RTCSetup->CallbackArguments;
 
   // Enable RTC clock in clock gate 6
   SIM_SCGC6 |= SIM_SCGC6_RTC_MASK;
@@ -40,22 +52,22 @@ bool RTC_Init(void (*userFunction)(void*), void* userArguments)
 
   //Check if load capacitor values have already been set
   if (!(RTC_LR & RTC_LR_CRL_MASK))
-    {
-      //Disable RTC Oscillator
-      RTC_CR &= ~RTC_CR_OSCE_MASK;
+  {
+    //Disable RTC Oscillator
+    RTC_CR &= ~RTC_CR_OSCE_MASK;
 
-      //Set Load Capacitance to 18PF (as per schematic)
-      RTC_CR |= RTC_CR_SC2P_MASK | RTC_CR_SC16P_MASK;
+    //Set Load Capacitance to 18PF (as per schematic)
+    RTC_CR |= RTC_CR_SC2P_MASK | RTC_CR_SC16P_MASK;
 
-      //Lock control register to indicate load capacitor values have already been set
-      RTC_LR &= ~RTC_LR_CRL_MASK;
+    //Lock control register to indicate load capacitor values have already been set
+    RTC_LR &= ~RTC_LR_CRL_MASK;
 
-      //Enable RTC Oscillator
-      RTC_CR |= RTC_CR_OSCE_MASK;
+    //Enable RTC Oscillator
+    RTC_CR |= RTC_CR_OSCE_MASK;
 
-      //Wait for oscillator to stabilise
-      for(uint16_t i = 0; i<0xFFFF;i++);
-    }
+    //Wait for oscillator to stabilise
+    for (uint16_t i = 0; i<0xFFFF;i++);
+  }
 
   // Enable RTC Time Seconds Interrupt
   RTC_IER |= RTC_IER_TSIE_MASK;
@@ -102,11 +114,28 @@ void RTC_Get(uint8_t* const hours, uint8_t* const minutes, uint8_t* const second
   *seconds = tsr % 60U;     	/* Seconds */
 }
 
+void RTCThread(void* pData)
+{
+  for (;;)
+  {
+    //wait for ISR to trigger semaphore to indicate loaded time has elapsed
+    OS_SemaphoreWait(RTCSemaphore,0);
+
+    // Execute the passed callback function
+    if (UserFunction)
+      (*UserFunction)(UserArguments);
+
+  }
+}
+
 void __attribute__ ((interrupt)) RTC_ISR(void)
 {
-  // Call user function
-  if (UserFunction)
-    (*UserFunction)(UserArguments);
+  OS_ISREnter();
+
+  //Signal semaphore to indicate loaded time has elapsed
+  OS_SemaphoreSignal(RTCSemaphore);
+
+  OS_ISRExit();
 }
 
 /*!

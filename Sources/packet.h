@@ -18,6 +18,9 @@
 
 // New types
 #include "types.h"
+#include "OS.h"
+#include "UART.h"
+#include "CPU.h"
 
 // Packet structure
 #define PACKET_NB_BYTES 5
@@ -56,6 +59,14 @@ typedef union
 
 #pragma pack(pop)
 
+typedef struct
+{
+  uint32_t UARTModuleClk;				  /*!< The UART module clock rate in Hz. */
+  uint32_t UARTBaudRate;          /*!< The UART desired baud rate in bits/sec. */
+  TOSThreadParams* UARTTxParams;  /*!< Thread parameters for UARTTxThread. */
+  TOSThreadParams* UARTRxParams;  /*!< Thread parameters for UARTRxThread. */
+} TPacketSetup;
+
 #define Packet_Command     Packet.packetStruct.command
 #define Packet_Parameter1  Packet.packetStruct.parameters.separate.parameter1
 #define Packet_Parameter2  Packet.packetStruct.parameters.separate.parameter2
@@ -87,7 +98,7 @@ static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, c
  *  @param moduleClk The module clock rate in Hz.
  *  @return bool - TRUE if the packet module was successfully initialized.
  */
-bool Packet_Init(const uint32_t baudRate, const uint32_t moduleClk);
+bool Packet_Init(const TPacketSetup* const packetSetup);
 
 /*! @brief Attempts to get a packet from the received data.
  *

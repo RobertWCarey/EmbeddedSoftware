@@ -76,4 +76,12 @@ typedef struct
   uint8_t seconds;
 } Time;
 
+typedef struct
+{
+  void* pData;
+  void* pStack;
+  const uint8_t priority;
+} TOSThreadParams;
+
+
 #endif

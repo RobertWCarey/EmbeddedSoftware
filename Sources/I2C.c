@@ -12,18 +12,14 @@
  *  @date 2019-05-17
  */
 
-
 // new types
 #include "I2C.h"
-#include "math.h"
-#include "stdlib.h"
-#include "types.h"
-#include "MK70F12.h"
-#include "Cpu.h"
 
 //Variable to place user defined functions passed form aI2CModule
 static void (*UserFunction)(void*);
 static void* UserArguments;
+
+static OS_ECB *I2CReadCompleteSemaphore;/*!< Incrementing semaphore for I2CThread execution */
 
 // Definitions for setting I2C0 control register 1
 #define I2C0_START_BIT I2C0_C1 |= I2C_C1_MST_MASK
@@ -37,8 +33,8 @@ static void* UserArguments;
 #define I2C0_INTERRUPT_DEN I2C0_C1 &= ~I2C_C1_IICIE_MASK
 
 //Read and write bit for I2C message
-static const uint8_t ReadBit = 0x01;
-static const uint8_t WriteBit = 0x00;
+static const uint8_t READBIT = 0x01;
+static const uint8_t WRITEBIT = 0x00;
 
 //Local globals for interrupt service routines
 static uint8_t RegisterAddress;
@@ -57,7 +53,7 @@ static const uint32 I2C_SCLDividerValues[I2C_ICR_RANGE] =
     512, 579, 640, 768, 960, 640, 768, 896, 1024, 1152, 1280, 1536,
     1920, 1280, 1536, 1792, 2048, 2304, 2560, 3072, 3840};
 
-//Private global to store slaveAddress
+//Local global to store slaveAddress
 static uint8_t SlaveAddress;
 
 /*! @brief Waits for Interrupt flag to be raised and then clears it.
@@ -112,11 +108,23 @@ static void ResetDeadLock()
   PORTE_PCR19 = PORT_PCR_MUX(4) | PORT_PCR_ODE_MASK | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
 }
 
-bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
+bool I2C_Init(const TI2CSetup* const aI2CModule)
 {
   //Load in user functions
   UserFunction = aI2CModule->readCompleteCallbackFunction;
   UserArguments = aI2CModule->readCompleteCallbackArguments;
+
+  // Local variable to store any errors for OS
+  OS_ERROR error;
+
+  // Create Semaphore
+  I2CReadCompleteSemaphore = OS_SemaphoreCreate(0);
+
+  // Create I2C thread
+  error = OS_ThreadCreate(I2CThread,
+			  aI2CModule->ThreadParams->pData,
+			  aI2CModule->ThreadParams->pStack,
+			  aI2CModule->ThreadParams->priority);
 
   //Enable clk gate for I2C0
   SIM_SCGC4 |= SIM_SCGC4_IIC0_MASK;
@@ -134,7 +142,7 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
   //Configure the baud rate for the I2C
 
   //The desired divider value
-  uint32_t targetSCLDiv = moduleClk / aI2CModule->baudRate;
+  uint32_t targetSCLDiv = aI2CModule->moduleClk / aI2CModule->baudRate;
 
   //Used to store the smallest error
   uint32_t minDiff = 0xFFFFFFFF;
@@ -144,21 +152,21 @@ bool I2C_Init(const TI2CModule* const aI2CModule, const uint32_t moduleClk)
 
   //Cycle through all the ICR range
   for (int i = 0; i < I2C_ICR_RANGE; i++)
+  {
+    //Cycle through the possible mult values
+    for (int j = 0; j < 3; j++)
     {
-      //Cycle through the possible mult values
-      for (int j = 0; j < 3; j++)
-	{
-	  //Calculate difference for current values
-	  uint32_t diff = abs(I2C_SCLDividerValues[i] * pow(2,j) - targetSCLDiv);
-	  if (diff < minDiff)
-	    {
-	      //Update values
-	      minDiff = diff;
-	      closestMult = j;
-	      closestICR = i;
-	    }
-	}
+      //Calculate difference for current values
+      uint32_t diff = abs(I2C_SCLDividerValues[i] * pow(2,j) - targetSCLDiv);
+      if (diff < minDiff)
+      {
+	//Update values
+	minDiff = diff;
+	closestMult = j;
+	closestICR = i;
+      }
     }
+  }
 
   //load calculated values into the freq divider register
   I2C0_F |= I2C_F_ICR(closestICR);
@@ -196,7 +204,6 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
 
-  EnterCritical();
   //Select transmit mode
   I2C0_TRANSMIT;
 
@@ -204,7 +211,7 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
   I2C0_START_BIT;
 
   //Send Slave address + Write bit
-  I2C0_D = ((SlaveAddress << 1) | WriteBit);
+  I2C0_D = ((SlaveAddress << 1) | WRITEBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -223,7 +230,6 @@ void I2C_Write(const uint8_t registerAddress, const uint8_t data)
 
   //Send Stop bit
   I2C0_STOP_BIT;
-  ExitCritical();
 }
 
 void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
@@ -232,8 +238,6 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
 
-  EnterCritical();
-
   //Select transmit mode
   I2C0_TRANSMIT;
 
@@ -241,7 +245,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   I2C0_START_BIT;
 
   //Send Slave address + Write bit
-  I2C0_D = ((SlaveAddress << 1) | WriteBit);
+  I2C0_D = ((SlaveAddress << 1) | WRITEBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -255,7 +259,7 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
   I2C0_REPEAT_START_BIT;
 
   //Send Slave address + Read bit
-  I2C0_D = ((SlaveAddress << 1) | ReadBit);
+  I2C0_D = ((SlaveAddress << 1) | READBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -284,33 +288,31 @@ void I2C_PollRead(const uint8_t registerAddress, uint8_t* const data, const uint
 
     //if at the last byte
     if (i == nbBytes - 1)
-      {
-	I2C0_STOP_BIT; //Send Stop bit
-	// Read data into the dynamic array
-	data[i] = I2C0_D;
-      }
+    {
+      I2C0_STOP_BIT; //Send Stop bit
+      // Read data into the dynamic array
+      data[i] = I2C0_D;
+    }
     else
-      {
-	// Read data into the dynamic array
-	data[i] = I2C0_D;
-	//Wait for transfer to complete
-      	Wait();
-      }
+    {
+      // Read data into the dynamic array
+      data[i] = I2C0_D;
+      //Wait for transfer to complete
+      Wait();
+    }
   }
-
-  ExitCritical();
 
 }
 
 void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8_t nbBytes)
 {
+  // Load values into local globals
   NbBytes = nbBytes;
   RegisterAddress = registerAddress;
   Data = data;
 
   //Wait for the bus to clear
   while (I2C0_S & I2C_S_BUSY_MASK);
-  EnterCritical();
   //Select transmit mode
   I2C0_TRANSMIT;
 
@@ -318,7 +320,7 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   I2C0_START_BIT;
 
   //Send Slave address + Write bit
-  I2C0_D = ((SlaveAddress << 1) | WriteBit);
+  I2C0_D = ((SlaveAddress << 1) | WRITEBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -333,7 +335,7 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
   I2C0_REPEAT_START_BIT;
 
   //Send Slave address + Read bit
-  I2C0_D = ((SlaveAddress << 1) | ReadBit);
+  I2C0_D = ((SlaveAddress << 1) | READBIT);
 
   //Wait for transfer to complete
   Wait();
@@ -352,41 +354,56 @@ void I2C_IntRead(const uint8_t registerAddress, uint8_t* const data, const uint8
 
   //Enable Interrupt for I2C0
   I2C0_INTERRUPT_EN;
-  ExitCritical();
+}
+
+void I2CThread(void* pData)
+{
+  for (;;)
+  {
+    //wait for ISR to trigger semaphore to indicate that read has completed
+    OS_SemaphoreWait(I2CReadCompleteSemaphore,0);
+
+    // Execute the passed callback function
+    if (UserFunction)
+      (*UserFunction)(UserArguments);
+
+  }
 }
 
 void __attribute__ ((interrupt)) I2C_ISR(void)
 {
+  OS_ISREnter();
+
   //Clear the flag
   I2C0_S |= I2C_S_IICIF_MASK;
 
   //Check that in receive mode
   if (!(I2C0_C1 & I2C_C1_TX_MASK) && (I2C0_S & I2C_S_TCF_MASK))
+  {
+    //if at the second last byte
+    if (CurrentByte == NbBytes - 2)
+      I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
+
+    //if at the last byte
+    if (CurrentByte == NbBytes - 1)
     {
-      //if at the second last byte
-      if (CurrentByte == NbBytes - 2)
-	I2C0_TRANSMIT_NACK; //Set NACK to be send after next receive
-
-
-
-      //if at the last byte
-      if (CurrentByte == NbBytes - 1)
-	{
-	  I2C0_STOP_BIT; //Send Stop bit
-	  I2C0_INTERRUPT_DEN;//Disable interrupts
-	  // Read data into the dynamic array
-	  Data[CurrentByte] = I2C0_D;
-	  CurrentByte = 0;//Reset currentByte
-	  if (UserFunction)
-	    (*UserFunction)(UserArguments);
-	}
-      else
-	{
-	  // Read data into the dynamic array
-	  Data[CurrentByte] = I2C0_D;
-	  CurrentByte++;
-	}
+      I2C0_STOP_BIT; //Send Stop bit
+      I2C0_INTERRUPT_DEN;//Disable interrupts
+      // Read data into the dynamic array
+      Data[CurrentByte] = I2C0_D;
+      CurrentByte = 0;//Reset currentByte
+      //Signal semaphore to indicate that read has completed
+      OS_SemaphoreSignal(I2CReadCompleteSemaphore);
     }
+    else
+    {
+      // Read data into the dynamic array
+      Data[CurrentByte] = I2C0_D;
+      CurrentByte++;
+    }
+  }
+
+  OS_ISRExit();
 }
 
 

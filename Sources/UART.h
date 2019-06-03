@@ -18,14 +18,37 @@
 
 // new types
 #include "types.h"
+#include "MK70F12.h"
+#include "FIFO.h"
+#include "CPU.h"
+#include "OS.h"
+
+typedef struct
+{
+  uint32_t moduleClk;		/*!< The module clock rate in Hz. */
+  uint32_t baudRate;		/*!< The desired baud rate in bits/sec. */
+  TOSThreadParams* TxParams;	/*!< Thread parameters for UARTTxThread. */
+  TOSThreadParams* RxParams;	/*!< Thread parameters for UARTRxThread. */
+} TUARTSetup;
+
+/*! @brief Transmits data from the tower using UART2.
+ *
+ *  @param pData is not used but is required by the OS to create a thread.
+ */
+void UARTTxThread(void* pData);
+
+/*! @brief Receives data sent to the UART2 of the tower.
+ *
+ *  @param pData is not used but is required by the OS to create a thread.
+ */
+void UARTRxThread(void* pData);
 
 /*! @brief Sets up the UART interface before first use.
  *
- *  @param baudRate The desired baud rate in bits/sec.
- *  @param moduleClk The module clock rate in Hz.
+ *  @param UARTSetup is a pointer to an UART setup structure.
  *  @return bool - TRUE if the UART was successfully initialized.
  */
-bool UART_Init(const uint32_t baudRate, const uint32_t moduleClk);
+bool UART_Init(const TUARTSetup* const uartSetup);
  
 /*! @brief Get a character from the receive FIFO if it is not empty.
  *

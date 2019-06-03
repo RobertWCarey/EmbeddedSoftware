@@ -18,15 +18,33 @@
 #include "FTM.h"
 #include "MK70F12.h"
 #include "CPU.h"
+#include "OS.h"
 
 //Addresses for function that will store user callback function
 //define an array for multiple channel functions and arguments
 static void (*UserFunction[8])(void*);
 static void* UserArguments[8];
 
+// Local global to indicate which channel callback to execute
+static bool Execute[8];
 
-bool FTM_Init()
+static OS_ECB *FTMSemaphore;/*!< Incrementing semaphore for FTMThread execution */
+
+
+bool FTM_Init(const TOSThreadParams* const ThreadParams)
 {
+  // Local variable to store any errors for OS
+  OS_ERROR error;
+
+  // Create semaphore
+  FTMSemaphore = OS_SemaphoreCreate(0);
+
+  //Create thread
+  error = OS_ThreadCreate(FTMThread,
+			  ThreadParams->pData,
+			  ThreadParams->pStack,
+			  ThreadParams->priority);
+
   // Enable FTM0 in Clock gate
   SIM_SCGC6 |= SIM_SCGC6_FTM0_MASK;
 
@@ -101,8 +119,25 @@ bool FTM_StartTimer(const TFTMChannel* const aFTMChannel)
   return true;
 }
 
+void FTMThread(void* pData)
+{
+  for (;;)
+  {
+    //wait for ISR to trigger semaphore to indicate loaded time has elapsed for one of the channels
+    OS_SemaphoreWait(FTMSemaphore,0);
+//    sizeof (data)/sizeof (data[0])
+    for (int i = 0; i <= 7; i++)
+    {
+      if (Execute[i])
+        if (UserFunction[i])
+          (*UserFunction[i])(UserArguments[i]);
+    }
+  }
+}
+
 void __attribute__ ((interrupt)) FTM0_ISR(void)
 {
+  OS_ISREnter();
   uint8_t statusReg0 = FTM0_C0SC;
 
   // Clear the CHF and execute callback function;
@@ -111,11 +146,12 @@ void __attribute__ ((interrupt)) FTM0_ISR(void)
     if (FTM0_CnSC(channelNb) & FTM_CnSC_CHF_MASK)
     {
       FTM0_CnSC(channelNb) &= ~FTM_CnSC_CHF_MASK;
-      if (UserFunction[channelNb])
-	(*UserFunction[channelNb])(UserArguments[channelNb]);
+      Execute[channelNb] = true;
+      // Signal semaphore to indicate loaded time has elapsed for one of the channels
+      OS_SemaphoreSignal(FTMSemaphore);
     }
   }
-
+  OS_ISRExit();
 }
 
 /*!

@@ -27,7 +27,6 @@
 // CPU and PE_types are needed for critical section variables and the defintion of NULL pointer
 #include "CPU.h"
 #include "PE_types.h"
-#include "PIT.h"
 
 // Accelerometer registers
 #define ADDRESS_OUT_X_MSB 0x01
@@ -104,6 +103,7 @@ static union
 #define ADDRESS_CTRL_REG2 0x2B
 
 #define ADDRESS_CTRL_REG3 0x2C
+
 
 static union
 {
@@ -194,17 +194,29 @@ static void* UserArguments;
 //Global constant for I2C baud rate
 static const uint32_t I2C_BAUD_RATE = 100000;
 
+static OS_ECB *AccelDataReadySemaphore;
+
 bool Accel_Init(const TAccelSetup* const accelSetup)
 {
+  OS_ERROR error;
+  AccelDataReadySemaphore = OS_SemaphoreCreate(0);
+
+  error = OS_ThreadCreate(AccelThread,
+     			  accelSetup->ThreadParams->pData,
+			  accelSetup->ThreadParams->pStack,
+			  accelSetup->ThreadParams->priority);
+
   //Struct to configure I2C module
-  TI2CModule i2cSetup;
+  TI2CSetup i2cSetup;
   i2cSetup.baudRate = I2C_BAUD_RATE;
+  i2cSetup.moduleClk = accelSetup->moduleClk;
   i2cSetup.primarySlaveAddress = ACCEL_ADDRESS;
   i2cSetup.readCompleteCallbackArguments = accelSetup->readCompleteCallbackArguments;
   i2cSetup.readCompleteCallbackFunction = accelSetup->readCompleteCallbackFunction;
+  i2cSetup.ThreadParams = accelSetup->I2CThreadParams;
 
   //Initialise I2C module
-  I2C_Init(&i2cSetup,accelSetup->moduleClk);
+  I2C_Init(&i2cSetup);
 
   //Place Accelerometer in standby mode so that registers can be modified.
   CTRL_REG1_ACTIVE = 0;//Modify reg1 union for standby
@@ -255,7 +267,7 @@ void Accel_ReadXYZ(uint8_t data[3])
 void Accel_SetMode(const TAccelMode mode)
 {
   //Entering Critical Section
-  EnterCritical();
+  OS_DisableInterrupts();
 
   //Place Accelerometer in standby mode so that registers can be modified.
   CTRL_REG1_ACTIVE = 0;//Modify reg1 union for standby
@@ -265,9 +277,6 @@ void Accel_SetMode(const TAccelMode mode)
   {
     //Synchronous mode (use PIT interrupt)
     case ACCEL_POLL:
-      //Enable PIT
-      PIT_Enable(true);
-
       //Disable PortB interrupt (0b0000)
       PORTB_PCR4 |= PORT_PCR_IRQC(0);
 
@@ -279,9 +288,6 @@ void Accel_SetMode(const TAccelMode mode)
 
     //Asynchronous mode (use PORTB interrupt)
     case ACCEL_INT:
-      //Disable PIT
-      PIT_Enable(false);
-
       //Enable PortB interrupt on falling edge (0b1010)
       PORTB_PCR4 |= PORT_PCR_IRQC(10);
 
@@ -298,16 +304,31 @@ void Accel_SetMode(const TAccelMode mode)
   CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
   I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
 
-  ExitCritical(); //End critical section
+  OS_EnableInterrupts(); //End critical section
+}
+
+void AccelThread(void* pData)
+{
+  for (;;)
+  {
+    //wait for ISR to trigger semaphore to indicate accelerometer data is ready
+    OS_SemaphoreWait(AccelDataReadySemaphore,0);
+
+    // Execute the passed callback function
+    if (UserFunction)
+      (*UserFunction)(UserArguments);
+
+  }
 }
 
 void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
 {
+  OS_ISREnter();
   //Clear Flag
   PORTB_PCR4 |= PORT_PCR_ISF_MASK;
-
-  if (UserFunction)
-    (*UserFunction)(UserArguments);
+  //Signal semaphore to indicate accelerometer data is ready
+  OS_SemaphoreSignal(AccelDataReadySemaphore);
+  OS_ISRExit();
 }
 
 /*!

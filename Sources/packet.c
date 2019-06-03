@@ -15,8 +15,6 @@
 
 // Include Header Files
 #include "packet.h"
-#include "UART.h"
-#include "CPU.h"
 
 // Acknowledgment bit mask
 const uint8_t PACKET_ACK_MASK = 0x80u;
@@ -29,9 +27,16 @@ static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, c
   return (command^parameter1^parameter2^parameter3);
 }
 
-bool Packet_Init(const uint32_t baudRate, const uint32_t moduleClk)
+bool Packet_Init(const TPacketSetup* const packetSetup)
 {
-  return UART_Init(baudRate,moduleClk);
+  // UART setup struct
+  TUARTSetup UARTSetup;
+  UARTSetup.baudRate = packetSetup->UARTBaudRate;
+  UARTSetup.moduleClk = packetSetup->UARTModuleClk;
+  UARTSetup.TxParams = packetSetup->UARTTxParams;
+  UARTSetup.RxParams = packetSetup->UARTRxParams;
+
+  return UART_Init(&UARTSetup);
 }
 
 bool Packet_Get(void)
@@ -41,7 +46,9 @@ bool Packet_Get(void)
   {
     // Check if a valid packet
     if ( ((returnChecksum(Packet_Command,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3))==Packet_Checksum) && (Packet_Command!=0) )
+    {
       return true;
+    }
     // If not a valid packet cycle values
     Packet_Command = Packet_Parameter1;
     Packet_Parameter1 = Packet_Parameter2;
@@ -54,37 +61,19 @@ bool Packet_Get(void)
 
 bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3)
 {
-  EnterCritical(); // Entering critical section
   // Send bytes of packet into UART
-  if (!UART_OutChar(command))
-    {
-      ExitCritical(); // Exiting critical section
-      return false;
-    }
-  if (!UART_OutChar(parameter1))
-    {
-      ExitCritical(); // Exiting critical section
-      return false;
-    }
-  if (!UART_OutChar(parameter2))
-    {
-      ExitCritical(); // Exiting critical section
-      return false;
-    }
-  if (!UART_OutChar(parameter3))
-    {
-      ExitCritical(); // Exiting critical section
-      return false;
-    }
-  if (!UART_OutChar(returnChecksum(command,parameter1,parameter2,parameter3)))
-    {
-      ExitCritical(); // Exiting critical section
-      return false;
-    }
+  if (UART_OutChar(command) &&
+    UART_OutChar(parameter1) &&
+    UART_OutChar(parameter2) &&
+    UART_OutChar(parameter3) &&
+    UART_OutChar(returnChecksum(command,parameter1,parameter2,parameter3)))
+  {
+    //If all packet successfully sent
+    return true;
+  }
 
-  ExitCritical(); // Exiting critical section
-  // If all bytes successfully written to UART
-  return true;
+  // If all bytes are not successfully written to UART
+  return false;
 }
 /*!
  * @}

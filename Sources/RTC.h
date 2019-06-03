@@ -17,16 +17,28 @@
 
 // new types
 #include "types.h"
+#include "OS.h"
+#include "MK70F12.h"
+#include "stddef.h"
+
+typedef struct
+{
+  void (*CallbackFunction)(void*);	/*!< The user's callback function. */
+  void* CallbackArguments;		      /*!< The user's callback function arguments. */
+  TOSThreadParams* ThreadParams;    /*!< Thread parameters for RTCThread. */
+} TRTCSetup;
+
+
+void RTCThread(void* pData);
 
 /*! @brief Initializes the RTC before first use.
  *
  *  Sets up the control register for the RTC and locks it.
  *  Enables the RTC and sets an interrupt every second.
- *  @param userFunction is a pointer to a user callback function.
- *  @param userArguments is a pointer to the user arguments to use with the user callback function.
+ *  @param RTCSetup is a pointer to an RTC setup structure.
  *  @return bool - TRUE if the RTC was successfully initialized.
  */
-bool RTC_Init(void (*userFunction)(void*), void* userArguments);
+bool RTC_Init(const TRTCSetup* const RTCSetup);
 
 /*! @brief Sets the value of the real time clock.
  *
