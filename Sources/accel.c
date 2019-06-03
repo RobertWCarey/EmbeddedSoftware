@@ -311,8 +311,10 @@ void AccelThread(void* pData)
 {
   for (;;)
   {
+    //wait for ISR to trigger semaphore to indicate accelerometer data is ready
     OS_SemaphoreWait(AccelDataReadySemaphore,0);
 
+    // Execute the passed callback function
     if (UserFunction)
       (*UserFunction)(UserArguments);
 
@@ -324,6 +326,7 @@ void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
   OS_ISREnter();
   //Clear Flag
   PORTB_PCR4 |= PORT_PCR_ISF_MASK;
+  //Signal semaphore to indicate accelerometer data is ready
   OS_SemaphoreSignal(AccelDataReadySemaphore);
   OS_ISRExit();
 }

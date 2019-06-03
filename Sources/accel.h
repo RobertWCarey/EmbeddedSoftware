@@ -27,13 +27,13 @@ typedef enum
 
 typedef struct
 {
-  uint32_t moduleClk;				/*!< The module clock rate in Hz. */
-  void (*dataReadyCallbackFunction)(void*);	/*!< The user's data ready callback function. */
-  void* dataReadyCallbackArguments;		/*!< The user's data ready callback function arguments. */
+  uint32_t moduleClk;				                    /*!< The module clock rate in Hz. */
+  void (*dataReadyCallbackFunction)(void*);	    /*!< The user's data ready callback function. */
+  void* dataReadyCallbackArguments;		          /*!< The user's data ready callback function arguments. */
   void (*readCompleteCallbackFunction)(void*);	/*!< The user's read complete callback function. */
-  void* readCompleteCallbackArguments;		/*!< The user's read complete callback function arguments. */
-  TOSThreadParams* ThreadParams;
-  TOSThreadParams* I2CThreadParams;
+  void* readCompleteCallbackArguments;		      /*!< The user's read complete callback function arguments. */
+  TOSThreadParams* ThreadParams;                /*!< Thread parameters for AccelThread. */
+  TOSThreadParams* I2CThreadParams;             /*!< Thread parameters for I2CThread. */
 } TAccelSetup;
 
 #pragma pack(push)
