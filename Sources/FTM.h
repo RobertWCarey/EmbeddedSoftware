@@ -60,6 +60,7 @@ void FTMThread(void* pData);
 /*! @brief Sets up the FTM before first use.
  *
  *  Enables the FTM as a free running 16-bit counter.
+ *  @param ThreadParams is a pointer the FTM thread parameter struct
  *  @return bool - TRUE if the FTM was successfully initialized.
  */
 bool FTM_Init(const TOSThreadParams* const ThreadParams);

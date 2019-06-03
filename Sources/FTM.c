@@ -25,16 +25,21 @@
 static void (*UserFunction[8])(void*);
 static void* UserArguments[8];
 
+// Local global to indicate which channel callback to execute
 static bool Execute[8];
 
-static OS_ECB *FTMSemaphore;
+static OS_ECB *FTMSemaphore;/*!< Incrementing semaphore for FTMThread execution */
 
 
 bool FTM_Init(const TOSThreadParams* const ThreadParams)
 {
+  // Local variable to store any errors for OS
   OS_ERROR error;
+
+  // Create semaphore
   FTMSemaphore = OS_SemaphoreCreate(0);
 
+  //Create thread
   error = OS_ThreadCreate(FTMThread,
 			  ThreadParams->pData,
 			  ThreadParams->pStack,
@@ -118,20 +123,21 @@ void FTMThread(void* pData)
 {
   for (;;)
   {
+    //wait for ISR to trigger semaphore to indicate loaded time has elapsed for one of the channels
     OS_SemaphoreWait(FTMSemaphore,0);
 //    sizeof (data)/sizeof (data[0])
     for (int i = 0; i <= 7; i++)
-      {
-	if (Execute[i])
-	  if (UserFunction[i])
-	    (*UserFunction[i])(UserArguments[i]);
-      }
-
+    {
+      if (Execute[i])
+        if (UserFunction[i])
+          (*UserFunction[i])(UserArguments[i]);
+    }
   }
 }
 
 void __attribute__ ((interrupt)) FTM0_ISR(void)
 {
+  OS_ISREnter();
   uint8_t statusReg0 = FTM0_C0SC;
 
   // Clear the CHF and execute callback function;
@@ -141,12 +147,11 @@ void __attribute__ ((interrupt)) FTM0_ISR(void)
     {
       FTM0_CnSC(channelNb) &= ~FTM_CnSC_CHF_MASK;
       Execute[channelNb] = true;
+      // Signal semaphore to indicate loaded time has elapsed for one of the channels
       OS_SemaphoreSignal(FTMSemaphore);
-//      if (UserFunction[channelNb])
-//	(*UserFunction[channelNb])(UserArguments[channelNb]);
     }
   }
-
+  OS_ISRExit();
 }
 
 /*!
