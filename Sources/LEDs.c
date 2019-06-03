@@ -15,6 +15,7 @@
 #include "LEDs.h"
 #include "MK70F12.h"
 #include "CPU.h"
+#include "OS.h"
 
 
 bool LEDs_Init(void)
@@ -45,26 +46,26 @@ bool LEDs_Init(void)
 
 void LEDs_On(const TLED color)
 {
-  EnterCritical(); // Entering critical section
+  OS_DisableInterrupts(); // Entering critical section
   // Set logic low to put a voltage across LED
   GPIOA_PCOR = color;
-  ExitCritical(); // Exiting critical section
+  OS_EnableInterrupts(); // Exiting critical section
 }
 
 void LEDs_Off(const TLED color)
 {
-  EnterCritical(); // Entering critical section
+  OS_DisableInterrupts(); // Entering critical section
   // Set logic high to clear voltage across LED
   GPIOA_PSOR = color;
-  ExitCritical(); // Exiting critical section
+  OS_EnableInterrupts(); // Exiting critical section
 }
 
 void LEDs_Toggle(const TLED color)
 {
-  EnterCritical(); // Entering critical section
+  OS_DisableInterrupts(); // Entering critical section
   // Toggle LED
   GPIOA_PTOR = color;
-  ExitCritical(); // Exiting critical section
+  OS_EnableInterrupts(); // Exiting critical section
 }
 /*!
  * @}

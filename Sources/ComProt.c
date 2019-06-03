@@ -162,11 +162,11 @@ static bool timePacketHandler()
   if ((Packet_Parameter1 >= TIME_RANGE_LO) && (Packet_Parameter2 >= TIME_RANGE_LO) && (Packet_Parameter3 >= TIME_RANGE_LO))
     //Check upper values for valid range
     if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) && (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) && (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
-      {
-	// Update the current RTC value
-	RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
-	return true;
-      }
+    {
+      // Update the current RTC value
+      RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
+      return true;
+    }
 
   return false;
 }
@@ -183,23 +183,23 @@ static bool protModePacketHandler(TAccelMode* const AccelMode)
 
   // Check for Valid get parameters
   if ( (Packet_Parameter1 == PROT_MODE_GET) && !(Packet_Parameter2) )
-    {
-      // Send current mode
-      return Packet_Put(CMD_PROT_MODE, PROT_MODE_GET, *AccelMode, PROT_MODE_PARAM3);
-    }
+  {
+    // Send current mode
+    return Packet_Put(CMD_PROT_MODE, PROT_MODE_GET, *AccelMode, PROT_MODE_PARAM3);
+  }
   // Check for valid Set parameters
   else if (Packet_Parameter1 == PROT_MODE_SET)
+  {
+    //Set mode based on packet_parameter2 as long as valid
+    if ((Packet_Parameter2 == PROT_MODE_ASYNC) || (Packet_Parameter2 == PROT_MODE_SYNC))
     {
-      //Set mode based on packet_parameter2 as long as valid
-      if ((Packet_Parameter2 == PROT_MODE_ASYNC) || (Packet_Parameter2 == PROT_MODE_SYNC))
-	{
-	  // Update accelerometer mode
-	  Accel_SetMode(Packet_Parameter2);
-	  // Update variable storing current mode
-	  *AccelMode = Packet_Parameter2;
-	  return true;
-	}
+      // Update accelerometer mode
+      Accel_SetMode(Packet_Parameter2);
+      // Update variable storing current mode
+      *AccelMode = Packet_Parameter2;
+      return true;
     }
+  }
 
   return false;
 }

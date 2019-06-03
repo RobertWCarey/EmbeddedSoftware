@@ -325,8 +325,6 @@ void __attribute__ ((interrupt)) AccelDataReady_ISR(void)
   //Clear Flag
   PORTB_PCR4 |= PORT_PCR_ISF_MASK;
   OS_SemaphoreSignal(AccelDataReadySemaphore);
-//  if (UserFunction)
-//    (*UserFunction)(UserArguments);
   OS_ISRExit();
 }
 

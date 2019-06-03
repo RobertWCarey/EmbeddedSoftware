@@ -31,9 +31,9 @@ uint8_t Median_Filter3(const uint8_t n1, const uint8_t n2, const uint8_t n3)
     else
     {
       if (n1 > n3)
-	return n3;
+        return n3;
       else
-	return n1;
+        return n1;
     }
   }
   else
@@ -43,9 +43,9 @@ uint8_t Median_Filter3(const uint8_t n1, const uint8_t n2, const uint8_t n3)
     else
     {
       if (n1 > n3)
-	return n1;
+        return n1;
       else
-	return n3;
+        return n3;
     }
   }
 }

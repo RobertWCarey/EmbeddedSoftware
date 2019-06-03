@@ -52,22 +52,22 @@ bool RTC_Init(const TRTCSetup* const RTCSetup)
 
   //Check if load capacitor values have already been set
   if (!(RTC_LR & RTC_LR_CRL_MASK))
-    {
-      //Disable RTC Oscillator
-      RTC_CR &= ~RTC_CR_OSCE_MASK;
+  {
+    //Disable RTC Oscillator
+    RTC_CR &= ~RTC_CR_OSCE_MASK;
 
-      //Set Load Capacitance to 18PF (as per schematic)
-      RTC_CR |= RTC_CR_SC2P_MASK | RTC_CR_SC16P_MASK;
+    //Set Load Capacitance to 18PF (as per schematic)
+    RTC_CR |= RTC_CR_SC2P_MASK | RTC_CR_SC16P_MASK;
 
-      //Lock control register to indicate load capacitor values have already been set
-      RTC_LR &= ~RTC_LR_CRL_MASK;
+    //Lock control register to indicate load capacitor values have already been set
+    RTC_LR &= ~RTC_LR_CRL_MASK;
 
-      //Enable RTC Oscillator
-      RTC_CR |= RTC_CR_OSCE_MASK;
+    //Enable RTC Oscillator
+    RTC_CR |= RTC_CR_OSCE_MASK;
 
-      //Wait for oscillator to stabilise
-      for(uint16_t i = 0; i<0xFFFF;i++);
-    }
+    //Wait for oscillator to stabilise
+    for(uint16_t i = 0; i<0xFFFF;i++);
+  }
 
   // Enable RTC Time Seconds Interrupt
   RTC_IER |= RTC_IER_TSIE_MASK;

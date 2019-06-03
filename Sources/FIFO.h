@@ -28,7 +28,7 @@
  */
 typedef struct
 {
-uint16_t Start;		            /*!< The index of the position of the oldest data in the FIFO */
+  uint16_t Start;		          /*!< The index of the position of the oldest data in the FIFO */
   uint16_t End; 		          /*!< The index of the next available empty position in the FIFO */
   uint8_t Buffer[FIFO_SIZE];	/*!< The actual array of bytes to store the data */
   OS_ECB* SpaceAvailable;     /*!< Incremental Semaphore for spaces in the buffer */

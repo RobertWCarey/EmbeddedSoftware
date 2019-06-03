@@ -25,38 +25,6 @@ static uint8_t RxData;
 static OS_ECB *TxSemaphore;   /*!< Incrementing semaphore for signaling data transmission */
 static OS_ECB *RxSemaphore;   /*!< Incrementing semaphore for signaling receiving of data */
 
-void UARTRxThread(void* pData)
-{
-  for(;;)
-  {
-    //wait for ISR to trigger semaphore to indicate data has been received
-    OS_SemaphoreWait(RxSemaphore,0);
-    // Place received data into receiving buffer
-    FIFO_Put(&RxBuffer, RxData);
-  }
-}
-
-void UARTTxThread(void* pData)
-{
-  for(;;)
-  {
-    //wait for ISR to trigger semaphore to indicate data is ready to be sent
-    OS_SemaphoreWait(TxSemaphore,0);
-
-    // Check if transmit is ready
-    // Prevents unsuccessful writes/transmits
-    if (UART2_S1 & UART_S1_TDRE_MASK)
-    {
-      // Check if there are still items in the transmit buffer
-      if(FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
-        // Re-enable transmission interrupt
-        UART2_C2 |= UART_C2_TIE_MASK;
-    }
-    else
-      UART2_C2 |= UART_C2_TIE_MASK;
-  }
-}
-
 bool UART_Init(const TUARTSetup* const UARTSetup)
 {
   // assigning values to local constants
@@ -158,6 +126,37 @@ bool UART_OutChar(const uint8_t data)
   return false;
 }
 
+void UARTRxThread(void* pData)
+{
+  for(;;)
+  {
+    //wait for ISR to trigger semaphore to indicate data has been received
+    OS_SemaphoreWait(RxSemaphore,0);
+    // Place received data into receiving buffer
+    FIFO_Put(&RxBuffer, RxData);
+  }
+}
+
+void UARTTxThread(void* pData)
+{
+  for(;;)
+  {
+    //wait for ISR to trigger semaphore to indicate data is ready to be sent
+    OS_SemaphoreWait(TxSemaphore,0);
+
+    // Check if transmit is ready
+    // Prevents unsuccessful writes/transmits
+    if (UART2_S1 & UART_S1_TDRE_MASK)
+    {
+      // Check if there are still items in the transmit buffer
+      if(FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
+        // Re-enable transmission interrupt
+        UART2_C2 |= UART_C2_TIE_MASK;
+    }
+    else
+      UART2_C2 |= UART_C2_TIE_MASK;
+  }
+}
 
 void __attribute__ ((interrupt)) UART_ISR(void)
 {
