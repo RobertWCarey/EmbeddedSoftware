@@ -81,15 +81,15 @@ typedef enum
 } TThreadPriority;
 
 // Thread stacks
-OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART receive thread. */
-OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
-OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the UART transmit thread. */
-OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for the Init Modules thread. */
+OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
+OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
+OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the I2C Read Complete thread. */
+OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);         /*!< The stack for the Accel Data Ready thread. */
+OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the PIT thread. */
+OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the RTC thread. */
+OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
+OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
 
 // Thread Parameters
 // Initilisation of modules thread parameters
