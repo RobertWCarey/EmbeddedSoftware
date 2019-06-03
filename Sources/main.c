@@ -244,7 +244,7 @@ static void InitModulesThread(void* pData)
   //Disable Interrupts
   OS_DisableInterrupts();
 
-  //Initilise Modules
+  //Initialise Modules
   Packet_Init(&packetSetup);
   LEDs_Init();
   PIT_Init(&pitSetup);

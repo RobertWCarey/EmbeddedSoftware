@@ -16,7 +16,7 @@
 
 
 // Local global to store PIT Module Clock Period in ns
-static uint8_t PitClkPeriod;
+static uint8_t PITClkPeriod;
 
 // Local globals to store callback function
 static void (*UserFunction)(void*);
@@ -46,7 +46,7 @@ bool PIT_Init(const TPITSetup* const PITSetup)
   SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
 
   //Calculate clk period based on modlueClk value
-  PitClkPeriod = ((1e9)/PITSetup->moduleClk);
+  PITClkPeriod = ((1e9)/PITSetup->moduleClk);
 
   //Enable standard PIT timers
   //Must be done before any setup
@@ -67,7 +67,7 @@ bool PIT_Init(const TPITSetup* const PITSetup)
 
 void PIT_Set(const uint32_t period, const bool restart)
 {
-  uint32_t nbTicks = (period/PitClkPeriod)-1;
+  uint32_t nbTicks = (period/PITClkPeriod)-1;
 
   if (restart)
     //Disable PIT
