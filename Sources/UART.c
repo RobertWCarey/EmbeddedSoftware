@@ -128,7 +128,7 @@ bool UART_OutChar(const uint8_t data)
 
 void UARTRxThread(void* pData)
 {
-  for(;;)
+  for (;;)
   {
     //wait for ISR to trigger semaphore to indicate data has been received
     OS_SemaphoreWait(RxSemaphore,0);
@@ -139,7 +139,7 @@ void UARTRxThread(void* pData)
 
 void UARTTxThread(void* pData)
 {
-  for(;;)
+  for (;;)
   {
     //wait for ISR to trigger semaphore to indicate data is ready to be sent
     OS_SemaphoreWait(TxSemaphore,0);
@@ -149,7 +149,7 @@ void UARTTxThread(void* pData)
     if (UART2_S1 & UART_S1_TDRE_MASK)
     {
       // Check if there are still items in the transmit buffer
-      if(FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
+      if (FIFO_Get(&TxBuffer,(uint8_t*)&UART2_D))
         // Re-enable transmission interrupt
         UART2_C2 |= UART_C2_TIE_MASK;
     }
@@ -166,7 +166,7 @@ void __attribute__ ((interrupt)) UART_ISR(void)
   uint8_t status = UART2_S1;
 
   // Check if Transmit Data Register Empty Flag is set
-  if(UART2_C2 & UART_C2_TIE_MASK)
+  if (UART2_C2 & UART_C2_TIE_MASK)
   {
     // Check that Data reg is ready to transmit
     if (status & UART_S1_TDRE_MASK)

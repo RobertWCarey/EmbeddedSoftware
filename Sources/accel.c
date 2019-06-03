@@ -267,7 +267,7 @@ void Accel_ReadXYZ(uint8_t data[3])
 void Accel_SetMode(const TAccelMode mode)
 {
   //Entering Critical Section
-  EnterCritical();
+  OS_DisableInterrupts();
 
   //Place Accelerometer in standby mode so that registers can be modified.
   CTRL_REG1_ACTIVE = 0;//Modify reg1 union for standby
@@ -304,7 +304,7 @@ void Accel_SetMode(const TAccelMode mode)
   CTRL_REG1_ACTIVE = 1;//Modify reg1 union for active
   I2C_Write(ADDRESS_CTRL_REG1,CTRL_REG1);//write to accelerometer
 
-  ExitCritical(); //End critical section
+  OS_EnableInterrupts(); //End critical section
 }
 
 void AccelThread(void* pData)

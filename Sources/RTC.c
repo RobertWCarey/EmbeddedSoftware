@@ -66,7 +66,7 @@ bool RTC_Init(const TRTCSetup* const RTCSetup)
     RTC_CR |= RTC_CR_OSCE_MASK;
 
     //Wait for oscillator to stabilise
-    for(uint16_t i = 0; i<0xFFFF;i++);
+    for (uint16_t i = 0; i<0xFFFF;i++);
   }
 
   // Enable RTC Time Seconds Interrupt
