@@ -74,7 +74,6 @@ typedef enum
   DORChannel0Priority,
   I2CThreadPriority,
   AccelThreadPriority,
-  PITThreadPriority,
   RTCThreadPriority,
   FTMThreadPriority,
   PacketThreadPriority
@@ -87,7 +86,6 @@ OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for
 OS_THREAD_STACK(DORChannel0ThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the I2C Read Complete thread. */
 OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);         /*!< The stack for the Accel Data Ready thread. */
-OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the PIT thread. */
 OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the RTC thread. */
 OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
@@ -105,8 +103,6 @@ TOSThreadParams DOR_Channel0ThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK
 TOSThreadParams I2C_ThreadParams = {NULL,&I2CThreadStack[THREAD_STACK_SIZE - 1],I2CThreadPriority};
 // Accelerometer thread parameters
 TOSThreadParams Accel_ThreadParams = {NULL,&AccelThreadStack[THREAD_STACK_SIZE - 1],AccelThreadPriority};
-// Periodic Interrupt Timer thread parameters
-TOSThreadParams PIT_ThreadParams = {NULL,&PITThreadStack[THREAD_STACK_SIZE - 1],PITThreadPriority};
 // Real Time Clock thread parameters
 TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],RTCThreadPriority};
 // Flexible Timer Module thread parameters
