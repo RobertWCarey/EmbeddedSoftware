@@ -14,7 +14,11 @@
 
 #include "DOR.h"
 #include "analog.h"
+#include "PIT.h"
 
+
+// Pit time period (nano seconds)
+static const uint32_t PIT_TIME_PERIOD = 1e6;
 
 
 #define NB_ANALOG_CHANNELS 1
@@ -33,7 +37,19 @@ static TAnalogThreadData AnalogThreadData[NB_ANALOG_CHANNELS] =
 
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
+  AnalogThreadData[0].semaphore = OS_SemaphoreCreate(0);
+
+  //PIT setup struct
+  TPITSetup pitSetup;
+  pitSetup.moduleClk = dorSetup->moduleClk;
+  pitSetup.EnablePITThread = 0;
+  pitSetup.Semaphore = AnalogThreadData[0].semaphore;
+
+  PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
+
+  //Set PIT Timer
+  PIT_Set(PIT_TIME_PERIOD, true);
 
   OS_ERROR error;
 
