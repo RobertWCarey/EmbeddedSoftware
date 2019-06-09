@@ -21,8 +21,6 @@ bool FIFO_Init(TFIFO * const fifo)
   // Set initial positions for the FIFO buffer
   fifo->Start = 0;
   fifo->End = 0;
-  //Semaphore to allow buffer access
-  fifo->BufferAccess = OS_SemaphoreCreate(1);
   //Initilise Spaces/Items Available
   fifo->SpaceAvailable = OS_SemaphoreCreate(FIFO_SIZE);
   fifo->ItemsAvailable = OS_SemaphoreCreate(0);
