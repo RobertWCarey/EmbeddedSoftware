@@ -55,9 +55,6 @@ volatile uint16union_t *nvTowerMode;
 // Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
 
-// Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 1000e6;
-
 //Accelerometer mode global
 static TAccelMode AccelMode = ACCEL_POLL;
 //Accelerometer latest data
@@ -117,16 +114,7 @@ TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],
 // Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
 
-/*! @brief Interrupt callback function to be called when PIT_ISR occurs
- *
- *  @param arg The user argument that comes with the callback
- */
-void PITCallback(void* arg)
-{
-  if (AccelMode == ACCEL_POLL)
-    //Read values
-    Accel_ReadXYZ(AccelData.bytes);
-}
+
 
 /*! @brief Interrupt callback function to be called when RTC_ISR occurs
  * Turn on yellow LED and send the time
@@ -234,13 +222,6 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-  //PIT setup struct
-  TPITSetup pitSetup;
-  pitSetup.moduleClk = CPU_BUS_CLK_HZ;
-  pitSetup.CallbackFunction = PITCallback;
-  pitSetup.CallbackArguments = NULL;
-  pitSetup.ThreadParams = &PIT_ThreadParams;
-
   //RTC setup struct
   TRTCSetup rtcSetup;
   rtcSetup.CallbackFunction = RTCCallback;
@@ -258,15 +239,11 @@ static void InitModulesThread(void* pData)
   //Initialise Modules
   Packet_Init(&packetSetup);
   LEDs_Init();
-  PIT_Init(&pitSetup);
   RTC_Init(&rtcSetup);
   FTM_Init(&FTM_ThreadParams);
   Accel_Init(&accelSetup);
   Flash_Init();
   DOR_Init(&dorSetup);
-
-  //Set PIT Timer
-  PIT_Set(PIT_TIME_PERIOD, true);
 
   //Set FTM Timer
   FTM_Set(pData);
