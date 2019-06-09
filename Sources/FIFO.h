@@ -33,7 +33,6 @@ typedef struct
   uint8_t Buffer[FIFO_SIZE];	/*!< The actual array of bytes to store the data */
   OS_ECB* SpaceAvailable;     /*!< Incremental Semaphore for spaces in the buffer */
   OS_ECB* ItemsAvailable;     /*!< Incremental Semaphore for items in the buffer */
-  OS_ECB* BufferAccess;       /*!< Binary Semaphore for access to the buffer */
 } TFIFO;
 
 /*! @brief Initialize the FIFO before first use.
