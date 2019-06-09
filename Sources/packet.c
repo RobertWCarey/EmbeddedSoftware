@@ -22,6 +22,9 @@ const uint8_t PACKET_ACK_MASK = 0x80u;
 // Define Packet
 TPacket Packet;
 
+// Mutex to restrict access to Packet_Put() function
+OS_ECB* PacketAccess;
+
 static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3)
 {
   return (command^parameter1^parameter2^parameter3);
@@ -29,6 +32,9 @@ static uint8_t returnChecksum(const uint8_t command, const uint8_t parameter1, c
 
 bool Packet_Init(const TPacketSetup* const packetSetup)
 {
+  // Create Semaphore
+  PacketAccess = OS_SemaphoreCreate(1);
+
   // UART setup struct
   TUARTSetup UARTSetup;
   UARTSetup.baudRate = packetSetup->UARTBaudRate;
@@ -61,6 +67,7 @@ bool Packet_Get(void)
 
 bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t parameter2, const uint8_t parameter3)
 {
+  OS_SemaphoreWait(PacketAccess, 0);
   // Send bytes of packet into UART
   if (UART_OutChar(command) &&
     UART_OutChar(parameter1) &&
@@ -69,10 +76,12 @@ bool Packet_Put(const uint8_t command, const uint8_t parameter1, const uint8_t p
     UART_OutChar(returnChecksum(command,parameter1,parameter2,parameter3)))
   {
     //If all packet successfully sent
+    OS_SemaphoreSignal(PacketAccess);
     return true;
   }
 
   // If all bytes are not successfully written to UART
+  OS_SemaphoreSignal(PacketAccess);
   return false;
 }
 /*!
