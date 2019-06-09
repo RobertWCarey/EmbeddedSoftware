@@ -28,6 +28,7 @@
 /* MODULE main */
 
 // CPU module - contains low level hardware initialization routines
+#include "DOR.h"
 #include "Cpu.h"
 #include "Events.h"
 #include "PE_Types.h"
@@ -45,6 +46,7 @@
 #include "median.h"
 #include "ComProt.h"
 #include "OS.h"
+
 
 // Pointers to non-volatile storage locations
 volatile uint16union_t *nvTowerNb;
@@ -72,6 +74,7 @@ typedef enum
   InitModulesThreadPriority,
   UARTRxThreadPriority,
   UARTTxThreadPriority,
+  DORChannel0Priority,
   I2CThreadPriority,
   AccelThreadPriority,
   PITThreadPriority,
@@ -84,6 +87,7 @@ typedef enum
 OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for the Init Modules thread. */
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
+OS_THREAD_STACK(DORChannel0ThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the I2C Read Complete thread. */
 OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);         /*!< The stack for the Accel Data Ready thread. */
 OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the PIT thread. */
@@ -97,7 +101,9 @@ TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_S
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters
-TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
+TOSThreadParams UART_TxThreadParams = {NULL,&DORChannel0ThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
+// Analog thread params for one channel
+TOSThreadParams DOR_Channel0ThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],DORChannel0Priority};
 // I2C thread parameters
 TOSThreadParams I2C_ThreadParams = {NULL,&I2CThreadStack[THREAD_STACK_SIZE - 1],I2CThreadPriority};
 // Accelerometer thread parameters
@@ -241,6 +247,11 @@ static void InitModulesThread(void* pData)
   rtcSetup.CallbackArguments = NULL;
   rtcSetup.ThreadParams = &RTC_ThreadParams;
 
+  //DOR Module Setup
+  TDORSetup dorSetup;
+  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
+  dorSetup.Channel0Params = &DOR_Channel0ThreadParams;
+
   //Disable Interrupts
   OS_DisableInterrupts();
 
@@ -252,6 +263,7 @@ static void InitModulesThread(void* pData)
   FTM_Init(&FTM_ThreadParams);
   Accel_Init(&accelSetup);
   Flash_Init();
+  DOR_Init(&dorSetup);
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);

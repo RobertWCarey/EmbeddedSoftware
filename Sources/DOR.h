@@ -12,21 +12,30 @@
  *  @date 2019-06-09
  */
 
-#ifndef UART_H
-#define UART_H
+#ifndef DOR_H
+#define DOR_H
 
+#include "analog.h"
 #include "types.h"
 #include "MK70F12.h"
 #include "OS.h"
+#include "PE_types.h"
 
 typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
-  uint32_t baudRate;          /*!< The desired baud rate in bits/sec. */
   TOSThreadParams* Channel0Params;  /*!< Thread parameters for Channel0. */
 } TDORSetup;
 
-bool DOR_Init(const TDORsetup* const dorSetup);
+typedef struct AnalogThreadData
+{
+  OS_ECB* semaphore;
+  uint8_t channelNb;
+} TAnalogThreadData;
+
+bool DOR_Init(const TDORSetup* const dorSetup);
+
+void DOR_Thread(void* pData);
 
 #endif
 
