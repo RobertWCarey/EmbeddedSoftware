@@ -102,10 +102,6 @@ void PITThread(void* pData)
     //wait for ISR to trigger semaphore to indicate loaded time has elapsed
     OS_SemaphoreWait(PITSemaphore,0);
 
-    // Execute the passed callback function
-    if (UserFunction)
-      (*UserFunction)(UserArguments);
-
   }
 }
 
@@ -115,6 +111,10 @@ void __attribute__ ((interrupt)) PIT_ISR(void)
 
   //Clear Timer Interrupt
   PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
+
+  // Execute the passed callback function
+  if (UserFunction)
+    (*UserFunction)(UserArguments);
 
   //Signal semaphore to indicate loaded time has elapsed
   OS_SemaphoreSignal(PITSemaphore);
