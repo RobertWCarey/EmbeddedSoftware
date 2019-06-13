@@ -15,11 +15,13 @@
 #include "DOR.h"
 #include "analog.h"
 #include "PIT.h"
+#include "FIFO.h"
 
 
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
+static TFIFO ch0Buffer;
 
 #define NB_ANALOG_CHANNELS 1
 
@@ -47,6 +49,9 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
   PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
+
+  // Initiliase fifo
+  FIFO_Init(&ch0Buffer);
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);
