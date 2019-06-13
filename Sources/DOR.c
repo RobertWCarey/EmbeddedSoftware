@@ -18,7 +18,7 @@
 
 
 // Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 1e6;
+static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
 
 #define NB_ANALOG_CHANNELS 1
