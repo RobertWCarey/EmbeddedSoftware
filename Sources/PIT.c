@@ -32,6 +32,10 @@ bool PIT_Init(const TPITSetup* const PITSetup)
   //Create semaphore
   PITSemaphore = PITSetup->Semaphore;
 
+  //Initialise local versions for userFunction and userArgument
+  UserFunction = PITSetup->CallbackFunction;
+  UserArguments = PITSetup->CallbackArguments;
+
   if (PITSetup->EnablePITThread)
   {
     // Create PIT thread
@@ -39,10 +43,6 @@ bool PIT_Init(const TPITSetup* const PITSetup)
           PITSetup->ThreadParams->pData,
           PITSetup->ThreadParams->pStack,
           PITSetup->ThreadParams->priority);
-
-    //Initialise local versions for userFunction and userArgument
-    UserFunction = PITSetup->CallbackFunction;
-    UserArguments = PITSetup->CallbackArguments;
   }
 
   // Enable PIT Clock
