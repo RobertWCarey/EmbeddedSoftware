@@ -81,6 +81,7 @@
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.libs.1130883688" name="Libraries (-l)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="Lab3"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="OS"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="analog"/>
 								</option>
 								<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.input.853757952" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

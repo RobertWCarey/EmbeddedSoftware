@@ -22,7 +22,7 @@ static uint8_t PITClkPeriod;
 static void (*UserFunction)(void*);
 static void* UserArguments;
 
-static OS_ECB *PITSemaphore; /*!< Incrementing semaphore for PITThread execution */
+static OS_ECB* PITSemaphore; /*!< Incrementing semaphore for PITThread execution */
 
 bool PIT_Init(const TPITSetup* const PITSetup)
 {
@@ -30,17 +30,20 @@ bool PIT_Init(const TPITSetup* const PITSetup)
   OS_ERROR error;
 
   //Create semaphore
-  PITSemaphore = OS_SemaphoreCreate(0);
+  PITSemaphore = PITSetup->Semaphore;
 
-  // Create PIT thread
-  error = OS_ThreadCreate(PITThread,
-			  PITSetup->ThreadParams->pData,
-			  PITSetup->ThreadParams->pStack,
-			  PITSetup->ThreadParams->priority);
+  if (PITSetup->EnablePITThread)
+  {
+    // Create PIT thread
+    error = OS_ThreadCreate(PITThread,
+          PITSetup->ThreadParams->pData,
+          PITSetup->ThreadParams->pStack,
+          PITSetup->ThreadParams->priority);
 
-  //Initialise local versions for userFunction and userArgument
-  UserFunction = PITSetup->CallbackFunction;
-  UserArguments = PITSetup->CallbackArguments;
+    //Initialise local versions for userFunction and userArgument
+    UserFunction = PITSetup->CallbackFunction;
+    UserArguments = PITSetup->CallbackArguments;
+  }
 
   // Enable PIT Clock
   SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;

@@ -28,6 +28,7 @@
 /* MODULE main */
 
 // CPU module - contains low level hardware initialization routines
+#include "DOR.h"
 #include "Cpu.h"
 #include "Events.h"
 #include "PE_Types.h"
@@ -46,15 +47,13 @@
 #include "ComProt.h"
 #include "OS.h"
 
+
 // Pointers to non-volatile storage locations
 volatile uint16union_t *nvTowerNb;
 volatile uint16union_t *nvTowerMode;
 
 // Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
-
-// Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 1000e6;
 
 //Accelerometer mode global
 static TAccelMode AccelMode = ACCEL_POLL;
@@ -72,9 +71,9 @@ typedef enum
   InitModulesThreadPriority,
   UARTRxThreadPriority,
   UARTTxThreadPriority,
+  DORChannel0Priority,
   I2CThreadPriority,
   AccelThreadPriority,
-  PITThreadPriority,
   RTCThreadPriority,
   FTMThreadPriority,
   PacketThreadPriority
@@ -84,9 +83,9 @@ typedef enum
 OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for the Init Modules thread. */
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
+OS_THREAD_STACK(DORChannel0ThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the I2C Read Complete thread. */
 OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);         /*!< The stack for the Accel Data Ready thread. */
-OS_THREAD_STACK(PITThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the PIT thread. */
 OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the RTC thread. */
 OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
@@ -97,13 +96,13 @@ TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_S
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters
-TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
+TOSThreadParams UART_TxThreadParams = {NULL,&DORChannel0ThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
+// Analog thread params for one channel
+TOSThreadParams DOR_Channel0ThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],DORChannel0Priority};
 // I2C thread parameters
 TOSThreadParams I2C_ThreadParams = {NULL,&I2CThreadStack[THREAD_STACK_SIZE - 1],I2CThreadPriority};
 // Accelerometer thread parameters
 TOSThreadParams Accel_ThreadParams = {NULL,&AccelThreadStack[THREAD_STACK_SIZE - 1],AccelThreadPriority};
-// Periodic Interrupt Timer thread parameters
-TOSThreadParams PIT_ThreadParams = {NULL,&PITThreadStack[THREAD_STACK_SIZE - 1],PITThreadPriority};
 // Real Time Clock thread parameters
 TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],RTCThreadPriority};
 // Flexible Timer Module thread parameters
@@ -111,16 +110,7 @@ TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],
 // Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
 
-/*! @brief Interrupt callback function to be called when PIT_ISR occurs
- *
- *  @param arg The user argument that comes with the callback
- */
-void PITCallback(void* arg)
-{
-  if (AccelMode == ACCEL_POLL)
-    //Read values
-    Accel_ReadXYZ(AccelData.bytes);
-}
+
 
 /*! @brief Interrupt callback function to be called when RTC_ISR occurs
  * Turn on yellow LED and send the time
@@ -228,18 +218,16 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-  //PIT setup struct
-  TPITSetup pitSetup;
-  pitSetup.moduleClk = CPU_BUS_CLK_HZ;
-  pitSetup.CallbackFunction = PITCallback;
-  pitSetup.CallbackArguments = NULL;
-  pitSetup.ThreadParams = &PIT_ThreadParams;
-
   //RTC setup struct
   TRTCSetup rtcSetup;
   rtcSetup.CallbackFunction = RTCCallback;
   rtcSetup.CallbackArguments = NULL;
   rtcSetup.ThreadParams = &RTC_ThreadParams;
+
+  //DOR Module Setup
+  TDORSetup dorSetup;
+  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
+  dorSetup.Channel0Params = &DOR_Channel0ThreadParams;
 
   //Disable Interrupts
   OS_DisableInterrupts();
@@ -247,14 +235,11 @@ static void InitModulesThread(void* pData)
   //Initialise Modules
   Packet_Init(&packetSetup);
   LEDs_Init();
-  PIT_Init(&pitSetup);
   RTC_Init(&rtcSetup);
   FTM_Init(&FTM_ThreadParams);
   Accel_Init(&accelSetup);
   Flash_Init();
-
-  //Set PIT Timer
-  PIT_Set(PIT_TIME_PERIOD, true);
+  DOR_Init(&dorSetup);
 
   //Set FTM Timer
   FTM_Set(pData);

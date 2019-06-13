@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lLab3 -lOS
+LIBS := -lLab3 -lOS -lanalog
 
