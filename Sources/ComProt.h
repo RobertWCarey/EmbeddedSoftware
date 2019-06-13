@@ -42,6 +42,7 @@
 #define CMD_TIME_BYTE 0xCu              /* "Time" / "Set Time" */
 #define CMD_ACCEL_VAL 0x10u             /* "Accelerometer - Value" */
 #define CMD_PROT_MODE 0x0Au             /* "Protocol - Mode" */
+#define CMD_DOR 0x70u                   /* "DOR" */
 
 /*! @brief Performs necessary action for any valid packets received.
  *
