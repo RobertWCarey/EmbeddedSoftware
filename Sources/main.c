@@ -70,13 +70,11 @@ typedef enum
 {
   InitModulesThreadPriority,
   UARTRxThreadPriority,
+  PacketThreadPriority,
   UARTTxThreadPriority,
   DORChannel0Priority,
-  I2CThreadPriority,
-  AccelThreadPriority,
   RTCThreadPriority,
-  FTMThreadPriority,
-  PacketThreadPriority
+  FTMThreadPriority
 } TThreadPriority;
 
 // Thread stacks
@@ -84,8 +82,6 @@ OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
 OS_THREAD_STACK(DORChannel0ThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(I2CThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the I2C Read Complete thread. */
-OS_THREAD_STACK(AccelThreadStack, THREAD_STACK_SIZE);         /*!< The stack for the Accel Data Ready thread. */
 OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the RTC thread. */
 OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
@@ -99,18 +95,12 @@ TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE
 TOSThreadParams UART_TxThreadParams = {NULL,&DORChannel0ThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
 // Analog thread params for one channel
 TOSThreadParams DOR_Channel0ThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],DORChannel0Priority};
-// I2C thread parameters
-TOSThreadParams I2C_ThreadParams = {NULL,&I2CThreadStack[THREAD_STACK_SIZE - 1],I2CThreadPriority};
-// Accelerometer thread parameters
-TOSThreadParams Accel_ThreadParams = {NULL,&AccelThreadStack[THREAD_STACK_SIZE - 1],AccelThreadPriority};
 // Real Time Clock thread parameters
 TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],RTCThreadPriority};
 // Flexible Timer Module thread parameters
 TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],FTMThreadPriority};
 // Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
-
-
 
 /*! @brief Interrupt callback function to be called when RTC_ISR occurs
  * Turn on yellow LED and send the time
@@ -136,59 +126,6 @@ void FTMCallback(void* arg)
   LEDs_Off(LED_BLUE);
 }
 
-/*! @brief Interrupt callback function to be called when Accelerometer
- * @brief data ready interrupt occours, Synchronous mode
- *
- *  @param arg The user argument that comes with the callback
- */
-void AccelDataReadyCallback(void* arg)
-{
-  if (AccelMode == ACCEL_INT)
-    //Read values
-    Accel_ReadXYZ(AccelData.bytes);
-}
-
-/*! @brief shifts each value over one position in the array and loads new val
- *
- *  @param array[3] The array with values to be shifted
- *  @param value    The new value to be loaded into the array
- */
-static void shiftVals(uint8_t array[3], uint8_t value)
-{
-  array[2] = array[1];
-  array[1] = array[0];
-  array[0] = value;
-}
-
-/*! @brief I2C0 callback function, outputs the accelerometer values
- *
- *   @param arg The user argument that comes with the callback
- */
-void I2CCallback(void* arg)
-{
-  // Static variable to store the previously read Accel Data
-  static TAccelData prevAccelData;
-
-  // Load in the latest values
-  shiftVals(XValues,AccelData.axes.x);
-  shiftVals(YValues,AccelData.axes.y);
-  shiftVals(ZValues,AccelData.axes.z);
-
-  //Check if the values have change || in sychronous mode
-  if ( (AccelMode == ACCEL_POLL &&  (prevAccelData.bytes != AccelData.bytes)) ||  AccelMode == ACCEL_INT)
-  {
-    // Send last median values regardless of changing
-    Packet_Put(CMD_ACCEL_VAL,
-       Median_Filter3(XValues[0], XValues[1], XValues[2]),
-       Median_Filter3(YValues[0], YValues[1], YValues[2]),
-       Median_Filter3(ZValues[0], ZValues[1], ZValues[2]));
-  }
-
-  LEDs_Toggle(LED_GREEN);
-
-  // Store current value
-  prevAccelData = AccelData;
-}
 
 /*! @brief Initialises the modules to support the Tower modules.
  *
@@ -200,16 +137,6 @@ static void InitModulesThread(void* pData)
   //Default settings
   const uint16_t defaultTowerNb = 9382; //Tower Mode no.
   const uint16_t defaultTowerMode = 1; //Tower Version no.
-
-  //Accelerometer setup struct
-  TAccelSetup accelSetup;
-  accelSetup.moduleClk = CPU_BUS_CLK_HZ;
-  accelSetup.dataReadyCallbackArguments = NULL;
-  accelSetup.dataReadyCallbackFunction = AccelDataReadyCallback;
-  accelSetup.readCompleteCallbackArguments = NULL;
-  accelSetup.readCompleteCallbackFunction = I2CCallback;
-  accelSetup.I2CThreadParams = &I2C_ThreadParams;
-  accelSetup.ThreadParams = &Accel_ThreadParams;
 
   //Packet setup struct
   TPacketSetup packetSetup;
@@ -237,7 +164,6 @@ static void InitModulesThread(void* pData)
   LEDs_Init();
   RTC_Init(&rtcSetup);
   FTM_Init(&FTM_ThreadParams);
-  Accel_Init(&accelSetup);
   Flash_Init();
   DOR_Init(&dorSetup);
 
