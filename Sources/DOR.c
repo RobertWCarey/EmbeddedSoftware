@@ -31,6 +31,14 @@ static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
 
 static const uint16_t ADC_CONVERSION = 3276;
 
+static const TIDMTData INV_TRIP_TIME[20] =
+{
+  {.y=236746,.x=1},{.y=10029,.x=2},{.y=6302,.x=3},{.y=4980,.x=4},{.y=4280,.x=5},
+  {.y=3837,.x=6},{.y=3528,.x=7},{.y=3297,.x=8},{.y=3116,.x=9},{.y=2971,.x=10},
+  {.y=2850,.x=11},{.y=2748,.x=12},{.y=2660,.x=13},{.y=2583,.x=14},{.y=2516,.x=15},
+  {.y=2455,.x=16},{.y=2401,.x=17},{.y=2353,.x=18},{.y=2308,.x=19},{.y=2267,.x=20},
+};
+
 uint16_t analogInputValue;
 
 #define NB_ANALOG_CHANNELS 1
@@ -146,12 +154,42 @@ void DOR_TimingThread(void* pData)
   }
 }
 
+static int32_t interpolate(TIDMTData data[], double val)
+{
+  double result = 0; // Initialize result
+
+  for (int i=1; i<20; i++)
+  {
+      // Compute individual terms of above formula
+      double term = data[i].y;
+      double temp = data[i].x;
+      for (int j=1;j<20;j++)
+      {
+          double temp = data[j].x;
+          if (j!=i)
+          {
+            temp = (val - data[j].x);
+            temp = temp/(data[i].x - data[j].x);
+            term = term*temp;
+          }
+//              term = term*((val - data[j].x)/(data[i].x - data[j].x));
+      }
+
+      // Add current term to result
+      result += term;
+  }
+
+  return (int32_t)result;
+}
+
 void DOR_TripThread(void* pData)
 {
   for(;;)
   {
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
+    int32_t temp = interpolate(INV_TRIP_TIME,8);
+    temp++;
   }
 }
 

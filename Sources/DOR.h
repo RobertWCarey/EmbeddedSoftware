@@ -36,6 +36,12 @@ typedef struct ChannelThreadData
   int16_t samples[16];
 } TAnalogThreadData;
 
+typedef struct
+{
+    uint32_t y;
+    double x;
+} TIDMTData;
+
 bool DOR_Init(const TDORSetup* const dorSetup);
 
 void DOR_TimingThread(void* pData);
