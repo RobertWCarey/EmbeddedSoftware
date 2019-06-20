@@ -83,6 +83,11 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
 
+  error = OS_ThreadCreate(DOR_TimingThread,
+                          &ChannelThreadData[0],
+                          dorSetup->Channel0Params->pStack,
+                          dorSetup->Channel0Params->priority);
+
   return true;
 }
 
@@ -130,6 +135,14 @@ void DOR_TimingThread(void* pData)
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
     else
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
+
+  }
+}
+
+void DOR_TripThread(void* pData)
+{
+  for(;;)
+  {
 
   }
 }

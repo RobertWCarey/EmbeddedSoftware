@@ -25,6 +25,7 @@ typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
   TOSThreadParams* Channel0Params;  /*!< Thread parameters for Channel0. */
+  TOSThreadParams* TripParams;
 } TDORSetup;
 
 typedef struct ChannelThreadData
