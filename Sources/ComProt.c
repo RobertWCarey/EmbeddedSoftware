@@ -53,16 +53,16 @@ static const uint8_t PROT_MODE_SYNC = 1;// Synchronous mode (Accel interrupt)
 static const uint8_t PROT_MODE_PARAM3 = 0;// Parameter 3 for 0x0A
 
 // Parameters for 0x70 - DOR
-static const uint8_t DOR_IDMT_CHARAC = 0;// Select "IDMT characteristic"
+#define DOR_IDMT_CHARAC 0// Select "IDMT characteristic"
 static const uint8_t DOR_IDMT_GET = 1;// GET IDMT characteristic
 static const uint8_t DOR_IDMT_SET = 2;// SET IDMT characteristic
 static const uint8_t DOR_IDMT_INVERSE = 0;// IDMT "Inverse"
 static const uint8_t DOR_IDMT_VINVERSE = 1;// IDMT "Very Inverse"
 static const uint8_t DOR_IDMT_EINVERSE = 2;// IDMT "Extremely Inverse"
-static const uint8_t DOR_CURRENT = 1;// Select "Get Currents"
-static const uint8_t DOR_FREQ = 2;// Select "Get Frequency"
-static const uint8_t DOR_TIMES_TIRPPED = 3;// Select "Get # of times Tripped"
-static const uint8_t DOR_FAULT_TYPE = 4;// Select "Get Fault Type"
+#define DOR_CURRENT 1// Select "Get Currents"
+#define DOR_FREQ 2// Select "Get Frequency"
+#define DOR_TIMES_TRIPPED 3// Select "Get # of times Tripped"
+#define DOR_FAULT_TYPE 4// Select "Get Fault Type"
 
 bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode, const TAccelMode* AccelMode)
 {

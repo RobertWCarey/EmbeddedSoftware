@@ -15,11 +15,17 @@
 #include "DOR.h"
 #include "analog.h"
 #include "PIT.h"
+#include "FIFO.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "types.h"
+#include "math.h"
 
 
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
+uint16_t analogInputValue;
 
 #define NB_ANALOG_CHANNELS 1
 
@@ -35,6 +41,14 @@ static TAnalogThreadData AnalogThreadData[NB_ANALOG_CHANNELS] =
   }
 };
 
+static void PITCallback(void* arg)
+{
+  // Make the code easier to read by giving a name to the typecast'ed pointer
+  #define Data ((TAnalogThreadData*)arg)
+
+  Analog_Get(0, &analogInputValue);
+}
+
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
   AnalogThreadData[0].semaphore = OS_SemaphoreCreate(0);
@@ -44,9 +58,12 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
   pitSetup.Semaphore = AnalogThreadData[0].semaphore;
+  pitSetup.CallbackFunction = PITCallback;
+  pitSetup.CallbackArguments = &AnalogThreadData[0];
 
   PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
+
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);
@@ -60,20 +77,44 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
 }
 
+
+static float returnRMS(int16_t sampleData[])
+{
+
+  float square = 0;
+  float volts;
+  float vrms;
+  for (uint8_t i = 0; i<16;i++)
+  {
+    volts=(float)sampleData[i]/(float)3276;
+
+    square += (volts*volts);
+  }
+
+  vrms = sqrt(square/16);
+
+  return (float)((vrms*40)/13);
+}
+
 void DOR_Thread(void* pData)
 {
-  // Make the code easier to read by giving a name to the typecast'ed pointer
-  #define analogData ((TAnalogThreadData*)pData)
-
+  #define analogData (*(TAnalogThreadData*)pData)
+  int count;
+  float irms;
   for (;;)
   {
-    int16_t analogInputValue;
+    (void)OS_SemaphoreWait(analogData.semaphore, 0);
 
-    (void)OS_SemaphoreWait(analogData->semaphore, 0);
-    // Get analog sample
-    Analog_Get(analogData->channelNb, &analogInputValue);
-    // Put analog sample
-    Analog_Put(analogData->channelNb, analogInputValue);
+    analogData.samples[count] = analogInputValue;
+
+    count ++;
+    if (count == 16)
+    {
+
+      irms = returnRMS(analogData.samples);
+
+      count = 0;
+    }
   }
 }
 
