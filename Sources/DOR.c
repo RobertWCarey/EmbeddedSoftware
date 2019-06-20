@@ -78,11 +78,12 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 }
 
 
-static float returnRMS(float sampleData[])
+static float returnRMS(int16_t sampleData[])
 {
 
   float square = 0;
   float volts;
+  float vrms;
   for (uint8_t i = 0; i<16;i++)
   {
     volts=(float)sampleData[i]/(float)3276;
@@ -90,14 +91,16 @@ static float returnRMS(float sampleData[])
     square += (volts*volts);
   }
 
-  return (float)sqrt(square/16);
+  vrms = sqrt(square/16);
+
+  return (float)((vrms*40)/13);
 }
 
 void DOR_Thread(void* pData)
 {
   #define analogData (*(TAnalogThreadData*)pData)
   int count;
-  float vrms;
+  float irms;
   for (;;)
   {
     (void)OS_SemaphoreWait(analogData.semaphore, 0);
@@ -108,7 +111,7 @@ void DOR_Thread(void* pData)
     if (count == 16)
     {
 
-      vrms = returnRMS(analogData.samples);
+      irms = returnRMS(analogData.samples);
 
       count = 0;
     }
