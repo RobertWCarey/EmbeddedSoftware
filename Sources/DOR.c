@@ -15,65 +15,198 @@
 #include "DOR.h"
 #include "analog.h"
 #include "PIT.h"
+#include "FIFO.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "types.h"
+#include "math.h"
 
 
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
+//Output channels
+static const uint8_t TIMING_OUPUT_CHANNEL = 1;
+static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
+
+static const uint16_t ADC_CONVERSION = 3276;
+
+static const TIDMTData INV_TRIP_TIME[20] =
+{
+  {.y=236746,.x=1.03},{.y=10029,.x=2},{.y=6302,.x=3},{.y=4980,.x=4},{.y=4280,.x=5},
+  {.y=3837,.x=6},{.y=3528,.x=7},{.y=3297,.x=8},{.y=3116,.x=9},{.y=2971,.x=10},
+  {.y=2850,.x=11},{.y=2748,.x=12},{.y=2660,.x=13},{.y=2583,.x=14},{.y=2516,.x=15},
+  {.y=2455,.x=16},{.y=2401,.x=17},{.y=2353,.x=18},{.y=2308,.x=19},{.y=2267,.x=20},
+};
+
+static const TIDMTData VINV_TRIP_TIME[20] =
+{
+  {.y=450000,.x=1.03},{.y=13500,.x=2},{.y=6750,.x=3},{.y=4500,.x=4},{.y=3375,.x=5},
+  {.y=2700,.x=6},{.y=2250,.x=7},{.y=1929,.x=8},{.y=1688,.x=9},{.y=1500,.x=10},
+  {.y=1350,.x=11},{.y=1227,.x=12},{.y=1125,.x=13},{.y=1038,.x=14},{.y=964,.x=15},
+  {.y=900,.x=16},{.y=844,.x=17},{.y=794,.x=18},{.y=750,.x=19},{.y=711,.x=20},
+};
+
+static const TIDMTData EINV_TRIP_TIME[20] =
+{
+  {.y=1313629,.x=1.03},{.y=26667,.x=2},{.y=10000,.x=3},{.y=5333,.x=4},{.y=3333,.x=5},
+  {.y=2286,.x=6},{.y=1667,.x=7},{.y=1270,.x=8},{.y=1000,.x=9},{.y=808,.x=10},
+  {.y=667,.x=11},{.y=559,.x=12},{.y=476,.x=13},{.y=410,.x=14},{.y=357,.x=15},
+  {.y=314,.x=16},{.y=278,.x=17},{.y=248,.x=18},{.y=222,.x=19},{.y=201,.x=20},
+};
+
+
+uint16_t analogInputValue;
 
 #define NB_ANALOG_CHANNELS 1
+
+#define channelData (*(TAnalogThreadData*)pData)
+
+
+static OS_ECB* TripSemaphore;
 
 
 /*! @brief Analog thread configuration data
  *
  */
-static TAnalogThreadData AnalogThreadData[NB_ANALOG_CHANNELS] =
+static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
 {
   {
     .semaphore = NULL,
-    .channelNb = 0
+    .channelNb = 0,
   }
 };
 
+static void PITCallback(void* arg)
+{
+  // Make the code easier to read by giving a name to the typecast'ed pointer
+  #define Data ((TAnalogThreadData*)arg)
+
+  Analog_Get(0, &analogInputValue);
+}
+
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
-  AnalogThreadData[0].semaphore = OS_SemaphoreCreate(0);
+  ChannelThreadData[0].semaphore = OS_SemaphoreCreate(0);
+
+  TripSemaphore = OS_SemaphoreCreate(0);
+
 
   //PIT setup struct
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
-  pitSetup.Semaphore = AnalogThreadData[0].semaphore;
+  pitSetup.Semaphore = ChannelThreadData[0].semaphore;
+  pitSetup.CallbackFunction = PITCallback;
+  pitSetup.CallbackArguments = &ChannelThreadData[0];
 
   PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
+
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);
 
   OS_ERROR error;
 
-  error = OS_ThreadCreate(DOR_Thread,
-                          &AnalogThreadData[0],
+  error = OS_ThreadCreate(DOR_TimingThread,
+                          &ChannelThreadData[0],
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
 
+  error = OS_ThreadCreate(DOR_TripThread,
+                          NULL,
+                          dorSetup->TripParams->pStack,
+                          dorSetup->TripParams->priority);
+
+  return true;
 }
 
-void DOR_Thread(void* pData)
-{
-  // Make the code easier to read by giving a name to the typecast'ed pointer
-  #define analogData ((TAnalogThreadData*)pData)
 
+static float returnRMS(int16_t sampleData[])
+{
+
+  float square = 0;
+  float volts;
+  float vrms;
+  for (uint8_t i = 0; i<16;i++)
+  {
+    volts=(float)sampleData[i]/(float)ADC_CONVERSION;
+
+    square += (volts*volts);
+  }
+
+  vrms = sqrt(square/16);
+
+  return (float)((vrms*40)/13);
+}
+
+static int16_t v2raw(float voltage)
+{
+  return (int16_t)(voltage*ADC_CONVERSION);
+}
+
+void DOR_TimingThread(void* pData)
+{
+  int count;
   for (;;)
   {
-    int16_t analogInputValue;
+    (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
-    (void)OS_SemaphoreWait(analogData->semaphore, 0);
-    // Get analog sample
-    Analog_Get(analogData->channelNb, &analogInputValue);
-    // Put analog sample
-    Analog_Put(analogData->channelNb, analogInputValue);
+    channelData.samples[count] = analogInputValue;
+
+    count ++;
+    if (count == 16)
+    {
+      channelData.irms = returnRMS(channelData.samples);
+      count = 0;
+    }
+
+    if (channelData.irms > 1.03)
+      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
+    else
+      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
+
+    OS_SemaphoreSignal(TripSemaphore);
+  }
+}
+
+static int32_t interpolate(TIDMTData data[], double val)
+{
+  double result = 0; // Initialize result
+
+  for (int i=1; i<20; i++)
+  {
+      // Compute individual terms of above formula
+      double term = data[i].y;
+      double temp = data[i].x;
+      for (int j=1;j<20;j++)
+      {
+          double temp = data[j].x;
+          if (j!=i)
+          {
+            temp = (val - data[j].x);
+            temp = temp/(data[i].x - data[j].x);
+            term = term*temp;
+          }
+//              term = term*((val - data[j].x)/(data[i].x - data[j].x));
+      }
+
+      // Add current term to result
+      result += term;
+  }
+
+  return (int32_t)result;
+}
+
+void DOR_TripThread(void* pData)
+{
+  for(;;)
+  {
+    (void)OS_SemaphoreWait(TripSemaphore, 0);
+
+    int32_t temp = interpolate(INV_TRIP_TIME,1.04);
+    temp++;
   }
 }
 

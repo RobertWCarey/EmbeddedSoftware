@@ -52,6 +52,18 @@ static const uint8_t PROT_MODE_ASYNC = 0;// Asynchronous mode (PIT polling)
 static const uint8_t PROT_MODE_SYNC = 1;// Synchronous mode (Accel interrupt)
 static const uint8_t PROT_MODE_PARAM3 = 0;// Parameter 3 for 0x0A
 
+// Parameters for 0x70 - DOR
+#define DOR_IDMT_CHARAC 0// Select "IDMT characteristic"
+static const uint8_t DOR_IDMT_GET = 1;// GET IDMT characteristic
+static const uint8_t DOR_IDMT_SET = 2;// SET IDMT characteristic
+static const uint8_t DOR_IDMT_INVERSE = 0;// IDMT "Inverse"
+static const uint8_t DOR_IDMT_VINVERSE = 1;// IDMT "Very Inverse"
+static const uint8_t DOR_IDMT_EINVERSE = 2;// IDMT "Extremely Inverse"
+#define DOR_CURRENT 1// Select "Get Currents"
+#define DOR_FREQ 2// Select "Get Frequency"
+#define DOR_TIMES_TRIPPED 3// Select "Get # of times Tripped"
+#define DOR_FAULT_TYPE 4// Select "Get Fault Type"
+
 bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode, const TAccelMode* AccelMode)
 {
   // Check that params are valid
@@ -204,6 +216,30 @@ static bool protModePacketHandler(TAccelMode* const AccelMode)
   return false;
 }
 
+static bool dorPacketHandler()
+{
+  bool success = 0;
+
+  switch (Packet_Parameter1)
+  {
+    case DOR_IDMT_CHARAC:
+      break;
+    case DOR_FREQ:
+      break;
+    case DOR_CURRENT:
+      break;
+    case DOR_TIMES_TRIPPED:
+      break;
+    case DOR_FAULT_TYPE:
+      break;
+    default:
+      break;
+  }
+
+
+  return success;
+}
+
 void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel, TAccelMode* const AccelMode)
 {
   //Starts a timer and turns on LED
@@ -242,6 +278,9 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
       break;
     case CMD_PROT_MODE:
       success = protModePacketHandler(AccelMode);
+      break;
+    case CMD_DOR:
+      success = dorPacketHandler();
       break;
     default:
       break;
