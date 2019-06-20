@@ -40,6 +40,8 @@ bool DOR_Init(const TDORSetup* const dorSetup);
 
 void DOR_TimingThread(void* pData);
 
+void DOR_TripThread(void* pData);
+
 #endif
 
 /*!

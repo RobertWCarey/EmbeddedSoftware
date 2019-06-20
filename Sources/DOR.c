@@ -38,6 +38,9 @@ uint16_t analogInputValue;
 #define channelData (*(TAnalogThreadData*)pData)
 
 
+static OS_ECB* TripSemaphore;
+
+
 /*! @brief Analog thread configuration data
  *
  */
@@ -61,6 +64,9 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 {
   ChannelThreadData[0].semaphore = OS_SemaphoreCreate(0);
 
+  TripSemaphore = OS_SemaphoreCreate(0);
+
+
   //PIT setup struct
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
@@ -83,10 +89,10 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
 
-  error = OS_ThreadCreate(DOR_TimingThread,
-                          &ChannelThreadData[0],
-                          dorSetup->Channel0Params->pStack,
-                          dorSetup->Channel0Params->priority);
+  error = OS_ThreadCreate(DOR_TripThread,
+                          NULL,
+                          dorSetup->TripParams->pStack,
+                          dorSetup->TripParams->priority);
 
   return true;
 }
@@ -136,6 +142,7 @@ void DOR_TimingThread(void* pData)
     else
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
 
+    OS_SemaphoreSignal(TripSemaphore);
   }
 }
 
@@ -143,6 +150,7 @@ void DOR_TripThread(void* pData)
 {
   for(;;)
   {
+    (void)OS_SemaphoreWait(TripSemaphore, 0);
 
   }
 }

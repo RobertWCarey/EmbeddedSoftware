@@ -161,6 +161,7 @@ static void InitModulesThread(void* pData)
   TDORSetup dorSetup;
   dorSetup.moduleClk = CPU_BUS_CLK_HZ;
   dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
+  dorSetup.TripParams = &DOR_TripThreadParams;
 
   //Disable Interrupts
   OS_DisableInterrupts();
