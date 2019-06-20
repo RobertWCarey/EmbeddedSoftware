@@ -25,10 +25,7 @@
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
-static TFIFO ch0Buffer;
-
-static int16_t analogInputValue;
-static uint32_t ch0Sum = 0;
+uint16_t analogInputValue;
 
 #define NB_ANALOG_CHANNELS 1
 
@@ -67,8 +64,6 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
 
-  // Initiliase fifo
-  FIFO_Init(&ch0Buffer);
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true);
@@ -82,38 +77,41 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
 }
 
+
+static float returnRMS(float sampleData[])
+{
+
+  float square = 0;
+  float volts;
+  for (uint8_t i = 0; i<16;i++)
+  {
+    volts=(float)sampleData[i]/(float)3276;
+
+    square += (volts*volts);
+  }
+
+  return (float)sqrt(square/16);
+}
+
 void DOR_Thread(void* pData)
 {
-  #define analogData ((TAnalogThreadData*)pData)
+  #define analogData (*(TAnalogThreadData*)pData)
+  int count;
+  float vrms;
   for (;;)
   {
-    (void)OS_SemaphoreWait(analogData->semaphore, 0);
-    double volts;
-    analogInputValue = abs(analogInputValue);
+    (void)OS_SemaphoreWait(analogData.semaphore, 0);
 
-    volts = (double)analogInputValue/(double)3276;
+    analogData.samples[count] = analogInputValue;
 
-    uint16union_t square;
-    square.l = volts*volts;
-    ch0Sum += square.l;
-    FIFO_Put(&ch0Buffer,square.s.Lo);
-    FIFO_Put(&ch0Buffer,square.s.Hi);
-    if (ch0Buffer.ItemsAvailable->count > 96)
+    count ++;
+    if (count == 16)
     {
-      uint16union_t temp;
-      FIFO_Get(&ch0Buffer, &temp.s.Lo);
-      FIFO_Get(&ch0Buffer, &temp.s.Hi);
-      ch0Sum -= temp.l;
+
+      vrms = returnRMS(analogData.samples);
+
+      count = 0;
     }
-    uint32_t mean = ch0Sum/ch0Buffer.ItemsAvailable->count;
-
-    uint32_t RMS = (uint32_t)sqrt(mean);
-
-    uint16 I = (uint16_t)(RMS/0.35);
-
-    Analog_Get(0, &analogInputValue);
-    // Put analog sample
-    Analog_Put(analogData->channelNb, analogInputValue);
   }
 }
 

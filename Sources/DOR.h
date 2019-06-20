@@ -31,6 +31,8 @@ typedef struct AnalogThreadData
 {
   OS_ECB* semaphore;
   uint8_t channelNb;
+  float sample;
+  float samples[16];
 } TAnalogThreadData;
 
 bool DOR_Init(const TDORSetup* const dorSetup);
