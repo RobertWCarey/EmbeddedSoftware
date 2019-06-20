@@ -32,6 +32,10 @@ bool PIT_Init(const TPITSetup* const PITSetup)
   //Create semaphore
   PITSemaphore = PITSetup->Semaphore;
 
+  //Initialise local versions for userFunction and userArgument
+  UserFunction = PITSetup->CallbackFunction;
+  UserArguments = PITSetup->CallbackArguments;
+
   if (PITSetup->EnablePITThread)
   {
     // Create PIT thread
@@ -39,10 +43,6 @@ bool PIT_Init(const TPITSetup* const PITSetup)
           PITSetup->ThreadParams->pData,
           PITSetup->ThreadParams->pStack,
           PITSetup->ThreadParams->priority);
-
-    //Initialise local versions for userFunction and userArgument
-    UserFunction = PITSetup->CallbackFunction;
-    UserArguments = PITSetup->CallbackArguments;
   }
 
   // Enable PIT Clock
@@ -102,10 +102,6 @@ void PITThread(void* pData)
     //wait for ISR to trigger semaphore to indicate loaded time has elapsed
     OS_SemaphoreWait(PITSemaphore,0);
 
-    // Execute the passed callback function
-    if (UserFunction)
-      (*UserFunction)(UserArguments);
-
   }
 }
 
@@ -115,6 +111,10 @@ void __attribute__ ((interrupt)) PIT_ISR(void)
 
   //Clear Timer Interrupt
   PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
+
+  // Execute the passed callback function
+  if (UserFunction)
+    (*UserFunction)(UserArguments);
 
   //Signal semaphore to indicate loaded time has elapsed
   OS_SemaphoreSignal(PITSemaphore);

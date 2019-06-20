@@ -25,17 +25,28 @@ typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
   TOSThreadParams* Channel0Params;  /*!< Thread parameters for Channel0. */
+  TOSThreadParams* TripParams;
 } TDORSetup;
 
-typedef struct AnalogThreadData
+typedef struct ChannelThreadData
 {
   OS_ECB* semaphore;
   uint8_t channelNb;
+  float irms;
+  int16_t samples[16];
 } TAnalogThreadData;
+
+typedef struct
+{
+    uint32_t y;
+    double x;
+} TIDMTData;
 
 bool DOR_Init(const TDORSetup* const dorSetup);
 
-void DOR_Thread(void* pData);
+void DOR_TimingThread(void* pData);
+
+void DOR_TripThread(void* pData);
 
 #endif
 
