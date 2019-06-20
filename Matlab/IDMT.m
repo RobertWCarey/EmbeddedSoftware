@@ -30,13 +30,17 @@ eidmt=zeros(1,intSize);
 idmt(1,1)=round(i_t(1)*1000);
 idmt(2,1)=1.03;
 vidmt(1)=round(vi_t(1)*1000);
+vidmt(2,1)=1;
 eidmt(1)=round(ei_t(1)*1000);
+eidmt(2,1)=1;
 for count = 2:20
     position = find(current==count);
     idmt(1,count)=round(i_t(position)*1000);
     idmt(2,count)=current(position);
-    vidmt(count)=round(vi_t(position)*1000);
-    eidmt(count)=round(ei_t(position)*1000);
+    vidmt(1,count)=round(vi_t(position)*1000);
+    vidmt(2,count)=current(position);
+    eidmt(1,count)=round(ei_t(position)*1000);
+    eidmt(2,count)=current(position);
 end
 
 finalResult=zeros(1,190);
