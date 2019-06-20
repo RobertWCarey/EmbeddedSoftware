@@ -25,19 +25,27 @@
 // Pit time period (nano seconds)
 static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
+//Output channels
+static const uint8_t TIMING_OUPUT_CHANNEL = 1;
+static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
+
+static const uint16_t ADC_CONVERSION = 3276;
+
 uint16_t analogInputValue;
 
 #define NB_ANALOG_CHANNELS 1
+
+#define channelData (*(TAnalogThreadData*)pData)
 
 
 /*! @brief Analog thread configuration data
  *
  */
-static TAnalogThreadData AnalogThreadData[NB_ANALOG_CHANNELS] =
+static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
 {
   {
     .semaphore = NULL,
-    .channelNb = 0
+    .channelNb = 0,
   }
 };
 
@@ -51,15 +59,15 @@ static void PITCallback(void* arg)
 
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
-  AnalogThreadData[0].semaphore = OS_SemaphoreCreate(0);
+  ChannelThreadData[0].semaphore = OS_SemaphoreCreate(0);
 
   //PIT setup struct
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
-  pitSetup.Semaphore = AnalogThreadData[0].semaphore;
+  pitSetup.Semaphore = ChannelThreadData[0].semaphore;
   pitSetup.CallbackFunction = PITCallback;
-  pitSetup.CallbackArguments = &AnalogThreadData[0];
+  pitSetup.CallbackArguments = &ChannelThreadData[0];
 
   PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
@@ -71,10 +79,11 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   OS_ERROR error;
 
   error = OS_ThreadCreate(DOR_TimingThread,
-                          &AnalogThreadData[0],
+                          &ChannelThreadData[0],
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
 
+  return true;
 }
 
 
@@ -86,7 +95,7 @@ static float returnRMS(int16_t sampleData[])
   float vrms;
   for (uint8_t i = 0; i<16;i++)
   {
-    volts=(float)sampleData[i]/(float)3276;
+    volts=(float)sampleData[i]/(float)ADC_CONVERSION;
 
     square += (volts*volts);
   }
@@ -96,23 +105,32 @@ static float returnRMS(int16_t sampleData[])
   return (float)((vrms*40)/13);
 }
 
+static int16_t v2raw(float voltage)
+{
+  return (int16_t)(voltage*ADC_CONVERSION);
+}
+
 void DOR_TimingThread(void* pData)
 {
-  #define analogData (*(TAnalogThreadData*)pData)
   int count;
-  float irms;
   for (;;)
   {
-    (void)OS_SemaphoreWait(analogData.semaphore, 0);
+    (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
-    analogData.samples[count] = analogInputValue;
+    channelData.samples[count] = analogInputValue;
 
     count ++;
     if (count == 16)
     {
-      irms = returnRMS(analogData.samples);
+      channelData.irms = returnRMS(channelData.samples);
       count = 0;
     }
+
+    if (channelData.irms > 1.03)
+      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
+    else
+      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
+
   }
 }
 

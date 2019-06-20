@@ -27,11 +27,11 @@ typedef struct
   TOSThreadParams* Channel0Params;  /*!< Thread parameters for Channel0. */
 } TDORSetup;
 
-typedef struct AnalogThreadData
+typedef struct ChannelThreadData
 {
   OS_ECB* semaphore;
   uint8_t channelNb;
-  float sample;
+  float irms;
   int16_t samples[16];
 } TAnalogThreadData;
 
