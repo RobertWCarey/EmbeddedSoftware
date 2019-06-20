@@ -70,7 +70,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
   OS_ERROR error;
 
-  error = OS_ThreadCreate(DOR_Thread,
+  error = OS_ThreadCreate(DOR_TimingThread,
                           &AnalogThreadData[0],
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
@@ -96,7 +96,7 @@ static float returnRMS(int16_t sampleData[])
   return (float)((vrms*40)/13);
 }
 
-void DOR_Thread(void* pData)
+void DOR_TimingThread(void* pData)
 {
   #define analogData (*(TAnalogThreadData*)pData)
   int count;
@@ -110,9 +110,7 @@ void DOR_Thread(void* pData)
     count ++;
     if (count == 16)
     {
-
       irms = returnRMS(analogData.samples);
-
       count = 0;
     }
   }

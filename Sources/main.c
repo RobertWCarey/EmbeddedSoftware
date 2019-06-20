@@ -71,8 +71,11 @@ typedef enum
   InitModulesThreadPriority,
   UARTRxThreadPriority,
   PacketThreadPriority,
+  DORTiming0Priority,
+  DORTiming1Priority,
+  DORTiming2Priority,
+  DORTripPriority,
   UARTTxThreadPriority,
-  DORChannel0Priority,
   RTCThreadPriority,
   FTMThreadPriority
 } TThreadPriority;
@@ -81,7 +84,7 @@ typedef enum
 OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for the Init Modules thread. */
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
-OS_THREAD_STACK(DORChannel0ThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORTiming0ThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the RTC thread. */
 OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
@@ -92,9 +95,9 @@ TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_S
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters
-TOSThreadParams UART_TxThreadParams = {NULL,&DORChannel0ThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
+TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
 // Analog thread params for one channel
-TOSThreadParams DOR_Channel0ThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],DORChannel0Priority};
+TOSThreadParams DOR_Timing0ThreadParams = {NULL,&DORTiming0ThreadStack[THREAD_STACK_SIZE - 1],DORTiming0Priority};
 // Real Time Clock thread parameters
 TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],RTCThreadPriority};
 // Flexible Timer Module thread parameters
@@ -154,7 +157,7 @@ static void InitModulesThread(void* pData)
   //DOR Module Setup
   TDORSetup dorSetup;
   dorSetup.moduleClk = CPU_BUS_CLK_HZ;
-  dorSetup.Channel0Params = &DOR_Channel0ThreadParams;
+  dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
 
   //Disable Interrupts
   OS_DisableInterrupts();
