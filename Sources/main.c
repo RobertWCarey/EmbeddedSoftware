@@ -40,7 +40,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "RTC.h"
 #include "FTM.h"
 #include "accel.h"
 #include "median.h"
@@ -76,7 +75,6 @@ typedef enum
   UARTRxThreadPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
-  RTCThreadPriority,
   FTMThreadPriority
 } TThreadPriority;
 
@@ -86,7 +84,6 @@ OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
 OS_THREAD_STACK(DORTiming0ThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(DORTripThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the RTC thread. */
 OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
 
@@ -101,26 +98,12 @@ TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SI
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters
 TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
-// Real Time Clock thread parameters
-TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],RTCThreadPriority};
 // Flexible Timer Module thread parameters
 TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],FTMThreadPriority};
 // Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
 
-/*! @brief Interrupt callback function to be called when RTC_ISR occurs
- * Turn on yellow LED and send the time
- *  @param arg The user argument that comes with the callback
- */
-void RTCCallback(void* arg)
-{
-  //toggle yellow LED
-  LEDs_Toggle(LED_YELLOW);
-  //send the current time
-  static Time time;
-  RTC_Get(&time.hours,&time.minutes,&time.seconds);
-  Packet_Put(CMD_TIME_BYTE,time.hours,time.minutes,time.seconds);
-}
+
 
 /*! @brief Interrupt callback function to be called when FTM_ISR occurs (output compare match)
  * Turn off blue LED
@@ -151,12 +134,6 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-  //RTC setup struct
-  TRTCSetup rtcSetup;
-  rtcSetup.CallbackFunction = RTCCallback;
-  rtcSetup.CallbackArguments = NULL;
-  rtcSetup.ThreadParams = &RTC_ThreadParams;
-
   //DOR Module Setup
   TDORSetup dorSetup;
   dorSetup.moduleClk = CPU_BUS_CLK_HZ;
@@ -169,7 +146,6 @@ static void InitModulesThread(void* pData)
   //Initialise Modules
   Packet_Init(&packetSetup);
   LEDs_Init();
-  RTC_Init(&rtcSetup);
   FTM_Init(&FTM_ThreadParams);
   Flash_Init();
   DOR_Init(&dorSetup);

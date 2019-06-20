@@ -26,7 +26,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "RTC.h"
 #include "FTM.h"
 #include "accel.h"
 #include "median.h"
@@ -39,7 +38,6 @@
 #define CMD_PROGRAM_BYTE 0x07u          /* "Flash - Program Byte" */
 #define CMD_READ_BYTE 0x08u             /* "Flash - Read Byte" */
 #define CMD_TOWER_MODE 0x0Du            /* "Tower Mode" */
-#define CMD_TIME_BYTE 0xCu              /* "Time" / "Set Time" */
 #define CMD_ACCEL_VAL 0x10u             /* "Accelerometer - Value" */
 #define CMD_PROT_MODE 0x0Au             /* "Protocol - Mode" */
 #define CMD_DOR 0x70u                   /* "DOR" */

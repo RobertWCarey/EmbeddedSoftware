@@ -39,12 +39,6 @@ static const uint8_t PROGRAM_BYTE_RANGE_HI = 0x08;// Highest valid value Param
 static const uint8_t READ_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
 static const uint8_t READ_BYTE_RANGE_HI = 0x07;// Highest valid value Param
 
-// Parameters for 0x0C-Time
-static const uint8_t TIME_RANGE_LO = 0x00;// Lowest valid value
-static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
-static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
-static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
-
 // Parameters for 0x0A - Protocol Mode
 static const uint8_t PROT_MODE_GET = 1;// Get Param
 static const uint8_t PROT_MODE_SET = 2;// Set Param
@@ -164,25 +158,6 @@ static bool readBytePacketHandler()
 
 }
 
-/*! @brief sets the time for the RTC.
- *
- *  @return bool - TRUE if data successfully programmed.
- */
-static bool timePacketHandler()
-{
-  // Check lower values for valid range
-  if ((Packet_Parameter1 >= TIME_RANGE_LO) && (Packet_Parameter2 >= TIME_RANGE_LO) && (Packet_Parameter3 >= TIME_RANGE_LO))
-    //Check upper values for valid range
-    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) && (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) && (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
-    {
-      // Update the current RTC value
-      RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
-      return true;
-    }
-
-  return false;
-}
-
 /*! @brief Executes Protocol Mode packet handler.
  *
  *  @return bool - TRUE if packet successfully sent.
@@ -272,9 +247,6 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
       break;
     case CMD_READ_BYTE:
       success = readBytePacketHandler();
-      break;
-    case CMD_TIME_BYTE:
-      success = timePacketHandler();
       break;
     case CMD_PROT_MODE:
       success = protModePacketHandler(AccelMode);
