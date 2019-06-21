@@ -215,11 +215,8 @@ static bool dorPacketHandler()
   return success;
 }
 
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel, TAccelMode* const AccelMode)
+void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, TAccelMode* const AccelMode)
 {
-  //Starts a timer and turns on LED
-  FTM_StartTimer(aFTMChannel);
-  LEDs_On(LED_BLUE);
 
   // Isolate command packet
   uint8_t command = Packet_Command & ~PACKET_ACK_MASK;

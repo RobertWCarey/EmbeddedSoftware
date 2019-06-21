@@ -40,7 +40,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "FTM.h"
 #include "accel.h"
 #include "median.h"
 #include "ComProt.h"
@@ -75,7 +74,6 @@ typedef enum
   UARTRxThreadPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
-  FTMThreadPriority
 } TThreadPriority;
 
 // Thread stacks
@@ -84,7 +82,6 @@ OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
 OS_THREAD_STACK(DORTiming0ThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(DORTripThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
 
 // Thread Parameters
@@ -98,22 +95,8 @@ TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SI
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters
 TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
-// Flexible Timer Module thread parameters
-TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],FTMThreadPriority};
 // Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
-
-
-
-/*! @brief Interrupt callback function to be called when FTM_ISR occurs (output compare match)
- * Turn off blue LED
- *  @param arg The user argument that comes with the callback
- */
-void FTMCallback(void* arg)
-{
-  //turn off blue LED
-  LEDs_Off(LED_BLUE);
-}
 
 
 /*! @brief Initialises the modules to support the Tower modules.
@@ -146,12 +129,8 @@ static void InitModulesThread(void* pData)
   //Initialise Modules
   Packet_Init(&packetSetup);
   LEDs_Init();
-  FTM_Init(&FTM_ThreadParams);
   Flash_Init();
   DOR_Init(&dorSetup);
-
-  //Set FTM Timer
-  FTM_Set(pData);
 
   //Assign non-volatile memory locations
   Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
@@ -182,7 +161,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode,pData,&AccelMode);
+      cmdHandler(nvTowerNb,nvTowerMode,&AccelMode);
   }
 }
 
@@ -195,19 +174,6 @@ int main(void)
   // Local variable to store any errors for OS
   OS_ERROR error;
 
-  //Configure struct for FTM_Set()
-  static TFTMChannel channelSetup0;
-  channelSetup0.channelNb = 0;
-  channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
-  channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
-  channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
-  channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
-  channelSetup0.callbackFunction = FTMCallback;
-  channelSetup0.callbackArguments = NULL;
-
-  // Store FTM0 Channel0 data into thread data for later use
-  PacketHandleThreadParams.pData = &channelSetup0;
-  InitModulesThreadParams.pData = &channelSetup0;
 
   /*** Processor Expert internal initialization. DON'T REMOVE THIS CODE!!! ***/
   PE_low_level_init();

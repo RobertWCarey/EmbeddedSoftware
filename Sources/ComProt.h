@@ -26,7 +26,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "FTM.h"
 #include "accel.h"
 #include "median.h"
 
@@ -50,7 +49,7 @@
  *  @param towerNb A pointer to the current accelerometer mode.
  *  @return void.
  */
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel, TAccelMode* const AccelMode);
+void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, TAccelMode* const AccelMode);
 
 /*! @brief Sends out required packets for Tower Startup.
  *
