@@ -105,7 +105,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
 
   //Set PIT Timer
-  PIT_Set(PIT_TIME_PERIOD, true);
+  PIT_Set(PIT_TIME_PERIOD, true,0);
 
   OS_ERROR error;
 

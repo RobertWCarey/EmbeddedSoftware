@@ -68,23 +68,23 @@ bool PIT_Init(const TPITSetup* const PITSetup)
   return true;
 }
 
-void PIT_Set(const uint32_t period, const bool restart)
+void PIT_Set(const uint32_t period, const bool restart, const uint8_t PIT)
 {
   uint32_t nbTicks = (period/PITClkPeriod)-1;
 
   if (restart)
     //Disable PIT
-    PIT_TCTRL0 &= ~PIT_TCTRL_TEN_MASK;
+    PIT_TCTRL(PIT) &= ~PIT_TCTRL_TEN_MASK;
 
   //Load value
-  PIT_LDVAL0 = PIT_LDVAL_TSV(nbTicks);
+  PIT_LDVAL(PIT) = PIT_LDVAL_TSV(nbTicks);
 
   //Clear Timer Interrupt
-  PIT_TFLG0 |= PIT_TFLG_TIF_MASK;
+  PIT_TFLG(PIT) |= PIT_TFLG_TIF_MASK;
 
   //Enable PIT Timer and Interrupt
-  PIT_TCTRL0 |= PIT_TCTRL_TIE_MASK;
-  PIT_TCTRL0 |= PIT_TCTRL_TEN_MASK;
+  PIT_TCTRL(PIT) |= PIT_TCTRL_TIE_MASK;
+  PIT_TCTRL(PIT) |= PIT_TCTRL_TEN_MASK;
 }
 
 void PIT_Enable(const bool enable)
