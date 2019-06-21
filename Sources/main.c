@@ -40,7 +40,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "accel.h"
 #include "median.h"
 #include "ComProt.h"
 #include "OS.h"
@@ -53,10 +52,6 @@ volatile uint16union_t *nvTowerMode;
 // Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
 
-//Accelerometer mode global
-static TAccelMode AccelMode = ACCEL_POLL;
-//Accelerometer latest data
-static TAccelData AccelData;
 //Last three values for each accelerometer axis
 static uint8_t XValues[3], YValues[3], ZValues[3];
 
@@ -141,7 +136,7 @@ static void InitModulesThread(void* pData)
     Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
 
   //Send start-up packet
-  towerStatupPacketHandler(nvTowerNb,nvTowerMode,&AccelMode);
+  towerStatupPacketHandler(nvTowerNb,nvTowerMode);
 
   //Enable Interrupts
   OS_EnableInterrupts();
@@ -161,7 +156,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode,&AccelMode);
+      cmdHandler(nvTowerNb,nvTowerMode);
   }
 }
 

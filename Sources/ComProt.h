@@ -26,7 +26,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "accel.h"
 #include "median.h"
 
 
@@ -37,8 +36,6 @@
 #define CMD_PROGRAM_BYTE 0x07u          /* "Flash - Program Byte" */
 #define CMD_READ_BYTE 0x08u             /* "Flash - Read Byte" */
 #define CMD_TOWER_MODE 0x0Du            /* "Tower Mode" */
-#define CMD_ACCEL_VAL 0x10u             /* "Accelerometer - Value" */
-#define CMD_PROT_MODE 0x0Au             /* "Protocol - Mode" */
 #define CMD_DOR 0x70u                   /* "DOR" */
 
 /*! @brief Performs necessary action for any valid packets received.
@@ -49,7 +46,7 @@
  *  @param towerNb A pointer to the current accelerometer mode.
  *  @return void.
  */
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, TAccelMode* const AccelMode);
+void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode);
 
 /*! @brief Sends out required packets for Tower Startup.
  *
@@ -58,7 +55,7 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
  *  @param towerNb A pointer to the current accelerometer mode.
  *  @return bool - TRUE if all packets were successfully sent.
  */
-bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode, const TAccelMode* AccelMode);
+bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode);
 
 #endif
 /*!
