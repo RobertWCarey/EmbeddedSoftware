@@ -26,7 +26,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "median.h"
 
 
 // Command Values

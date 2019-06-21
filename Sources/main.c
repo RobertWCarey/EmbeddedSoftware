@@ -40,7 +40,6 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "median.h"
 #include "ComProt.h"
 #include "OS.h"
 
