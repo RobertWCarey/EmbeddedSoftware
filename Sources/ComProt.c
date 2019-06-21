@@ -39,19 +39,6 @@ static const uint8_t PROGRAM_BYTE_RANGE_HI = 0x08;// Highest valid value Param
 static const uint8_t READ_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
 static const uint8_t READ_BYTE_RANGE_HI = 0x07;// Highest valid value Param
 
-// Parameters for 0x0C-Time
-static const uint8_t TIME_RANGE_LO = 0x00;// Lowest valid value
-static const uint8_t TIME_HOURS_RANGE_HI = 23;// Highest hours valid value
-static const uint8_t TIME_MINUTES_RANGE_HI = 59;// Highest minutes valid value
-static const uint8_t TIME_SECONDS_RANGE_HI = 59;// Highest seconds valid value
-
-// Parameters for 0x0A - Protocol Mode
-static const uint8_t PROT_MODE_GET = 1;// Get Param
-static const uint8_t PROT_MODE_SET = 2;// Set Param
-static const uint8_t PROT_MODE_ASYNC = 0;// Asynchronous mode (PIT polling)
-static const uint8_t PROT_MODE_SYNC = 1;// Synchronous mode (Accel interrupt)
-static const uint8_t PROT_MODE_PARAM3 = 0;// Parameter 3 for 0x0A
-
 // Parameters for 0x70 - DOR
 #define DOR_IDMT_CHARAC 0// Select "IDMT characteristic"
 static const uint8_t DOR_IDMT_GET = 1;// GET IDMT characteristic
@@ -64,15 +51,14 @@ static const uint8_t DOR_IDMT_EINVERSE = 2;// IDMT "Extremely Inverse"
 #define DOR_TIMES_TRIPPED 3// Select "Get # of times Tripped"
 #define DOR_FAULT_TYPE 4// Select "Get Fault Type"
 
-bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode, const TAccelMode* AccelMode)
+bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode)
 {
   // Check that params are valid
   if ( (Packet_Parameter1 == TOWER_STARTUP_PARAM) && (Packet_Parameter2 == TOWER_STARTUP_PARAM) && (Packet_Parameter3 == TOWER_STARTUP_PARAM) )
     return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
       Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
       Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
-      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi)&&
-      Packet_Put(CMD_PROT_MODE, 0, *AccelMode, 0);
+      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi);
 
   // If invalid params return false
   return false;
@@ -164,57 +150,7 @@ static bool readBytePacketHandler()
 
 }
 
-/*! @brief sets the time for the RTC.
- *
- *  @return bool - TRUE if data successfully programmed.
- */
-static bool timePacketHandler()
-{
-  // Check lower values for valid range
-  if ((Packet_Parameter1 >= TIME_RANGE_LO) && (Packet_Parameter2 >= TIME_RANGE_LO) && (Packet_Parameter3 >= TIME_RANGE_LO))
-    //Check upper values for valid range
-    if ((Packet_Parameter1 <= TIME_HOURS_RANGE_HI) && (Packet_Parameter2 <= TIME_MINUTES_RANGE_HI) && (Packet_Parameter3 <= TIME_SECONDS_RANGE_HI))
-    {
-      // Update the current RTC value
-      RTC_Set(Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
-      return true;
-    }
 
-  return false;
-}
-
-/*! @brief Executes Protocol Mode packet handler.
- *
- *  @return bool - TRUE if packet successfully sent.
- */
-static bool protModePacketHandler(TAccelMode* const AccelMode)
-{
-  // Check offset is valid, and parameter byte is valid
-  if ((Packet_Parameter3 != PROT_MODE_PARAM3))
-    return false;
-
-  // Check for Valid get parameters
-  if ( (Packet_Parameter1 == PROT_MODE_GET) && !(Packet_Parameter2) )
-  {
-    // Send current mode
-    return Packet_Put(CMD_PROT_MODE, PROT_MODE_GET, *AccelMode, PROT_MODE_PARAM3);
-  }
-  // Check for valid Set parameters
-  else if (Packet_Parameter1 == PROT_MODE_SET)
-  {
-    //Set mode based on packet_parameter2 as long as valid
-    if ((Packet_Parameter2 == PROT_MODE_ASYNC) || (Packet_Parameter2 == PROT_MODE_SYNC))
-    {
-      // Update accelerometer mode
-      Accel_SetMode(Packet_Parameter2);
-      // Update variable storing current mode
-      *AccelMode = Packet_Parameter2;
-      return true;
-    }
-  }
-
-  return false;
-}
 
 static bool dorPacketHandler()
 {
@@ -240,11 +176,8 @@ static bool dorPacketHandler()
   return success;
 }
 
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, const TFTMChannel* const aFTMChannel, TAccelMode* const AccelMode)
+void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode)
 {
-  //Starts a timer and turns on LED
-  FTM_StartTimer(aFTMChannel);
-  LEDs_On(LED_BLUE);
 
   // Isolate command packet
   uint8_t command = Packet_Command & ~PACKET_ACK_MASK;
@@ -256,7 +189,7 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
   switch (command)
   {
     case CMD_TOWER_STARTUP:
-      success = towerStatupPacketHandler(towerNb,towerMode,AccelMode);
+      success = towerStatupPacketHandler(towerNb,towerMode);
       break;
     case CMD_SPECIAL_TOWER_VERSION:
       success = specialPacketHandler();
@@ -272,12 +205,6 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
       break;
     case CMD_READ_BYTE:
       success = readBytePacketHandler();
-      break;
-    case CMD_TIME_BYTE:
-      success = timePacketHandler();
-      break;
-    case CMD_PROT_MODE:
-      success = protModePacketHandler(AccelMode);
       break;
     case CMD_DOR:
       success = dorPacketHandler();
