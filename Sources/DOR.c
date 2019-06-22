@@ -77,12 +77,18 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
   }
 };
 
-static void PITCallback(void* arg)
+static void PIT0Callback(void* arg)
 {
   // Make the code easier to read by giving a name to the typecast'ed pointer
   #define Data ((TAnalogThreadData*)arg)
 
   Analog_Get(0, &analogInputValue);
+}
+
+static void PIT1Callback(void* arg)
+{
+
+
 }
 
 bool DOR_Init(const TDORSetup* const dorSetup)
@@ -96,9 +102,12 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
-  pitSetup.Semaphore = ChannelThreadData[0].semaphore;
-  pitSetup.CallbackFunction = PITCallback;
-  pitSetup.CallbackArguments = &ChannelThreadData[0];
+  pitSetup.Semaphore[0] = ChannelThreadData[0].semaphore;
+  pitSetup.Semaphore[1] = TripSemaphore;
+  pitSetup.CallbackFunction[0] = PIT0Callback;
+  pitSetup.CallbackArguments[0] = &ChannelThreadData[0];
+  pitSetup.CallbackFunction[1] = PIT1Callback;
+  pitSetup.CallbackArguments[1] = NULL;
 
   PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
@@ -106,6 +115,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true,0);
+  PIT_Set(PIT_TIME_PERIOD, true,1);
 
   OS_ERROR error;
 
@@ -166,8 +176,6 @@ void DOR_TimingThread(void* pData)
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
     else
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
-
-    OS_SemaphoreSignal(TripSemaphore);
   }
 }
 

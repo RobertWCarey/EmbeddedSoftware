@@ -25,11 +25,11 @@
 typedef struct
 {
   uint32_t moduleClk;				        /*!< The module clock rate in Hz. */
-  void (*CallbackFunction)(void*);	/*!< The user's callback function. */
-  void* CallbackArguments;		      /*!< The user's callback function arguments. */
+  void (*CallbackFunction[2])(void*);	/*!< The user's callback function. */
+  void* CallbackArguments[2];		      /*!< The user's callback function arguments. */
   TOSThreadParams* ThreadParams;    /*!< Thread parameters for PITThread. */
   bool EnablePITThread;
-  OS_ECB* Semaphore;
+  OS_ECB* Semaphore[2];
 } TPITSetup;
 
 void PITThread(void* pData);
