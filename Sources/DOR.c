@@ -26,7 +26,7 @@
 static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
 //Output channels
-static const uint8_t TIMING_OUPUT_CHANNEL = 1;
+static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
 static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
 
 static const uint16_t ADC_CONVERSION = 3276;
@@ -197,20 +197,20 @@ void DOR_TimingThread(void* pData)
 
     if (channelData.irms > 1.03)
     {
-      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
+      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
       channelData.timerStatus = 1;
       channelData.currentTimeCount = 0;
     }
     else
     {
-      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
+      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
       channelData.timerStatus = 0;
     }
 
   }
 }
 
-static int32_t interpolate(TIDMTData data[], double val)
+static uint32_t interpolate(TIDMTData data[], double val)
 {
   double result = 0; // Initialize result
 
@@ -235,7 +235,7 @@ static int32_t interpolate(TIDMTData data[], double val)
       result += term;
   }
 
-  return (int32_t)result;
+  return (uint32_t)result;
 }
 
 void DOR_TripThread(void* pData)
@@ -244,12 +244,22 @@ void DOR_TripThread(void* pData)
   {
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
-    for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
-    {
-      //check if timer started
-      if (channelData.timerStatus)
-      {
+    // TODO: Add multi channel functionality
+//    for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
 
+    //check if timer started
+    if (channelData.timerStatus)
+    {
+      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
+      if (channelData.currentTimeCount >= channelData.tripTime)
+      {
+        // Set Output high
+        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+      }
+      else
+      {
+        // Set Output low
+        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
       }
     }
 
