@@ -164,7 +164,7 @@ static float returnRMS(int16_t sampleData[])
   float vrms;
   for (uint8_t i = 0; i<16;i++)
   {
-    volts=(float)sampleData[i]/(float)ADC_CONVERSION;
+    volts=sampleData[i];
 
     square += (volts*volts);
   }
@@ -179,6 +179,16 @@ static int16_t v2raw(float voltage)
   return (int16_t)(voltage*ADC_CONVERSION);
 }
 
+static float raw2v(int16_t voltage)
+{
+  return (float)voltage/(float)ADC_CONVERSION;
+}
+
+static void getFrequency(TAnalogThreadData* Data, uint8_t count)
+{
+
+}
+
 void DOR_TimingThread(void* pData)
 {
   int count;
@@ -186,7 +196,7 @@ void DOR_TimingThread(void* pData)
   {
     (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
-    channelData.samples[count] = channelData.sample;
+    channelData.samples[count] = raw2v(channelData.sample);
 
     count ++;
     if (count == 16)
