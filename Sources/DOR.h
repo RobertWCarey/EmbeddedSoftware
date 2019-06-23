@@ -36,6 +36,7 @@ typedef struct ChannelThreadData
   int16_t samples[16];
   int16_t sample;
   bool timerStatus;
+  uint32_t currentTimeCount;
 } TAnalogThreadData;
 
 typedef struct

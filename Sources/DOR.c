@@ -75,16 +75,19 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .semaphore = NULL,
     .channelNb = 0,
     .timerStatus = 0,
+    .currentTimeCount = 0,
   },
   {
     .semaphore = NULL,
     .channelNb = 1,
     .timerStatus = 0,
+    .currentTimeCount = 0,
   },
   {
     .semaphore = NULL,
     .channelNb = 2,
     .timerStatus = 0,
+    .currentTimeCount = 0,
   }
 };
 
@@ -101,7 +104,13 @@ static void PIT0Callback(void* arg)
 
 static void PIT1Callback(void* arg)
 {
-
+  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  {
+    if (ChannelThreadData[i].timerStatus)
+    {
+      ChannelThreadData[i].currentTimeCount++;
+    }
+  }
 
 }
 
@@ -177,7 +186,7 @@ void DOR_TimingThread(void* pData)
   {
     (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
-    channelData.samples[count] = analogInputValue;
+    channelData.samples[count] = channelData.sample;
 
     count ++;
     if (count == 16)
@@ -190,6 +199,7 @@ void DOR_TimingThread(void* pData)
     {
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
       channelData.timerStatus = 1;
+      channelData.currentTimeCount = 0;
     }
     else
     {
