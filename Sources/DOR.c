@@ -148,7 +148,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           dorSetup->Channel0Params->priority);
 
   error = OS_ThreadCreate(DOR_TripThread,
-                          NULL,
+                          &ChannelThreadData[0],
                           dorSetup->TripParams->pStack,
                           dorSetup->TripParams->priority);
 
@@ -244,10 +244,15 @@ void DOR_TripThread(void* pData)
   {
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
+    for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+    {
+      //check if timer started
+      if (channelData.timerStatus)
+      {
 
+      }
+    }
 
-    int32_t temp = interpolate(INV_TRIP_TIME,1.04);
-    temp++;
   }
 }
 
