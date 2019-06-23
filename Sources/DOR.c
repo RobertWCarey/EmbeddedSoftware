@@ -58,7 +58,7 @@ static const TIDMTData EINV_TRIP_TIME[20] =
 
 uint16_t analogInputValue;
 
-#define NB_ANALOG_CHANNELS 1
+#define NB_ANALOG_CHANNELS 3
 
 #define channelData (*(TAnalogThreadData*)pData)
 
@@ -74,15 +74,29 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
   {
     .semaphore = NULL,
     .channelNb = 0,
+    .timerStatus = 0,
+  },
+  {
+    .semaphore = NULL,
+    .channelNb = 1,
+    .timerStatus = 0,
+  },
+  {
+    .semaphore = NULL,
+    .channelNb = 2,
+    .timerStatus = 0,
   }
 };
 
 static void PIT0Callback(void* arg)
 {
   // Make the code easier to read by giving a name to the typecast'ed pointer
-  #define Data ((TAnalogThreadData*)arg)
 
-  Analog_Get(0, &analogInputValue);
+  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  {
+    Analog_Get(0, &ChannelThreadData[i].sample);
+  }
+
 }
 
 static void PIT1Callback(void* arg)
@@ -105,7 +119,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   pitSetup.Semaphore[0] = ChannelThreadData[0].semaphore;
   pitSetup.Semaphore[1] = TripSemaphore;
   pitSetup.CallbackFunction[0] = PIT0Callback;
-  pitSetup.CallbackArguments[0] = &ChannelThreadData[0];
+  pitSetup.CallbackArguments[0] = NULL;
   pitSetup.CallbackFunction[1] = PIT1Callback;
   pitSetup.CallbackArguments[1] = NULL;
 
@@ -173,9 +187,16 @@ void DOR_TimingThread(void* pData)
     }
 
     if (channelData.irms > 1.03)
+    {
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
+      channelData.timerStatus = 1;
+    }
     else
+    {
       Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
+      channelData.timerStatus = 0;
+    }
+
   }
 }
 
@@ -212,6 +233,8 @@ void DOR_TripThread(void* pData)
   for(;;)
   {
     (void)OS_SemaphoreWait(TripSemaphore, 0);
+
+
 
     int32_t temp = interpolate(INV_TRIP_TIME,1.04);
     temp++;
