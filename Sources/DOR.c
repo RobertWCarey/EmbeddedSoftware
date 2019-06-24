@@ -23,7 +23,7 @@
 
 
 // Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
 //Output channels
 static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
@@ -218,6 +218,16 @@ static void getFrequency(TAnalogThreadData* Data, uint8_t count)
         Data->crossing = 1;
         break;
       case 1:
+        Data->offset2 = getOffset(Data->samples[count-1],Data->samples[count]);
+        float period = (Data->numberOfSamples - Data->offset1 + Data->offset2)*PIT_TIME_PERIOD;
+        float freq = 1/(period/1e-9);
+        if (freq >= 47.5 && freq <= 52.5)
+        {
+          Data->frequency = freq;
+          PIT_TIME_PERIOD = period;
+          PIT_Set(PIT_TIME_PERIOD,false,0);
+        }
+        Data->crossing = 0;
         break;
       default:
         Data->crossing = 0;
