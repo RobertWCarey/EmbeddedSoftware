@@ -24,8 +24,8 @@
 
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
-//static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
-static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
+static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+//static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
 static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
 //Output channels
@@ -321,7 +321,9 @@ void DOR_TripThread(void* pData)
     //check if timer started
     if (channelData.timerStatus)
     {
-      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
+//      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
+//      channelData.tripTime = 17610;
+      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
       if (channelData.currentTimeCount >= channelData.tripTime)
       {
         // Set Output high
