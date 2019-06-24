@@ -76,18 +76,30 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .channelNb = 0,
     .timerStatus = 0,
     .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
   },
   {
     .semaphore = NULL,
     .channelNb = 1,
     .timerStatus = 0,
     .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
   },
   {
     .semaphore = NULL,
     .channelNb = 2,
     .timerStatus = 0,
     .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
   }
 };
 

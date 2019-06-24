@@ -38,6 +38,10 @@ typedef struct ChannelThreadData
   bool timerStatus;
   uint32_t currentTimeCount;
   uint32_t tripTime;
+  float offset1;
+  float offset2;
+  uint8_t numberOfSamples;
+  uint8_t crossing;
 } TAnalogThreadData;
 
 typedef struct
