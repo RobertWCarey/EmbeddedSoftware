@@ -24,8 +24,8 @@
 
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
-//static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
-static uint32_t PIT_TIME_PERIOD = 1000000; // 1ms
+static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+//static uint32_t PIT_TIME_PERIOD = 1000000; // 1ms
 //static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
 static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
@@ -209,6 +209,7 @@ static float getOffset(float sample0, float sample1)
 static void getFrequency(TAnalogThreadData* Data, uint8_t count)
 {
   float period;
+  static int tempLoop=0;
   if (count > 0 )
   {
     // check at full cycle zero crossing
@@ -225,11 +226,17 @@ static void getFrequency(TAnalogThreadData* Data, uint8_t count)
         Data->offset2 = getOffset(Data->samples[count-1],Data->samples[count]);
         float period1 = Data->offset1*PIT_TIME_PERIOD;
         float period2 = Data->offset2*PIT_TIME_PERIOD;
-        period = (Data->numberOfSamples-Data->offset1+Data->offset2)*PIT_TIME_PERIOD;
+        period = (Data->numberOfSamples-1-Data->offset1+Data->offset2)*PIT_TIME_PERIOD;
         float freq = 1/((float)(period)*1e-9);
+
+        Data->frequency[tempLoop] = freq;
+        tempLoop++;
+        if (tempLoop >3)
+          tempLoop = 0;
+
         if (freq >= 47.5 && freq <= 52.5)
         {
-          Data->frequency = freq;
+//          Data->frequency = freq;
 //          PIT_TIME_PERIOD = period;
 //          PIT_Set(PIT_TIME_PERIOD,false,0);
         }
@@ -254,12 +261,12 @@ void DOR_TimingThread(void* pData)
     channelData.samples[count] = raw2v(channelData.sample);
 
     count ++;
-    if (count == 32)
+    if (count == 64)
     {
       channelData.irms = returnRMS(channelData.samples);
       count = 0;
       channelData.crossing = 0;
-      for (int i = 1; i < 33;i++)
+      for (int i = 1; i < 65;i++)
       {
 
        if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0) )
