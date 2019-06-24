@@ -23,6 +23,7 @@
 
 
 // Pit time period (nano seconds)
+// Todo: change to proper case for vairable
 static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
 //Output channels
@@ -168,7 +169,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 }
 
 
-static float returnRMS(int16_t sampleData[])
+static float returnRMS(float sampleData[])
 {
 
   float square = 0;
