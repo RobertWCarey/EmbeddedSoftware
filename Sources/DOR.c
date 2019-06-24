@@ -24,7 +24,8 @@
 
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
-static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+//static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
 static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
 //Output channels
@@ -259,10 +260,10 @@ void DOR_TimingThread(void* pData)
       count = 0;
     }
 
-    if (channelData.channelNb == 0)
-    {
-      getFrequency(&channelData, count);
-    }
+//    if (channelData.channelNb == 0)
+//    {
+//      getFrequency(&channelData, count);
+//    }
 
     if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
