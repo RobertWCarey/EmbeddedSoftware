@@ -259,6 +259,11 @@ void DOR_TimingThread(void* pData)
       count = 0;
     }
 
+    if (channelData.channelNb == 0)
+    {
+      getFrequency(&channelData, count);
+    }
+
     if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
       Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
