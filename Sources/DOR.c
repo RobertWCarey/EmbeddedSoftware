@@ -26,7 +26,7 @@
 static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
 //Output channels
-static const uint8_t TIMING_OUPUT_CHANNEL = 1;
+static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
 static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
 
 static const uint16_t ADC_CONVERSION = 3276;
@@ -58,7 +58,7 @@ static const TIDMTData EINV_TRIP_TIME[20] =
 
 uint16_t analogInputValue;
 
-#define NB_ANALOG_CHANNELS 1
+#define NB_ANALOG_CHANNELS 3
 
 #define channelData (*(TAnalogThreadData*)pData)
 
@@ -74,15 +74,44 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
   {
     .semaphore = NULL,
     .channelNb = 0,
+    .timerStatus = 0,
+    .currentTimeCount = 0,
+  },
+  {
+    .semaphore = NULL,
+    .channelNb = 1,
+    .timerStatus = 0,
+    .currentTimeCount = 0,
+  },
+  {
+    .semaphore = NULL,
+    .channelNb = 2,
+    .timerStatus = 0,
+    .currentTimeCount = 0,
   }
 };
 
-static void PITCallback(void* arg)
+static void PIT0Callback(void* arg)
 {
   // Make the code easier to read by giving a name to the typecast'ed pointer
-  #define Data ((TAnalogThreadData*)arg)
 
-  Analog_Get(0, &analogInputValue);
+  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  {
+    Analog_Get(0, &ChannelThreadData[i].sample);
+  }
+
+}
+
+static void PIT1Callback(void* arg)
+{
+  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  {
+    if (ChannelThreadData[i].timerStatus)
+    {
+      ChannelThreadData[i].currentTimeCount++;
+    }
+  }
+
 }
 
 bool DOR_Init(const TDORSetup* const dorSetup)
@@ -96,16 +125,20 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
-  pitSetup.Semaphore = ChannelThreadData[0].semaphore;
-  pitSetup.CallbackFunction = PITCallback;
-  pitSetup.CallbackArguments = &ChannelThreadData[0];
+  pitSetup.Semaphore[0] = ChannelThreadData[0].semaphore;
+  pitSetup.Semaphore[1] = TripSemaphore;
+  pitSetup.CallbackFunction[0] = PIT0Callback;
+  pitSetup.CallbackArguments[0] = NULL;
+  pitSetup.CallbackFunction[1] = PIT1Callback;
+  pitSetup.CallbackArguments[1] = NULL;
 
   PIT_Init(&pitSetup);
   Analog_Init(dorSetup->moduleClk);
 
 
   //Set PIT Timer
-  PIT_Set(PIT_TIME_PERIOD, true);
+  PIT_Set(PIT_TIME_PERIOD, true,0);
+  PIT_Set(PIT_TIME_PERIOD, true,1);
 
   OS_ERROR error;
 
@@ -115,7 +148,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           dorSetup->Channel0Params->priority);
 
   error = OS_ThreadCreate(DOR_TripThread,
-                          NULL,
+                          &ChannelThreadData[0],
                           dorSetup->TripParams->pStack,
                           dorSetup->TripParams->priority);
 
@@ -131,7 +164,7 @@ static float returnRMS(int16_t sampleData[])
   float vrms;
   for (uint8_t i = 0; i<16;i++)
   {
-    volts=(float)sampleData[i]/(float)ADC_CONVERSION;
+    volts=sampleData[i];
 
     square += (volts*volts);
   }
@@ -146,6 +179,16 @@ static int16_t v2raw(float voltage)
   return (int16_t)(voltage*ADC_CONVERSION);
 }
 
+static float raw2v(int16_t voltage)
+{
+  return (float)voltage/(float)ADC_CONVERSION;
+}
+
+static void getFrequency(TAnalogThreadData* Data, uint8_t count)
+{
+
+}
+
 void DOR_TimingThread(void* pData)
 {
   int count;
@@ -153,7 +196,7 @@ void DOR_TimingThread(void* pData)
   {
     (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
-    channelData.samples[count] = analogInputValue;
+    channelData.samples[count] = raw2v(channelData.sample);
 
     count ++;
     if (count == 16)
@@ -163,15 +206,21 @@ void DOR_TimingThread(void* pData)
     }
 
     if (channelData.irms > 1.03)
-      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(5));
+    {
+      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+      channelData.timerStatus = 1;
+      channelData.currentTimeCount = 0;
+    }
     else
-      Analog_Put(TIMING_OUPUT_CHANNEL,v2raw(0));
+    {
+      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
+      channelData.timerStatus = 0;
+    }
 
-    OS_SemaphoreSignal(TripSemaphore);
   }
 }
 
-static int32_t interpolate(TIDMTData data[], double val)
+static uint32_t interpolate(TIDMTData data[], double val)
 {
   double result = 0; // Initialize result
 
@@ -196,7 +245,7 @@ static int32_t interpolate(TIDMTData data[], double val)
       result += term;
   }
 
-  return (int32_t)result;
+  return (uint32_t)result;
 }
 
 void DOR_TripThread(void* pData)
@@ -205,8 +254,25 @@ void DOR_TripThread(void* pData)
   {
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
-    int32_t temp = interpolate(INV_TRIP_TIME,1.04);
-    temp++;
+    // TODO: Add multi channel functionality
+//    for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+
+    //check if timer started
+    if (channelData.timerStatus)
+    {
+      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
+      if (channelData.currentTimeCount >= channelData.tripTime)
+      {
+        // Set Output high
+        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+      }
+      else
+      {
+        // Set Output low
+        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+      }
+    }
+
   }
 }
 
