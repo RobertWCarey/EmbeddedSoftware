@@ -61,10 +61,10 @@ static uint8_t XValues[3], YValues[3], ZValues[3];
 typedef enum
 {
   InitModulesThreadPriority,
-  DORTripPriority,
   DORTiming0Priority,
   DORTiming1Priority,
   DORTiming2Priority,
+  DORTripPriority,
   UARTRxThreadPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
@@ -75,6 +75,8 @@ OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
 OS_THREAD_STACK(DORTiming0ThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORTiming1ThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORTiming2ThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(DORTripThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
 
@@ -83,6 +85,10 @@ OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for
 TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_STACK_SIZE - 1],InitModulesThreadPriority};
 // Analog thread params for one channel
 TOSThreadParams DOR_Timing0ThreadParams = {NULL,&DORTiming0ThreadStack[THREAD_STACK_SIZE - 1],DORTiming0Priority};
+// Analog thread params for one channel
+TOSThreadParams DOR_Timing1ThreadParams = {NULL,&DORTiming1ThreadStack[THREAD_STACK_SIZE - 1],DORTiming1Priority};
+// Analog thread params for one channel
+TOSThreadParams DOR_Timing2ThreadParams = {NULL,&DORTiming2ThreadStack[THREAD_STACK_SIZE - 1],DORTiming2Priority};
 // Trip thread params
 TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
 // UART receive thread parameters
@@ -115,6 +121,8 @@ static void InitModulesThread(void* pData)
   TDORSetup dorSetup;
   dorSetup.moduleClk = CPU_BUS_CLK_HZ;
   dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
+  dorSetup.Channel1Params = &DOR_Timing1ThreadParams;
+  dorSetup.Channel2Params = &DOR_Timing2ThreadParams;
   dorSetup.TripParams = &DOR_TripThreadParams;
 
   //Disable Interrupts

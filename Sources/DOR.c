@@ -24,8 +24,8 @@
 
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
-static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
-//static uint32_t PIT_TIME_PERIOD = 1000000; // 1ms
+//static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+static uint32_t PIT_TIME_PERIOD = 10000000; // 1ms
 //static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
 static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
@@ -62,7 +62,7 @@ static const TIDMTData EINV_TRIP_TIME[20] =
 
 uint16_t analogInputValue;
 
-#define NB_ANALOG_CHANNELS 1
+#define NB_ANALOG_CHANNELS 3
 
 #define channelData (*(TAnalogThreadData*)pData)
 
@@ -85,26 +85,26 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .numberOfSamples = 0,
     .crossing = 0,
   },
-//  {
-//    .semaphore = NULL,
-//    .channelNb = 1,
-//    .timerStatus = 0,
-//    .currentTimeCount = 0,
-//    .offset1 = 0,
-//    .offset2 = 0,
-//    .numberOfSamples = 0,
-//    .crossing = 0,
-//  },
-//  {
-//    .semaphore = NULL,
-//    .channelNb = 2,
-//    .timerStatus = 0,
-//    .currentTimeCount = 0,
-//    .offset1 = 0,
-//    .offset2 = 0,
-//    .numberOfSamples = 0,
-//    .crossing = 0,
-//  }
+  {
+    .semaphore = NULL,
+    .channelNb = 1,
+    .timerStatus = 0,
+    .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
+  },
+  {
+    .semaphore = NULL,
+    .channelNb = 2,
+    .timerStatus = 0,
+    .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
+  }
 };
 
 static void PIT0Callback(void* arg)
@@ -113,8 +113,11 @@ static void PIT0Callback(void* arg)
 
   for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
   {
-    Analog_Get(0, &ChannelThreadData[i].sample);
+//    Analog_Get(0, &ChannelThreadData[i].sample);
+    OS_SemaphoreSignal(ChannelThreadData[i].semaphore);
   }
+//  Analog_Get(0, &ChannelThreadData[0].sample);
+//  OS_SemaphoreSignal(ChannelThreadData[0].semaphore);
 
 }
 
@@ -133,6 +136,8 @@ static void PIT1Callback(void* arg)
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
   ChannelThreadData[0].semaphore = OS_SemaphoreCreate(0);
+  ChannelThreadData[1].semaphore = OS_SemaphoreCreate(0);
+  ChannelThreadData[2].semaphore = OS_SemaphoreCreate(0);
 
   TripSemaphore = OS_SemaphoreCreate(0);
 
@@ -162,6 +167,15 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           &ChannelThreadData[0],
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
+
+  error = OS_ThreadCreate(DOR_TimingThread,
+                          &ChannelThreadData[1],
+                          dorSetup->Channel1Params->pStack,
+                          dorSetup->Channel1Params->priority);
+  error = OS_ThreadCreate(DOR_TimingThread,
+                          &ChannelThreadData[2],
+                          dorSetup->Channel2Params->pStack,
+                          dorSetup->Channel2Params->priority);
 
   error = OS_ThreadCreate(DOR_TripThread,
                           &ChannelThreadData[0],
@@ -258,25 +272,31 @@ void DOR_TimingThread(void* pData)
   {
     (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
+    Analog_Get(channelData.channelNb, &channelData.sample);
     channelData.samples[count] = raw2v(channelData.sample);
 
     count ++;
-    if (count == 64)
+    if (count == 16)
     {
       channelData.irms = returnRMS(channelData.samples);
       count = 0;
-      channelData.crossing = 0;
-      for (int i = 1; i < 65;i++)
-      {
 
-       if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0) )
-       {
- //        float temp = channelData.samples[count];
- //        float temp1 = channelData.samples[count-1];
-         getFrequency(&channelData, i);
-       }
-       channelData.numberOfSamples++;
-      }
+
+//      if (channelData.channelNb == 0)
+//      {
+//        channelData.crossing = 0;
+//        for (int i = 1; i < 16;i++)
+//        {
+//
+//         if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0))
+//         {
+//   //        float temp = channelData.samples[count];
+//   //        float temp1 = channelData.samples[count-1];
+//           getFrequency(&channelData, i);
+//         }
+//         channelData.numberOfSamples++;
+//        }
+//      }
     }
 
 
@@ -284,7 +304,7 @@ void DOR_TimingThread(void* pData)
 
     if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
-      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
       channelData.timerStatus = 1;
       channelData.currentTimeCount = 0;
     }

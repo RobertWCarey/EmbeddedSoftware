@@ -25,6 +25,8 @@ typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
   TOSThreadParams* Channel0Params;  /*!< Thread parameters for Channel0. */
+  TOSThreadParams* Channel1Params;  /*!< Thread parameters for Channel0. */
+  TOSThreadParams* Channel2Params;  /*!< Thread parameters for Channel0. */
   TOSThreadParams* TripParams;
 } TDORSetup;
 
@@ -33,7 +35,7 @@ typedef struct ChannelThreadData
   OS_ECB* semaphore;
   uint8_t channelNb;
   float irms;
-  float samples[64];
+  float samples[16];
   int16_t sample;
   bool timerStatus;
   uint32_t currentTimeCount;
