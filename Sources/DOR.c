@@ -25,6 +25,7 @@
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
 static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+//static uint32_t PIT_TIME_PERIOD = 1000000; // 1ms
 //static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
 static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
@@ -201,47 +202,53 @@ static float raw2v(int16_t voltage)
 
 static float getOffset(float sample0, float sample1)
 {
-  float m = (sample1-sample0)/1;//Always one becuase 0ne sample diff
+  float m = (sample1-sample0);//Always  divide by one becuase 0ne sample diff
   return (-sample0)/m;
 }
 
 static void getFrequency(TAnalogThreadData* Data, uint8_t count)
 {
-
+  float period;
+  static int tempLoop=0;
   if (count > 0 )
   {
     // check at full cycle zero crossing
-    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
-    {
+//    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
+//    {
       switch (Data->crossing)
       {
       case 0:
-        Data->numberOfSamples = 2;
+        Data->numberOfSamples = 1;
         Data->offset1 = getOffset(Data->samples[count-1],Data->samples[count]);
         Data->crossing = 1;
         break;
       case 1:
         Data->offset2 = getOffset(Data->samples[count-1],Data->samples[count]);
-        float period = (Data->numberOfSamples - Data->offset1 + Data->offset2)*PIT_TIME_PERIOD;
-        float freq = 1/(period/1e-9);
+        float period1 = Data->offset1*PIT_TIME_PERIOD;
+        float period2 = Data->offset2*PIT_TIME_PERIOD;
+        period = (Data->numberOfSamples-1-Data->offset1+Data->offset2)*PIT_TIME_PERIOD;
+        float freq = 1/((float)(period)*1e-9);
+
+        Data->frequency[tempLoop] = freq;
+        tempLoop++;
+        if (tempLoop >3)
+          tempLoop = 0;
+
         if (freq >= 47.5 && freq <= 52.5)
         {
-          Data->frequency = freq;
-          PIT_TIME_PERIOD = period;
-          PIT_Set(PIT_TIME_PERIOD,false,0);
+//          Data->frequency = freq;
+//          PIT_TIME_PERIOD = period;
+//          PIT_Set(PIT_TIME_PERIOD,false,0);
         }
         Data->crossing = 0;
         break;
       default:
         Data->crossing = 0;
         break;
-      }
     }
+//    }
   }
-  else
-  {
-    Data->numberOfSamples++;
-  }
+
 }
 
 void DOR_TimingThread(void* pData)
@@ -254,16 +261,26 @@ void DOR_TimingThread(void* pData)
     channelData.samples[count] = raw2v(channelData.sample);
 
     count ++;
-    if (count == 16)
+    if (count == 64)
     {
       channelData.irms = returnRMS(channelData.samples);
       count = 0;
+      channelData.crossing = 0;
+      for (int i = 1; i < 65;i++)
+      {
+
+       if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0) )
+       {
+ //        float temp = channelData.samples[count];
+ //        float temp1 = channelData.samples[count-1];
+         getFrequency(&channelData, i);
+       }
+       channelData.numberOfSamples++;
+      }
     }
 
-//    if (channelData.channelNb == 0)
-//    {
-//      getFrequency(&channelData, count);
-//    }
+
+
 
     if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
