@@ -25,6 +25,7 @@
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
 static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
 //Output channels
 static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
@@ -59,7 +60,7 @@ static const TIDMTData EINV_TRIP_TIME[20] =
 
 uint16_t analogInputValue;
 
-#define NB_ANALOG_CHANNELS 3
+#define NB_ANALOG_CHANNELS 1
 
 #define channelData (*(TAnalogThreadData*)pData)
 
@@ -82,26 +83,26 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .numberOfSamples = 0,
     .crossing = 0,
   },
-  {
-    .semaphore = NULL,
-    .channelNb = 1,
-    .timerStatus = 0,
-    .currentTimeCount = 0,
-    .offset1 = 0,
-    .offset2 = 0,
-    .numberOfSamples = 0,
-    .crossing = 0,
-  },
-  {
-    .semaphore = NULL,
-    .channelNb = 2,
-    .timerStatus = 0,
-    .currentTimeCount = 0,
-    .offset1 = 0,
-    .offset2 = 0,
-    .numberOfSamples = 0,
-    .crossing = 0,
-  }
+//  {
+//    .semaphore = NULL,
+//    .channelNb = 1,
+//    .timerStatus = 0,
+//    .currentTimeCount = 0,
+//    .offset1 = 0,
+//    .offset2 = 0,
+//    .numberOfSamples = 0,
+//    .crossing = 0,
+//  },
+//  {
+//    .semaphore = NULL,
+//    .channelNb = 2,
+//    .timerStatus = 0,
+//    .currentTimeCount = 0,
+//    .offset1 = 0,
+//    .offset2 = 0,
+//    .numberOfSamples = 0,
+//    .crossing = 0,
+//  }
 };
 
 static void PIT0Callback(void* arg)
@@ -139,7 +140,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
   pitSetup.Semaphore[0] = ChannelThreadData[0].semaphore;
-  pitSetup.Semaphore[1] = TripSemaphore;
+  pitSetup.Semaphore[1] = NULL;
   pitSetup.CallbackFunction[0] = PIT0Callback;
   pitSetup.CallbackArguments[0] = NULL;
   pitSetup.CallbackFunction[1] = PIT1Callback;
@@ -151,7 +152,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true,0);
-  PIT_Set(PIT_TIME_PERIOD, true,1);
+  PIT_Set(PIT1_TIME_PERIOD, true,1);
 
   OS_ERROR error;
 
@@ -270,6 +271,7 @@ void DOR_TimingThread(void* pData)
       channelData.timerStatus = 0;
     }
 
+    OS_SemaphoreSignal(TripSemaphore);
   }
 }
 
@@ -319,12 +321,14 @@ void DOR_TripThread(void* pData)
         // Set Output high
         Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
       }
-      else
-      {
-        // Set Output low
-        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
-      }
+
     }
+    else
+    {
+      // Set Output low
+      Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+    }
+
 
   }
 }
