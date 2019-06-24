@@ -23,7 +23,7 @@
 
 
 // Pit time period (nano seconds)
-static const uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
 
 //Output channels
 static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
@@ -76,18 +76,30 @@ static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .channelNb = 0,
     .timerStatus = 0,
     .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
   },
   {
     .semaphore = NULL,
     .channelNb = 1,
     .timerStatus = 0,
     .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
   },
   {
     .semaphore = NULL,
     .channelNb = 2,
     .timerStatus = 0,
     .currentTimeCount = 0,
+    .offset1 = 0,
+    .offset2 = 0,
+    .numberOfSamples = 0,
+    .crossing = 0,
   }
 };
 
@@ -184,9 +196,49 @@ static float raw2v(int16_t voltage)
   return (float)voltage/(float)ADC_CONVERSION;
 }
 
+static float getOffset(float sample0, float sample1)
+{
+  float m = (sample1-sample0)/1;//Always one becuase 0ne sample diff
+  return (-sample0)/m;
+}
+
 static void getFrequency(TAnalogThreadData* Data, uint8_t count)
 {
 
+  if (count > 0 )
+  {
+    // check at full cycle zero crossing
+    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
+    {
+      switch (Data->crossing)
+      {
+      case 0:
+        Data->numberOfSamples = 2;
+        Data->offset1 = getOffset(Data->samples[count-1],Data->samples[count]);
+        Data->crossing = 1;
+        break;
+      case 1:
+        Data->offset2 = getOffset(Data->samples[count-1],Data->samples[count]);
+        float period = (Data->numberOfSamples - Data->offset1 + Data->offset2)*PIT_TIME_PERIOD;
+        float freq = 1/(period/1e-9);
+        if (freq >= 47.5 && freq <= 52.5)
+        {
+          Data->frequency = freq;
+          PIT_TIME_PERIOD = period;
+          PIT_Set(PIT_TIME_PERIOD,false,0);
+        }
+        Data->crossing = 0;
+        break;
+      default:
+        Data->crossing = 0;
+        break;
+      }
+    }
+  }
+  else
+  {
+    Data->numberOfSamples++;
+  }
 }
 
 void DOR_TimingThread(void* pData)
