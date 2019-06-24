@@ -21,8 +21,8 @@ for count=1:currentSize
    ei_t(count)=round((ei_k/(current(count)^ei_a-1))*1000);
 end
 dlmwrite('it.csv',i_t);
-csvwrite('vit.csv',i_t);
-csvwrite('eit.csv',i_t);
+csvwrite('vit.csv',vi_t);
+csvwrite('eit.csv',ei_t);
 %% Store in ms
 
 intSize=20;
