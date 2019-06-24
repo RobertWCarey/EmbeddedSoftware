@@ -196,11 +196,38 @@ static float raw2v(int16_t voltage)
   return (float)voltage/(float)ADC_CONVERSION;
 }
 
+static float getOffset(float sample0, float sample1)
+{
+  float m = (sample1-sample0)/1;//Always one becuase 0ne sample diff
+  return (-sample0)/m;
+}
+
 static void getFrequency(TAnalogThreadData* Data, uint8_t count)
 {
+
   if (count > 0 )
   {
-
+    // check at full cycle zero crossing
+    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
+    {
+      switch (Data->crossing)
+      {
+      case 0:
+        Data->numberOfSamples = 2;
+        Data->offset1 = getOffset(Data->samples[count-1],Data->samples[count]);
+        Data->crossing = 1;
+        break;
+      case 1:
+        break;
+      default:
+        Data->crossing = 0;
+        break;
+      }
+    }
+  }
+  else
+  {
+    Data->numberOfSamples++;
   }
 }
 
