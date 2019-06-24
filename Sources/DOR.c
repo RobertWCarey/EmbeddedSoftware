@@ -186,7 +186,10 @@ static float raw2v(int16_t voltage)
 
 static void getFrequency(TAnalogThreadData* Data, uint8_t count)
 {
+  if (count > 0 )
+  {
 
+  }
 }
 
 void DOR_TimingThread(void* pData)
