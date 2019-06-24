@@ -61,10 +61,10 @@ static uint8_t XValues[3], YValues[3], ZValues[3];
 typedef enum
 {
   InitModulesThreadPriority,
+  DORTripPriority,
   DORTiming0Priority,
   DORTiming1Priority,
   DORTiming2Priority,
-  DORTripPriority,
   UARTRxThreadPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
