@@ -322,7 +322,8 @@ void DOR_TripThread(void* pData)
     if (channelData.timerStatus)
     {
 //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
-      channelData.tripTime = 17610;
+//      channelData.tripTime = 17610;
+      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
       if (channelData.currentTimeCount >= channelData.tripTime)
       {
         // Set Output high
