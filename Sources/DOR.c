@@ -258,13 +258,13 @@ void DOR_TimingThread(void* pData)
       count = 0;
     }
 
-    if (channelData.irms > 1.03)
+    if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
       Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
       channelData.timerStatus = 1;
       channelData.currentTimeCount = 0;
     }
-    else
+    else if (channelData.irms < 1.03)
     {
       Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
       channelData.timerStatus = 0;
