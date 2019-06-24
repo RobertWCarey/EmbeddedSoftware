@@ -33,7 +33,7 @@ typedef struct ChannelThreadData
   OS_ECB* semaphore;
   uint8_t channelNb;
   float irms;
-  float samples[16];
+  float samples[32];
   int16_t sample;
   bool timerStatus;
   uint32_t currentTimeCount;
