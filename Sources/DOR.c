@@ -361,6 +361,8 @@ void DOR_TripThread(void* pData)
 //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
 //      channelData.tripTime = 17610;
       channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
+//      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
+//      channelData.tripTime = INV_TRIP_TIME[((uint16_t)channelData.irms*100)-103];
       if (channelData.currentTimeCount >= channelData.tripTime)
       {
         // Set Output high
