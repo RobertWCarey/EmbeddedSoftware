@@ -45,8 +45,6 @@
 
 
 // Pointers to non-volatile storage locations
-volatile uint16union_t *nvTowerNb;
-volatile uint16union_t *nvTowerMode;
 volatile uint8_t *nvIDMTCharacter;
 
 // Baud Rate (bps)
@@ -108,8 +106,6 @@ TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD
 static void InitModulesThread(void* pData)
 {
   //Default settings
-  const uint16_t defaultTowerNb = 9382; //Tower Mode no.
-  const uint16_t defaultTowerMode = 1; //Tower Version no.
   const uint8_t defaultIDMTCharacter = IDMT_V_INVERSE;
 
   //Packet setup struct
@@ -130,13 +126,7 @@ static void InitModulesThread(void* pData)
 
 
   //Assign non-volatile memory locations
-  Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
-  Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
   Flash_AllocateVar((void*)&nvIDMTCharacter, sizeof(*nvIDMTCharacter));
-  if (nvTowerNb->l == 0xffff)
-    Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
-  if (nvTowerMode->l == 0xffff)
-    Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
   if (*nvIDMTCharacter == 0xff)
       Flash_Write8((uint8_t*)nvIDMTCharacter, defaultIDMTCharacter);
 
@@ -153,7 +143,7 @@ static void InitModulesThread(void* pData)
   DOR_Init(&dorSetup);
 
   //Send start-up packet
-  towerStatupPacketHandler(nvTowerNb,nvTowerMode);
+  towerStatupPacketHandler(nvIDMTCharacter);
 
   //Enable Interrupts
   OS_EnableInterrupts();
@@ -173,7 +163,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode,nvIDMTCharacter);
+      cmdHandler(nvIDMTCharacter);
   }
 }
 

@@ -47,7 +47,7 @@
  *  @param towerNb A pointer to the current accelerometer mode.
  *  @return void.
  */
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, volatile uint8_t* const characteristic);
+void cmdHandler(volatile uint8_t* const characteristic);
 
 /*! @brief Sends out required packets for Tower Startup.
  *
@@ -56,7 +56,7 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
  *  @param towerNb A pointer to the current accelerometer mode.
  *  @return bool - TRUE if all packets were successfully sent.
  */
-bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode);
+bool towerStatupPacketHandler (volatile uint8_t* const characteristic);
 
 #endif
 /*!

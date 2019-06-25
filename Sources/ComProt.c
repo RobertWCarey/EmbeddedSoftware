@@ -22,14 +22,6 @@ static const uint8_t TOWER_SPECIAL_X = 0x78; // ASCII "x" in Hex
 static const uint8_t TOWER_VERSION_MAJOR = 0x01;
 static const uint8_t TOWER_VERSION_MINOR = 0x00;
 
-// Parameters for 0x0B-Tower Number
-static const uint8_t TOWER_NUMBER_GET = 0x01;// Get Param
-static const uint8_t TOWER_NUMBER_SET = 0x02;// Set Param
-
-// Parameters for 0x0D-Tower Mode
-static const uint8_t TOWER_MODE_GET = 0x01;// Get Param
-static const uint8_t TOWER_MODE_SET = 0x02;// Set Param
-
 // Parameters for 0x07-Program Byte
 static const uint8_t PROGRAM_BYTE_ERASE = 0x08;// Erase Sector Param
 static const uint8_t PROGRAM_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
@@ -51,14 +43,13 @@ static const uint8_t DOR_IDMT_EINVERSE = 2;// IDMT "Extremely Inverse"
 #define DOR_TIMES_TRIPPED 3// Select "Get # of times Tripped"
 #define DOR_FAULT_TYPE 4// Select "Get Fault Type"
 
-bool towerStatupPacketHandler (volatile uint16union_t * const towerNb,volatile uint16union_t * const towerMode)
+bool towerStatupPacketHandler (volatile uint8_t* const characteristic)
 {
   // Check that params are valid
   if ( (Packet_Parameter1 == TOWER_STARTUP_PARAM) && (Packet_Parameter2 == TOWER_STARTUP_PARAM) && (Packet_Parameter3 == TOWER_STARTUP_PARAM) )
     return Packet_Put(CMD_TOWER_STARTUP,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM,TOWER_STARTUP_PARAM) &&
       Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR) &&
-      Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi)&&
-      Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi);
+      Packet_Put(CMD_DOR,DOR_IDMT_CHARAC,DOR_IDMT_GET,*characteristic);
 
   // If invalid params return false
   return false;
@@ -73,48 +64,6 @@ static bool specialPacketHandler()
   // Check which special selected
   if ( (Packet_Parameter1 == TOWER_SPECIAL_V) && (Packet_Parameter2 == TOWER_SPECIAL_X) )// If Get Version selected
     return Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR);
-
-  return false;
-}
-
-/*! @brief Handles Tower Number packets.
- *
- *  @param towerNb A variable containing the Tower Number.
- *  @return bool - TRUE if packet successfully sent.
- */
-static bool towerNumberPacketHandler(volatile uint16union_t * const towerNb)
-{
-  // Check which type of Tower Number Packet
-  // If Get
-  if ( (Packet_Parameter1 == TOWER_NUMBER_GET) && !(Packet_Parameter2) && !(Packet_Parameter3) )
-    // Send out Tower Number packet
-    return Packet_Put(CMD_TOWER_NUMBER,TOWER_NUMBER_GET,towerNb->s.Lo,towerNb->s.Hi);
-  else if (Packet_Parameter1 == TOWER_NUMBER_SET) // If Set
-  {
-    //Update Tower Number Values
-    return Flash_Write16((uint16_t*)towerNb,Packet_Parameter23);
-  }
-
-  return false;
-}
-
-/*! @brief Handles Tower Number packets.
- *
- *  @param towerNb A variable containing the Tower Number.
- *  @return bool - TRUE if packet successfully sent.
- */
-static bool towerModePacketHandler(volatile uint16union_t * const towerMode)
-{
-  // Check which type of Tower Number Packet
-  // If Get
-  if ( (Packet_Parameter1 == TOWER_MODE_GET) && !(Packet_Parameter2) && !(Packet_Parameter3) )
-    // Send out Tower Number packet
-    return Packet_Put(CMD_TOWER_MODE,TOWER_MODE_GET,towerMode->s.Lo,towerMode->s.Hi);
-  else if (Packet_Parameter1 == TOWER_NUMBER_SET) // If Set
-  {
-    //Update Tower Number Values
-    return Flash_Write16((uint16_t*)towerMode,Packet_Parameter23);
-  }
 
   return false;
 }
@@ -237,7 +186,7 @@ static bool dorPacketHandler(volatile uint8_t* const characteristic)
   return success;
 }
 
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, volatile uint8_t* const characteristic)
+void cmdHandler(volatile uint8_t* const characteristic)
 {
 
   // Isolate command packet
@@ -250,16 +199,10 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
   switch (command)
   {
     case CMD_TOWER_STARTUP:
-      success = towerStatupPacketHandler(towerNb,towerMode);
+      success = towerStatupPacketHandler(characteristic);
       break;
     case CMD_SPECIAL_TOWER_VERSION:
       success = specialPacketHandler();
-      break;
-    case CMD_TOWER_NUMBER:
-      success = towerNumberPacketHandler(towerNb);
-      break;
-    case CMD_TOWER_MODE:
-      success = towerModePacketHandler(towerMode);
       break;
     case CMD_PROGRAM_BYTE:
       success = prgmBytePacketHandler();
