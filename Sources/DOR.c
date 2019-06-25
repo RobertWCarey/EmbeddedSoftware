@@ -63,6 +63,7 @@ TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
+    .subtract = 0,
   },
   {
     .semaphore = NULL,
@@ -74,6 +75,7 @@ TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
+    .subtract = 0,
   },
   {
     .semaphore = NULL,
@@ -85,6 +87,7 @@ TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
+    .subtract = 0,
   }
 };
 
@@ -304,12 +307,27 @@ void DOR_TimingThread(void* pData)
 //    {
 //      channelData.sumSquares -= channelData.samples[channelData.count-1]*channelData.samples[channelData.count-1];
 //    }
+    channelData.squares[channelData.count] = pow(raw2v(channelData.sample),2);
+    channelData.sumSquares += channelData.squares[channelData.count];
+
+    if (channelData.subtract)
+    {
+      if(channelData.count == 0)
+        channelData.sumSquares -= channelData.squares[NB_SAMPLES-1];
+      else
+        channelData.sumSquares -= channelData.squares[channelData.count-1];
+    }
+
+    float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
+
+    channelData.irms = ((vrms*13)/40);
 
     channelData.count ++;
-    if (channelData.count == 16)
+    if (channelData.count == NB_SAMPLES)
     {
-      channelData.irms = returnRMS(&channelData);
+//      channelData.irms = returnRMS(&channelData);
       channelData.count = 0;
+      channelData.subtract = 1;
     }
 
 
