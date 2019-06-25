@@ -60,39 +60,42 @@ TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
 {
   {
     .semaphore = NULL,
-    .channelNb = 0,
-    .timerStatus = 0,
+    .phaseNb = PHASE_A,
+    .timerStatus = false,
+    .tripStatus = false,
     .currentTimeCount = 0,
     .offset1 = 0,
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .windowFilled = 0,
+    .windowFilled = false,
   },
   {
     .semaphore = NULL,
-    .channelNb = 1,
-    .timerStatus = 0,
+    .phaseNb = PHASE_B,
+    .timerStatus = false,
+    .tripStatus = false,
     .currentTimeCount = 0,
     .offset1 = 0,
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .windowFilled = 0,
+    .windowFilled = false,
   },
   {
     .semaphore = NULL,
-    .channelNb = 2,
-    .timerStatus = 0,
+    .phaseNb = PHASE_C,
+    .timerStatus = false,
+    .tripStatus = false,
     .currentTimeCount = 0,
     .offset1 = 0,
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .windowFilled = 0,
+    .windowFilled = false,
   }
 };
 
@@ -370,12 +373,12 @@ void DOR_TimingThread(void* pData)
     (void)OS_SemaphoreWait(phaseData->semaphore, 0);
 
     // Read data from ADC and store in array for processing
-    Analog_Get(phaseData->channelNb, &phaseData->sample);
+    Analog_Get(phaseData->phaseNb, &phaseData->sample);
     phaseData->samples[phaseData->count] = phaseData->sample;
 
     // Only calculate the frequency for Phase A
     // Assumes that all phases share the same frequency
-    if (phaseData->channelNb == PHASE_A)
+    if (phaseData->phaseNb == PHASE_A)
       calculateFreq(phaseData);
 
     // Calculate the current RMS in sliding window
@@ -443,7 +446,7 @@ void DOR_TripThread(void* pData)
     // Loop through all three Phases
     for (int i = 0; i < DOR_NB_PHASES; i++)
     {
-      // Check if trip needs to occour
+      // Check if trip needs to occur
       if (DOR_PhaseData[i].timerStatus && !DOR_PhaseData[i].tripStatus)
       {
         // Get trip time for the current phase
@@ -458,7 +461,7 @@ void DOR_TripThread(void* pData)
           // Increment the total number of times tripped
           Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
           // Update the Fault Type to include current tripped phase
-          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<DOR_PhaseData[i].channelNb));
+          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<DOR_PhaseData[i].phaseNb));
           setTripOutput();
         }
       }
@@ -467,7 +470,7 @@ void DOR_TripThread(void* pData)
         // Reset "Trip" output  status for phase
         DOR_PhaseData[i].tripStatus = 0;
         // Remove current tripped phase from the Fault Type
-        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<DOR_PhaseData[i].channelNb));
+        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<DOR_PhaseData[i].phaseNb));
         setTripOutput();
       }
     }

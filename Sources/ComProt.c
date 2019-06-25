@@ -95,7 +95,7 @@ static bool myDORCurrentHandler()
     float irms = DOR_PhaseData[i].irms;
     uint8_t high = (uint8_t)(irms);
     uint8_t low = (uint8_t)((irms-high)*100);
-    if (!Packet_Put(CMD_DOR_CURRENT, DOR_PhaseData[i].channelNb, low, high))
+    if (!Packet_Put(CMD_DOR_CURRENT, DOR_PhaseData[i].phaseNb, low, high))
       return false;
   }
 
