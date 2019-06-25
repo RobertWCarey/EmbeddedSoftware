@@ -65,7 +65,6 @@ typedef struct PhaseData
   int16_t sample;             /*!< Most recent ADC 16bit sample. */
   uint32_t currentTimeCount;  /*!< Time in ms since going over DOR_CURRENT_LIMIT_LOWER. */
   uint32_t tripTime;          /*!< Time to trip for current "irms" from IDMT curve. */
-  uint32_t prevTripTime;      /*!< Time to trip for current "irms" from IDMT curve. */
   bool timerStatus;           /*!< Current Status of "Timer" output for this Phase. */
   bool tripStatus;            /*!< Current Status of "Trip" output for this Phase. */
   bool windowFilled;          /*!< Indicates NB_SAMPLES has been collected for sliding window. */
