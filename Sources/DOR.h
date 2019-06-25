@@ -21,6 +21,9 @@
 #include "OS.h"
 #include "PE_types.h"
 
+#define NB_ANALOG_CHANNELS 3
+#define NB_SAMPLES 32
+
 typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
@@ -30,12 +33,26 @@ typedef struct
   TOSThreadParams* TripParams;
 } TDORSetup;
 
+typedef struct
+{
+  volatile uint8_t* characteristic;
+  volatile uint16union_t* timesTripped;
+  volatile uint8_t* faultType;
+} TDORTripThreadData;
+
+typedef enum
+{
+  IDMT_INVERSE,
+  IDMT_V_INVERSE,
+  IDTM_E_INVERSE
+} TIDMTCharacter;
+
 typedef struct ChannelThreadData
 {
   OS_ECB* semaphore;
   uint8_t channelNb;
   float irms;
-  int16_t samples[16];
+  int16_t samples[NB_SAMPLES];
   int16_t sample;
   bool timerStatus;
   bool tripStatus;
@@ -45,7 +62,13 @@ typedef struct ChannelThreadData
   float offset2;
   uint8_t numberOfSamples;
   uint8_t crossing;
-  float frequency[3];
+  float frequencyArray[3];
+  float frequency;
+  uint8_t count;
+  float squares[NB_SAMPLES];
+  float sumSquares;
+  bool subtract;
+  float currentWTripped;
 } TAnalogThreadData;
 
 typedef struct
@@ -53,6 +76,8 @@ typedef struct
     uint32_t y;
     double x;
 } TIDMTData;
+
+TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS];
 
 static const uint32_t INV_TRIP_TIME[1898] =
 {
