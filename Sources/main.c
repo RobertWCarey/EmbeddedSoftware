@@ -40,27 +40,17 @@
 #include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
-#include "RTC.h"
-#include "FTM.h"
-#include "accel.h"
-#include "median.h"
 #include "ComProt.h"
 #include "OS.h"
 
 
 // Pointers to non-volatile storage locations
-volatile uint16union_t *nvTowerNb;
-volatile uint16union_t *nvTowerMode;
+volatile uint8_t *nvIDMTCharacter; // Pointer to IDMT Characteristic
+volatile uint16union_t *nvTimesTripped; // Pointer to Number of Times Tripped
+volatile uint8_t *nvFaultType;  // Pointer to Most recent Fault Type
 
-// Baud Rate (bps)
+// Serial Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
-
-//Accelerometer mode global
-static TAccelMode AccelMode = ACCEL_POLL;
-//Accelerometer latest data
-static TAccelData AccelData;
-//Last three values for each accelerometer axis
-static uint8_t XValues[3], YValues[3], ZValues[3];
 
 // Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
 #define THREAD_STACK_SIZE 1024
@@ -70,61 +60,41 @@ typedef enum
 {
   InitModulesThreadPriority,
   UARTRxThreadPriority,
+  DORTiming0Priority,
+  DORTiming1Priority,
+  DORTiming2Priority,
+  DORTripPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
-  DORChannel0Priority,
-  RTCThreadPriority,
-  FTMThreadPriority
 } TThreadPriority;
 
 // Thread stacks
 OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for the Init Modules thread. */
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
-OS_THREAD_STACK(DORChannel0ThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(RTCThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the RTC thread. */
-OS_THREAD_STACK(FTMThreadStack, THREAD_STACK_SIZE);           /*!< The stack for the FTM thread. */
+OS_THREAD_STACK(DORTiming0ThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORTiming1ThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORTiming2ThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORTripThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
 
 // Thread Parameters
 // Initilisation of modules thread parameters
 TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_STACK_SIZE - 1],InitModulesThreadPriority};
+// Analog thread params for one channel
+TOSThreadParams DOR_Timing0ThreadParams = {NULL,&DORTiming0ThreadStack[THREAD_STACK_SIZE - 1],DORTiming0Priority};
+// Analog thread params for one channel
+TOSThreadParams DOR_Timing1ThreadParams = {NULL,&DORTiming1ThreadStack[THREAD_STACK_SIZE - 1],DORTiming1Priority};
+// Analog thread params for one channel
+TOSThreadParams DOR_Timing2ThreadParams = {NULL,&DORTiming2ThreadStack[THREAD_STACK_SIZE - 1],DORTiming2Priority};
+// Trip thread params
+TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters
-TOSThreadParams UART_TxThreadParams = {NULL,&DORChannel0ThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
-// Analog thread params for one channel
-TOSThreadParams DOR_Channel0ThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],DORChannel0Priority};
-// Real Time Clock thread parameters
-TOSThreadParams RTC_ThreadParams = {NULL,&RTCThreadStack[THREAD_STACK_SIZE - 1],RTCThreadPriority};
-// Flexible Timer Module thread parameters
-TOSThreadParams FTM_ThreadParams = {NULL,&FTMThreadStack[THREAD_STACK_SIZE - 1],FTMThreadPriority};
+TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
 // Packet Handle thread parameters
 TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD_STACK_SIZE - 1],PacketThreadPriority};
-
-/*! @brief Interrupt callback function to be called when RTC_ISR occurs
- * Turn on yellow LED and send the time
- *  @param arg The user argument that comes with the callback
- */
-void RTCCallback(void* arg)
-{
-  //toggle yellow LED
-  LEDs_Toggle(LED_YELLOW);
-  //send the current time
-  static Time time;
-  RTC_Get(&time.hours,&time.minutes,&time.seconds);
-  Packet_Put(CMD_TIME_BYTE,time.hours,time.minutes,time.seconds);
-}
-
-/*! @brief Interrupt callback function to be called when FTM_ISR occurs (output compare match)
- * Turn off blue LED
- *  @param arg The user argument that comes with the callback
- */
-void FTMCallback(void* arg)
-{
-  //turn off blue LED
-  LEDs_Off(LED_BLUE);
-}
 
 
 /*! @brief Initialises the modules to support the Tower modules.
@@ -135,8 +105,9 @@ void FTMCallback(void* arg)
 static void InitModulesThread(void* pData)
 {
   //Default settings
-  const uint16_t defaultTowerNb = 9382; //Tower Mode no.
-  const uint16_t defaultTowerMode = 1; //Tower Version no.
+  const uint8_t defaultIDMTCharacter = IDMT_V_INVERSE;
+  const uint16_t defaultTimesTripped = 0;
+  const uint8_t defaultFaultType = 0;
 
   //Packet setup struct
   TPacketSetup packetSetup;
@@ -145,16 +116,6 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-  //RTC setup struct
-  TRTCSetup rtcSetup;
-  rtcSetup.CallbackFunction = RTCCallback;
-  rtcSetup.CallbackArguments = NULL;
-  rtcSetup.ThreadParams = &RTC_ThreadParams;
-
-  //DOR Module Setup
-  TDORSetup dorSetup;
-  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
-  dorSetup.Channel0Params = &DOR_Channel0ThreadParams;
 
   //Disable Interrupts
   OS_DisableInterrupts();
@@ -162,24 +123,38 @@ static void InitModulesThread(void* pData)
   //Initialise Modules
   Packet_Init(&packetSetup);
   LEDs_Init();
-  RTC_Init(&rtcSetup);
-  FTM_Init(&FTM_ThreadParams);
   Flash_Init();
-  DOR_Init(&dorSetup);
 
-  //Set FTM Timer
-  FTM_Set(pData);
 
   //Assign non-volatile memory locations
-  Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
-  Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
-  if (nvTowerNb->l == 0xffff)
-    Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
-  if (nvTowerMode->l == 0xffff)
-    Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
+  Flash_AllocateVar((void*)&nvTimesTripped, sizeof(*nvTimesTripped));
+  Flash_AllocateVar((void*)&nvIDMTCharacter, sizeof(*nvIDMTCharacter));
+  Flash_AllocateVar((void*)&nvFaultType, sizeof(*nvFaultType));
+  if (*nvIDMTCharacter == 0xff)
+      Flash_Write8((uint8_t*)nvIDMTCharacter, defaultIDMTCharacter);
+  if (nvTimesTripped->l == 0xffff)
+        Flash_Write16((uint16_t*)nvTimesTripped, defaultTimesTripped);
+  if (*nvFaultType == 0xff)
+        Flash_Write8((uint8_t*)nvFaultType, defaultFaultType);
+
+
+
+  //DOR Module Setup & Init
+  TDORSetup dorSetup;
+  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
+  dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
+  dorSetup.Channel1Params = &DOR_Timing1ThreadParams;
+  dorSetup.Channel2Params = &DOR_Timing2ThreadParams;
+  TDORTripThreadData dorTripThreadData;
+  dorTripThreadData.characteristic = nvIDMTCharacter;
+  dorTripThreadData.timesTripped = nvTimesTripped;
+  dorTripThreadData.faultType = nvFaultType;
+  DOR_TripThreadParams.pData = &dorTripThreadData;
+  dorSetup.TripParams = &DOR_TripThreadParams;
+  DOR_Init(&dorSetup);
 
   //Send start-up packet
-  towerStatupPacketHandler(nvTowerNb,nvTowerMode,&AccelMode);
+  towerStatupPacketHandler(nvIDMTCharacter);
 
   //Enable Interrupts
   OS_EnableInterrupts();
@@ -199,7 +174,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode,pData,&AccelMode);
+      cmdHandler(nvIDMTCharacter, nvTimesTripped, nvFaultType);
   }
 }
 
@@ -212,19 +187,6 @@ int main(void)
   // Local variable to store any errors for OS
   OS_ERROR error;
 
-  //Configure struct for FTM_Set()
-  static TFTMChannel channelSetup0;
-  channelSetup0.channelNb = 0;
-  channelSetup0.delayCount = 1 * CPU_MCGFF_CLK_HZ_CONFIG_0; // Frequency of Fixed Frequency clock
-  channelSetup0.timerFunction = TIMER_FUNCTION_OUTPUT_COMPARE;
-  channelSetup0.ioType.inputDetection = TIMER_INPUT_OFF;
-  channelSetup0.ioType.outputAction = TIMER_OUTPUT_DISCONNECT; // triggers channel interrupt
-  channelSetup0.callbackFunction = FTMCallback;
-  channelSetup0.callbackArguments = NULL;
-
-  // Store FTM0 Channel0 data into thread data for later use
-  PacketHandleThreadParams.pData = &channelSetup0;
-  InitModulesThreadParams.pData = &channelSetup0;
 
   /*** Processor Expert internal initialization. DON'T REMOVE THIS CODE!!! ***/
   PE_low_level_init();
