@@ -21,6 +21,8 @@
 #include "OS.h"
 #include "PE_types.h"
 
+#define NB_ANALOG_CHANNELS 3
+
 typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
@@ -60,6 +62,8 @@ typedef struct
     uint32_t y;
     double x;
 } TIDMTData;
+
+TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS];
 
 static const uint32_t INV_TRIP_TIME[1898] =
 {

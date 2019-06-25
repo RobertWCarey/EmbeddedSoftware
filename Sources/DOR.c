@@ -39,7 +39,7 @@ static const uint16_t ADC_CONVERSION = 3276;
 
 uint16_t analogInputValue;
 
-#define NB_ANALOG_CHANNELS 3
+
 
 #define channelData (*(TAnalogThreadData*)pData)
 
@@ -50,7 +50,7 @@ static OS_ECB* TripSemaphore;
 /*! @brief Analog thread configuration data
  *
  */
-static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
+TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
 {
   {
     .semaphore = NULL,
