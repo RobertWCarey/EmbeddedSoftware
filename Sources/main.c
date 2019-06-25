@@ -47,6 +47,7 @@
 // Pointers to non-volatile storage locations
 volatile uint16union_t *nvTowerNb;
 volatile uint16union_t *nvTowerMode;
+volatile uint8_t *nvIDMTCharacter;
 
 // Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
@@ -90,7 +91,7 @@ TOSThreadParams DOR_Timing1ThreadParams = {NULL,&DORTiming1ThreadStack[THREAD_ST
 // Analog thread params for one channel
 TOSThreadParams DOR_Timing2ThreadParams = {NULL,&DORTiming2ThreadStack[THREAD_STACK_SIZE - 1],DORTiming2Priority};
 // Trip thread params
-TOSThreadParams DOR_TripThreadParams = {&IDMT_Characteristic,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
+TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters
@@ -109,6 +110,7 @@ static void InitModulesThread(void* pData)
   //Default settings
   const uint16_t defaultTowerNb = 9382; //Tower Mode no.
   const uint16_t defaultTowerMode = 1; //Tower Version no.
+  const uint8_t defaultIDMTCharacter = IDMT_V_INVERSE;
 
   //Packet setup struct
   TPacketSetup packetSetup;
@@ -117,13 +119,6 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-  //DOR Module Setup
-  TDORSetup dorSetup;
-  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
-  dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
-  dorSetup.Channel1Params = &DOR_Timing1ThreadParams;
-  dorSetup.Channel2Params = &DOR_Timing2ThreadParams;
-  dorSetup.TripParams = &DOR_TripThreadParams;
 
   //Disable Interrupts
   OS_DisableInterrupts();
@@ -132,15 +127,30 @@ static void InitModulesThread(void* pData)
   Packet_Init(&packetSetup);
   LEDs_Init();
   Flash_Init();
-  DOR_Init(&dorSetup);
+
 
   //Assign non-volatile memory locations
   Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
   Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
+  Flash_AllocateVar((void*)&nvIDMTCharacter, sizeof(*nvIDMTCharacter));
   if (nvTowerNb->l == 0xffff)
     Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
   if (nvTowerMode->l == 0xffff)
     Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
+  if (*nvIDMTCharacter == 0xff)
+      Flash_Write8((uint8_t*)nvIDMTCharacter, defaultIDMTCharacter);
+
+
+
+  //DOR Module Setup & Init
+  TDORSetup dorSetup;
+  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
+  dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
+  dorSetup.Channel1Params = &DOR_Timing1ThreadParams;
+  dorSetup.Channel2Params = &DOR_Timing2ThreadParams;
+  DOR_TripThreadParams.pData = nvIDMTCharacter;
+  dorSetup.TripParams = &DOR_TripThreadParams;
+  DOR_Init(&dorSetup);
 
   //Send start-up packet
   towerStatupPacketHandler(nvTowerNb,nvTowerMode);
@@ -163,7 +173,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode,&IDMT_Characteristic);
+      cmdHandler(nvTowerNb,nvTowerMode,nvIDMTCharacter);
   }
 }
 

@@ -157,7 +157,7 @@ static bool readBytePacketHandler()
  *
  *  @return bool - TRUE if packet successfully sent/ value successfully set.
  */
-static bool myIDMTCharacteristicHandler(TIDMTCharacter* const characteristic)
+static bool myIDMTCharacteristicHandler(volatile uint8_t* const characteristic)
 {
   if ((Packet_Parameter2 == DOR_IDMT_GET) && !Packet_Parameter3)
   {
@@ -165,8 +165,8 @@ static bool myIDMTCharacteristicHandler(TIDMTCharacter* const characteristic)
   }
   else if ((Packet_Parameter2 == DOR_IDMT_SET) && (Packet_Parameter3 >= DOR_IDMT_INVERSE) && (Packet_Parameter3 <= DOR_IDMT_EINVERSE))
   {
-    *characteristic = Packet_Parameter3;
-    return true;
+    // Write data to selected address offset
+    return Flash_Write8(characteristic,Packet_Parameter3);
   }
 
   return false;
@@ -209,7 +209,7 @@ static bool myDORFreqHandler()
 
 }
 
-static bool dorPacketHandler(TIDMTCharacter* const characteristic)
+static bool dorPacketHandler(volatile uint8_t* const characteristic)
 {
   bool success = 0;
 
@@ -237,7 +237,7 @@ static bool dorPacketHandler(TIDMTCharacter* const characteristic)
   return success;
 }
 
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, TIDMTCharacter* const characteristic)
+void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, volatile uint8_t* const characteristic)
 {
 
   // Isolate command packet
