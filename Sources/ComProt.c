@@ -92,10 +92,10 @@ static bool myDORCurrentHandler()
 
   for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
   {
-    float irms = ChannelThreadData[i].irms;
+    float irms = DOR_PhaseData[i].irms;
     uint8_t high = (uint8_t)(irms);
     uint8_t low = (uint8_t)((irms-high)*100);
-    if (!Packet_Put(CMD_DOR_CURRENT, ChannelThreadData[i].channelNb, low, high))
+    if (!Packet_Put(CMD_DOR_CURRENT, DOR_PhaseData[i].channelNb, low, high))
       return false;
   }
 
@@ -111,7 +111,7 @@ static bool myDORFreqHandler()
   if (Packet_Parameter2 && Packet_Parameter3)
     return false;
 
-  float freq = ChannelThreadData[0].frequency;
+  float freq = DOR_PhaseData[0].frequency;
   uint8_t high = (uint8_t)(freq);
   uint8_t low = (uint8_t)((freq-high)*100);
   return Packet_Put(DOR_FREQ, Packet_Parameter1, low, high);

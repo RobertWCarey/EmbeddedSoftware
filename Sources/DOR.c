@@ -50,11 +50,10 @@ static const uint16_t ADC_CONVERSION = 3276;
 // Semaphore for tripThread
 static OS_ECB* TripSemaphore;
 
-
 /*! @brief Analog thread configuration data
  *
  */
-TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
+TAnalogThreadData DOR_PhaseData[NB_ANALOG_CHANNELS] =
 {
   {
     .semaphore = NULL,
@@ -101,7 +100,7 @@ static void PIT0Callback(void* arg)
   for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
   {
 //    Analog_Get(0, &ChannelThreadData[i].sample);
-    OS_SemaphoreSignal(ChannelThreadData[i].semaphore);
+    OS_SemaphoreSignal(DOR_PhaseData[i].semaphore);
   }
 //  Analog_Get(0, &ChannelThreadData[0].sample);
 //  OS_SemaphoreSignal(ChannelThreadData[0].semaphore);
@@ -112,9 +111,9 @@ static void PIT1Callback(void* arg)
 {
   for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
   {
-    if (ChannelThreadData[i].timerStatus)
+    if (DOR_PhaseData[i].timerStatus)
     {
-      ChannelThreadData[i].currentTimeCount++;
+      DOR_PhaseData[i].currentTimeCount++;
     }
     OS_SemaphoreSignal(TripSemaphore);
   }
@@ -123,9 +122,9 @@ static void PIT1Callback(void* arg)
 
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
-  ChannelThreadData[0].semaphore = OS_SemaphoreCreate(0);
-  ChannelThreadData[1].semaphore = OS_SemaphoreCreate(0);
-  ChannelThreadData[2].semaphore = OS_SemaphoreCreate(0);
+  DOR_PhaseData[0].semaphore = OS_SemaphoreCreate(0);
+  DOR_PhaseData[1].semaphore = OS_SemaphoreCreate(0);
+  DOR_PhaseData[2].semaphore = OS_SemaphoreCreate(0);
 
   TripSemaphore = OS_SemaphoreCreate(0);
 
@@ -134,7 +133,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
-  pitSetup.Semaphore[0] = ChannelThreadData[0].semaphore;
+  pitSetup.Semaphore[0] = DOR_PhaseData[0].semaphore;
   pitSetup.Semaphore[1] = NULL;
   pitSetup.CallbackFunction[0] = PIT0Callback;
   pitSetup.CallbackArguments[0] = NULL;
@@ -152,16 +151,16 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   OS_ERROR error;
 
   error = OS_ThreadCreate(DOR_TimingThread,
-                          &ChannelThreadData[0],
+                          &DOR_PhaseData[0],
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
 
   error = OS_ThreadCreate(DOR_TimingThread,
-                          &ChannelThreadData[1],
+                          &DOR_PhaseData[1],
                           dorSetup->Channel1Params->pStack,
                           dorSetup->Channel1Params->priority);
   error = OS_ThreadCreate(DOR_TimingThread,
-                          &ChannelThreadData[2],
+                          &DOR_PhaseData[2],
                           dorSetup->Channel2Params->pStack,
                           dorSetup->Channel2Params->priority);
 
@@ -242,9 +241,9 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
 static void setTimer()
 {
   // Check if any channel has timer status set
-  if (ChannelThreadData[0].timerStatus ||
-      ChannelThreadData[1].timerStatus ||
-      ChannelThreadData[2].timerStatus)
+  if (DOR_PhaseData[0].timerStatus ||
+      DOR_PhaseData[1].timerStatus ||
+      DOR_PhaseData[2].timerStatus)
   {
     // Set timer output to 5 volts
     Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
@@ -259,9 +258,9 @@ static void setTimer()
 static void setTrip()
 {
   // Check if any channel has trip status set
-  if (ChannelThreadData[0].tripStatus ||
-      ChannelThreadData[1].tripStatus ||
-      ChannelThreadData[2].tripStatus)
+  if (DOR_PhaseData[0].tripStatus ||
+      DOR_PhaseData[1].tripStatus ||
+      DOR_PhaseData[2].tripStatus)
   {
     // Set timer output to 5 volts
     Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
@@ -390,7 +389,7 @@ void DOR_TripThread(void* pData)
     for (int i = 0; i < 3; i++)
     {
       //check if timer started
-      if (ChannelThreadData[i].timerStatus && !ChannelThreadData[i].tripStatus)
+      if (DOR_PhaseData[i].timerStatus && !DOR_PhaseData[i].tripStatus)
       {
   //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
   //      channelData.tripTime = 17610;
@@ -399,24 +398,24 @@ void DOR_TripThread(void* pData)
 
 //        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
 
-        ChannelThreadData[i].tripTime = getTripTime(ChannelThreadData[i].irms, *tripThreadData->characteristic);
+        DOR_PhaseData[i].tripTime = getTripTime(DOR_PhaseData[i].irms, *tripThreadData->characteristic);
 
-        if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
+        if (DOR_PhaseData[i].currentTimeCount >= DOR_PhaseData[i].tripTime)
         {
           // Set Output high
-          ChannelThreadData[i].tripStatus = 1;
-          ChannelThreadData[i].currentWTripped = ChannelThreadData[i].irms;
+          DOR_PhaseData[i].tripStatus = 1;
+          DOR_PhaseData[i].currentWTripped = DOR_PhaseData[i].irms;
           Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
-          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<ChannelThreadData[i].channelNb));
+          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<DOR_PhaseData[i].channelNb));
           setTrip();
         }
 
       }
-      else if (ChannelThreadData[i].tripStatus && !ChannelThreadData[i].timerStatus)
+      else if (DOR_PhaseData[i].tripStatus && !DOR_PhaseData[i].timerStatus)
       {
         // Set Output low
-        ChannelThreadData[i].tripStatus = 0;
-        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<ChannelThreadData[i].channelNb));
+        DOR_PhaseData[i].tripStatus = 0;
+        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<DOR_PhaseData[i].channelNb));
         setTrip();
       }
     }

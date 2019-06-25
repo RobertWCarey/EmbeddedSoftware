@@ -77,7 +77,7 @@ typedef struct
     double x;
 } TIDMTData;
 
-TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS];
+TAnalogThreadData DOR_PhaseData[NB_ANALOG_CHANNELS];
 
 static const uint32_t INV_TRIP_TIME[1898] =
 {
