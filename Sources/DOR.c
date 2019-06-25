@@ -218,26 +218,25 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
         break;
       case 1:
         Data->offset2 = getOffset(prevVal,curVal);
-//        float period1 = Data->offset1*PIT_TIME_PERIOD;
-//        float period2 = Data->offset2*PIT_TIME_PERIOD;
         period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
         float freq = 1/((float)(period)*1e-9);
 
-        Data->frequencyArray[tempLoop] = freq;
-        tempLoop++;
-        if (tempLoop >=3)
-        {
-          Data->frequency = Median_Filter3(Data->frequencyArray[0],Data->frequencyArray[1],Data->frequencyArray[2]);
-          tempLoop = 0;
-        }
-
-//
-//        if (freq >= 47.5 && freq <= 52.5)
+//        Data->frequencyArray[tempLoop] = freq;
+//        tempLoop++;
+//        if (tempLoop >=3)
 //        {
-////          Data->frequency = freq;
-////          PIT_TIME_PERIOD = period;
-////          PIT_Set(PIT_TIME_PERIOD,false,0);
+//          Data->frequency = Median_Filter3(Data->frequencyArray[0],Data->frequencyArray[1],Data->frequencyArray[2]);
+//          tempLoop = 0;
 //        }
+
+        Data->frequency = freq;
+
+        if (Data->frequency >= 47.5 && Data->frequency <= 52.5)
+        {
+//          Data->frequency = freq;
+          PIT_TIME_PERIOD = period/16;
+          PIT_Set(PIT_TIME_PERIOD,false,0);
+        }
         Data->crossing = 0;
         break;
       default:
