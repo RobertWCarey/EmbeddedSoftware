@@ -44,7 +44,7 @@ typedef enum
 {
   IDMT_INVERSE,
   IDMT_V_INVERSE,
-  IDTM_E_INVERSE
+  IDMT_E_INVERSE
 } TIDMTCharacter;
 
 typedef enum

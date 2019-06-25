@@ -51,8 +51,9 @@ static OS_ECB* TripSemaphore;
 static const int16_t IDLE_OUTPUT_VOLTAGE_16BIT = 0;       // Equivalent to OV
 static const int16_t ACTIVE_OUTPUT_VOLTAGE_16BIT = 16384; // Equivalent to 5V
 
-// Variable for lower threshold trip of DOR
-static const float DOR_CURRENT_THRESHOLD = 1.03;
+// Current limits for trip of DOR
+static const float DOR_CURRENT_LIMIT_LOWER = 1.03;
+static const float DOR_CURRENT_LIMIT_UPPER = 20;
 
 // Configuration of array storing data for all three phases
 TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
@@ -381,14 +382,14 @@ void DOR_TimingThread(void* pData)
     calculateRMS(phaseData);
 
     // If current over the threshold and "Timer" output hasnt been set
-    if (phaseData->irms > DOR_CURRENT_THRESHOLD && !phaseData->timerStatus)
+    if (phaseData->irms > DOR_CURRENT_LIMIT_LOWER && !phaseData->timerStatus)
     {
       // Set "Timer" output and reset Phase's currentTimeCount
       phaseData->timerStatus = 1;
       phaseData->currentTimeCount = 0;
       setTimerOutput();
     }
-    else if (phaseData->irms < DOR_CURRENT_THRESHOLD)
+    else if (phaseData->irms < DOR_CURRENT_LIMIT_LOWER)
     {
       // Once below threshold reset Phase's status
       phaseData->timerStatus = 0;
@@ -397,23 +398,33 @@ void DOR_TimingThread(void* pData)
   }
 }
 
+/*! @brief gets the trip time depending on current characteristic.
+ *
+ *  @param  irms            is the current for which a trip time needs to be returned.
+ *  @param  characteristic  is the current characteristic curve selected.
+ *  @return uint32_t - trip time in milliseconds.
+ */
 static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
 {
-  // check irms lower than upper range
-  if (irms > 20)
-    irms = 20;
+  // If current greater than upper limit
+  if (irms > DOR_CURRENT_LIMIT_UPPER)
+    // Set to highest valid value
+    irms = DOR_CURRENT_LIMIT_UPPER;
 
+  // Calculate position in IDMT curve arrays
+  // "-103" is to align position to start at 1.03 amps
   uint16_t postion = (uint16_t)(irms*100)-103;
 
+  // Return relevant trip time in milliseconds
   switch (characteristic)
   {
-  case 0:
+  case IDMT_INVERSE:
     return INV_TRIP_TIME[postion];
     break;
-  case 1:
+  case IDMT_V_INVERSE:
     return VINV_TRIP_TIME[postion];
     break;
-  case 2:
+  case IDMT_E_INVERSE:
     return EINV_TRIP_TIME[postion];
     break;
   default:
