@@ -14,7 +14,6 @@
 
 #include "PIT.h"
 
-
 // Local global to store PIT Module Clock Period in ns
 static uint8_t PITClkPeriod;
 
@@ -92,6 +91,7 @@ void __attribute__ ((interrupt)) PIT_ISR(void)
 {
   OS_ISREnter();
 
+  // Loop to check flag for both PITs
   for (int i = 0;i<2;i++)
   {
     if (PIT_TFLG(i) & PIT_TFLG_TIF_MASK)
