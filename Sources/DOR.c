@@ -21,7 +21,6 @@
 #include "types.h"
 #include "math.h"
 #include "Flash.h"
-#include "median.h"
 
 
 // Pit time period (nano seconds)
@@ -204,36 +203,31 @@ static float getOffset(int16_t sample0, int16_t sample1)
 static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal)
 {
   float period;
-  static int tempLoop=0;
 
-    // check at full cycle zero crossing
-//    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
-//    {
-      switch (Data->crossing)
-      {
-      case 0:
-        Data->numberOfSamples = 0;
-        Data->offset1 = getOffset(prevVal,curVal);
-        Data->crossing = 1;
-        break;
-      case 1:
-        Data->offset2 = getOffset(prevVal,curVal);
-        period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
-        float freq = 1/((float)(period)*1e-9);
+  switch (Data->crossing)
+  {
+  case 0:
+    Data->numberOfSamples = 0;
+    Data->offset1 = getOffset(prevVal,curVal);
+    Data->crossing = 1;
+    break;
+  case 1:
+    Data->offset2 = getOffset(prevVal,curVal);
+    period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
+    float freq = 1/((float)(period)*1e-9);
 
-        if (freq >= 47.5 && freq <= 52.5)
-        {
-          Data->frequency = freq;
-          PIT_TIME_PERIOD = period/16;
-          PIT_Set(PIT_TIME_PERIOD,false,0);
-        }
-        Data->crossing = 0;
-        break;
-      default:
-        Data->crossing = 0;
-        break;
+    if (freq >= 47.5 && freq <= 52.5)
+    {
+      Data->frequency = freq;
+      PIT_TIME_PERIOD = period/16;
+      PIT_Set(PIT_TIME_PERIOD,false,0);
     }
-//    }
+    Data->crossing = 0;
+    break;
+  default:
+    Data->crossing = 0;
+    break;
+  }
 }
 
 static void setTimer()
