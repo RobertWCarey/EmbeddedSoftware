@@ -128,8 +128,8 @@ void __attribute__ ((interrupt)) PIT_ISR(void)
         if (UserFunction[i])
           (*UserFunction[i])(UserArguments[i]);
         //Signal semaphore to indicate loaded time has elapsed
-        if (!i)
-          OS_SemaphoreSignal(PITSemaphore[i]);
+//        if (!i)
+//          OS_SemaphoreSignal(PITSemaphore[i]);
       }
   }
 
