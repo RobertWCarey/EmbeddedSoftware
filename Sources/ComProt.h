@@ -23,7 +23,6 @@
 #include "IO_Map.h"
 #include "packet.h"
 #include "UART.h"
-#include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
 #include "DOR.h"

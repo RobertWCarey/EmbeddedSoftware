@@ -37,7 +37,6 @@
 #include "IO_Map.h"
 #include "packet.h"
 #include "UART.h"
-#include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
 #include "ComProt.h"
@@ -116,15 +115,12 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-
   //Disable Interrupts
   OS_DisableInterrupts();
 
   //Initialise Modules
   Packet_Init(&packetSetup); // Init Packet Module
-  LEDs_Init();
   Flash_Init(); // Init Flash Module
-
 
   //Assign non-volatile memory locations
   Flash_AllocateVar((void*)&nvTimesTripped, sizeof(*nvTimesTripped));
@@ -136,8 +132,6 @@ static void InitModulesThread(void* pData)
         Flash_Write16((uint16_t*)nvTimesTripped, defaultTimesTripped);
   if (*nvFaultType == 0xff)
         Flash_Write8((uint8_t*)nvFaultType, defaultFaultType);
-
-
 
   //DOR Module Setup & Init
   TDORSetup dorSetup;
