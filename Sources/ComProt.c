@@ -23,16 +23,16 @@ static const uint8_t TOWER_VERSION_MAJOR = 0x01;
 static const uint8_t TOWER_VERSION_MINOR = 0x00;
 
 // Parameters for 0x70 - DOR
-#define DOR_IDMT_CHARAC 0// Select "IDMT characteristic"
-static const uint8_t DOR_IDMT_GET = 1;// GET IDMT characteristic
-static const uint8_t DOR_IDMT_SET = 2;// SET IDMT characteristic
-static const uint8_t DOR_IDMT_INVERSE = 0;// IDMT "Inverse"
-static const uint8_t DOR_IDMT_VINVERSE = 1;// IDMT "Very Inverse"
-static const uint8_t DOR_IDMT_EINVERSE = 2;// IDMT "Extremely Inverse"
-#define DOR_CURRENT 1// Select "Get Currents"
-#define DOR_FREQ 2// Select "Get Frequency"
-#define DOR_TIMES_TRIPPED 3// Select "Get # of times Tripped"
-#define DOR_FAULT_TYPE 4// Select "Get Fault Type"
+#define DOR_IDMT_CHARAC 0                   // Select "IDMT characteristic"
+static const uint8_t DOR_IDMT_GET = 1;      // GET IDMT characteristic
+static const uint8_t DOR_IDMT_SET = 2;      // SET IDMT characteristic
+static const uint8_t DOR_IDMT_INVERSE = 0;  // IDMT "Inverse"
+static const uint8_t DOR_IDMT_VINVERSE = 1; // IDMT "Very Inverse"
+static const uint8_t DOR_IDMT_EINVERSE = 2; // IDMT "Extremely Inverse"
+#define DOR_CURRENT 1                       // Select "Get Currents"
+#define DOR_FREQ 2                          // Select "Get Frequency"
+#define DOR_TIMES_TRIPPED 3                 // Select "Get # of times Tripped"
+#define DOR_FAULT_TYPE 4                    // Select "Get Fault Type"
 
 bool towerStatupPacketHandler (volatile uint8_t* const characteristic)
 {
@@ -90,12 +90,12 @@ static bool myDORCurrentHandler()
   if (Packet_Parameter2 && Packet_Parameter3)
     return false;
 
-  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  for (int i = 0; i < DOR_NB_PHASES; i++)
   {
-    float irms = ChannelThreadData[i].irms;
+    float irms = DOR_PhaseData[i].irms;
     uint8_t high = (uint8_t)(irms);
     uint8_t low = (uint8_t)((irms-high)*100);
-    if (!Packet_Put(CMD_DOR_CURRENT, ChannelThreadData[i].channelNb, low, high))
+    if (!Packet_Put(CMD_DOR_CURRENT, DOR_PhaseData[i].phaseNb, low, high))
       return false;
   }
 
@@ -111,7 +111,7 @@ static bool myDORFreqHandler()
   if (Packet_Parameter2 && Packet_Parameter3)
     return false;
 
-  float freq = ChannelThreadData[0].frequency;
+  float freq = DOR_PhaseData[0].frequency;
   uint8_t high = (uint8_t)(freq);
   uint8_t low = (uint8_t)((freq-high)*100);
   return Packet_Put(DOR_FREQ, Packet_Parameter1, low, high);
@@ -146,6 +146,13 @@ static bool myDORFaultTypeHandler(volatile uint8_t* const faultType)
   return Packet_Put(DOR_FAULT_TYPE, Packet_Parameter1, *faultType, 0);
 }
 
+/*! @brief Handles all DOR related packets
+ *
+ *  @param  characteristic  pointer to a location containing the current IDMT Characteristic.
+ *  @param  timesTripped  pointer to a location containing the number of times tripped.
+ *  @param  faultType  pointer to a location containing the current fault type.
+ *  @return bool - TRUE if packet successfully handled.
+ */
 static bool dorPacketHandler(volatile uint8_t* const characteristic, volatile uint16union_t* const timesTripped, volatile uint8_t* const faultType)
 {
   bool success = 0;
@@ -213,7 +220,7 @@ void cmdHandler(volatile uint8_t* const characteristic, volatile uint16union_t* 
       Packet_Put(nackCommand,Packet_Parameter1,Packet_Parameter2,Packet_Parameter3);
     }
 
-  // Reset Packet variables
+  // Reset Packet all variables to avoid invalid checksums
   Packet_Command = 0x00u;
   Packet_Parameter1 = 0x00u;
   Packet_Parameter2 = 0x00u;

@@ -4,7 +4,7 @@
  */
 /*! @file
  *
- *  @brief Routines for the accelerometer
+ *  @brief Routines for the Digital Overcurrent Relay
  *
  *  This contains the functions for operating the DOR
  *
@@ -23,145 +23,162 @@
 #include "Flash.h"
 
 
-// Pit time period (nano seconds)
-// Todo: change to proper case for vairable
-static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
-//static uint32_t PIT_TIME_PERIOD = 10000000; // 1ms
-//static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
-static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
+// Pit time periods (nano seconds)
+/*
+ * PIT0 sample period.
+ * Default sampling 16per cycle at 50Hz.
+ * Used for sampling phases
+ */
+static uint32_t MyPIT0TimePeriod = 1250e3;
+/*
+ * PIT1 sample period.
+ * Default sampling every 1ms.
+ * Used for incrementing currentTimeCount for each phase.
+ */
+static uint32_t MyPIT1TimePeriod = 1000000;
 
-//Output channels
-static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
-static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
+// Output channels
+static const uint8_t TIMING_OUTPUT_CHANNEL = 1; // "Timing" output signal
+static const uint8_t TRIP_OUTPUT_CHANNEL = 2; // "Trip" output signal
 
-static const uint16_t ADC_CONVERSION = 3276;
+// Constant to convert ADC/DAC 16 bit value to volts
+static const uint16_t ANALOG_16BIT_CONVERSION = 3276;
 
-
-
-uint16_t analogInputValue;
-
-
-
-#define channelData (*(TAnalogThreadData*)pData)
-
-
+// Semaphore for tripThread
 static OS_ECB* TripSemaphore;
 
+// Voltages for Outputs as 16bit values
+static const int16_t IDLE_OUTPUT_VOLTAGE_16BIT = 0;       // Equivalent to OV
+static const int16_t ACTIVE_OUTPUT_VOLTAGE_16BIT = 16384; // Equivalent to 5V
 
-/*! @brief Analog thread configuration data
- *
- */
-TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
+// Current limits for trip of DOR
+static const float DOR_CURRENT_LIMIT_LOWER = 1.03;
+static const float DOR_CURRENT_LIMIT_UPPER = 20;
+
+// Configuration of array storing data for all three phases
+TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
 {
   {
     .semaphore = NULL,
-    .channelNb = 0,
-    .timerStatus = 0,
+    .phaseNb = PHASE_A,
+    .timerStatus = false,
+    .tripStatus = false,
     .currentTimeCount = 0,
     .offset1 = 0,
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .subtract = 0,
+    .windowFilled = false,
   },
   {
     .semaphore = NULL,
-    .channelNb = 1,
-    .timerStatus = 0,
+    .phaseNb = PHASE_B,
+    .timerStatus = false,
+    .tripStatus = false,
     .currentTimeCount = 0,
     .offset1 = 0,
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .subtract = 0,
+    .windowFilled = false,
   },
   {
     .semaphore = NULL,
-    .channelNb = 2,
-    .timerStatus = 0,
+    .phaseNb = PHASE_C,
+    .timerStatus = false,
+    .tripStatus = false,
     .currentTimeCount = 0,
     .offset1 = 0,
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .subtract = 0,
+    .windowFilled = false,
   }
 };
 
+/*! @brief Interrupt callback function to be called when PIT_ISR trigger by PIT0.
+ *  @brief Used to trigger samples from the ADC at set sample rate.
+ *
+ *  @param arg The user argument that comes with the callback.
+ */
 static void PIT0Callback(void* arg)
 {
-  // Make the code easier to read by giving a name to the typecast'ed pointer
-
-  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  // Cycle through all phases
+  for (int i = 0; i < DOR_NB_PHASES; i++)
   {
-//    Analog_Get(0, &ChannelThreadData[i].sample);
-    OS_SemaphoreSignal(ChannelThreadData[i].semaphore);
+    // Signal TimingThread to sample data
+    OS_SemaphoreSignal(DOR_PhaseData[i].semaphore);
   }
-//  Analog_Get(0, &ChannelThreadData[0].sample);
-//  OS_SemaphoreSignal(ChannelThreadData[0].semaphore);
-
 }
 
+/*! @brief Interrupt callback function to be called when PIT_ISR trigger by PIT1.
+ *  @brief Used to increment each phase's currentTimeCount every 1ms.
+ *
+ *  @param arg The user argument that comes with the callback.
+ */
 static void PIT1Callback(void* arg)
 {
-  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  // Cycle through all phases
+  for (int i = 0; i < DOR_NB_PHASES; i++)
   {
-    if (ChannelThreadData[i].timerStatus)
+    // If phase's "Timer" output has been triggered
+    if (DOR_PhaseData[i].timerStatus)
     {
-      ChannelThreadData[i].currentTimeCount++;
+      // Increment phase's currentTimeCount by 1ms.
+      DOR_PhaseData[i].currentTimeCount++;
     }
+    // Signal the Trip Thread to process
     OS_SemaphoreSignal(TripSemaphore);
   }
-
 }
 
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
-  ChannelThreadData[0].semaphore = OS_SemaphoreCreate(0);
-  ChannelThreadData[1].semaphore = OS_SemaphoreCreate(0);
-  ChannelThreadData[2].semaphore = OS_SemaphoreCreate(0);
-
-  TripSemaphore = OS_SemaphoreCreate(0);
-
+  // Create all DOR semaphores
+  DOR_PhaseData[PHASE_A].semaphore = OS_SemaphoreCreate(0); // Phase A Timing Thread semaphore
+  DOR_PhaseData[PHASE_B].semaphore = OS_SemaphoreCreate(0); // Phase B Timing Thread semaphore
+  DOR_PhaseData[PHASE_C].semaphore = OS_SemaphoreCreate(0); // Phase C Timing Thread semaphore
+  TripSemaphore = OS_SemaphoreCreate(0);  // DOR Trip Thread semaphore
 
   //PIT setup struct
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
-  pitSetup.EnablePITThread = 0;
-  pitSetup.Semaphore[0] = ChannelThreadData[0].semaphore;
-  pitSetup.Semaphore[1] = NULL;
   pitSetup.CallbackFunction[0] = PIT0Callback;
   pitSetup.CallbackArguments[0] = NULL;
   pitSetup.CallbackFunction[1] = PIT1Callback;
   pitSetup.CallbackArguments[1] = NULL;
 
-  PIT_Init(&pitSetup);
-  Analog_Init(dorSetup->moduleClk);
+  // Initilise Modules
+  PIT_Init(&pitSetup); // Initilise Pit Module
+  Analog_Init(dorSetup->moduleClk); // Initilise Analog Module
 
+  //Set PIT Timers to default values
+  PIT_Set(MyPIT0TimePeriod, true,0);
+  PIT_Set(MyPIT1TimePeriod, true,1);
 
-  //Set PIT Timer
-  PIT_Set(PIT_TIME_PERIOD, true,0);
-  PIT_Set(PIT1_TIME_PERIOD, true,1);
-
+  // Variable to catch any OS errors
   OS_ERROR error;
 
+  // Create Timing threads for all three phases
+  // Phase A
   error = OS_ThreadCreate(DOR_TimingThread,
-                          &ChannelThreadData[0],
-                          dorSetup->Channel0Params->pStack,
-                          dorSetup->Channel0Params->priority);
-
+                          &DOR_PhaseData[0],
+                          dorSetup->PhaseAParams->pStack,
+                          dorSetup->PhaseAParams->priority);
+  // Phase B
   error = OS_ThreadCreate(DOR_TimingThread,
-                          &ChannelThreadData[1],
-                          dorSetup->Channel1Params->pStack,
-                          dorSetup->Channel1Params->priority);
+                          &DOR_PhaseData[1],
+                          dorSetup->PhaseBParams->pStack,
+                          dorSetup->PhaseBParams->priority);
+  //Phase C
   error = OS_ThreadCreate(DOR_TimingThread,
-                          &ChannelThreadData[2],
-                          dorSetup->Channel2Params->pStack,
-                          dorSetup->Channel2Params->priority);
-
+                          &DOR_PhaseData[2],
+                          dorSetup->PhaseCParams->pStack,
+                          dorSetup->PhaseCParams->priority);
+  // Create DOR Trip Thread
   error = OS_ThreadCreate(DOR_TripThread,
                           dorSetup->TripParams->pData,
                           dorSetup->TripParams->pStack,
@@ -170,205 +187,247 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   return true;
 }
 
-static int16_t v2raw(float voltage)
+/*! @brief Converts voltage to 16 bit value for Analog module.
+ *
+ *  @param voltage value of voltage to be converted.
+ */
+static int16_t volts2Analog(float voltage)
 {
-  return (int16_t)(voltage*ADC_CONVERSION);
+  // Return 16 bit equivalent of voltage
+  return (int16_t)(voltage*ANALOG_16BIT_CONVERSION);
 }
 
-static float raw2v(int16_t voltage)
+/*! @brief Converts 16 bit value from Analog module to voltage.
+ *
+ *  @param analogVal 16 bit Analog Value to be converted.
+ */
+static float analog2Volts(int16_t analogVal)
 {
-  return (float)voltage/(float)ADC_CONVERSION;
+  // Return float equivalent voltage of 16 bit analog value
+  return (float)analogVal/(float)ANALOG_16BIT_CONVERSION;
 }
 
-static float returnRMS(TAnalogThreadData* Data)
+/*! @brief Calculates the RMS current in a sliding window 32 samples wide.
+ *
+ *  @param data is a pointer the a Phase's TDORPhaseData struct.
+ */
+static void calculateRMS(TDORPhaseData* data)
 {
+  // Square the current sample and store in the "squares" array
+  data->squares[data->count] = pow(data->sample,2);
+  // Add the current squared value to the "sumSquares" variable
+  data->sumSquares += data->squares[data->count];
 
-  float square = 0;
-  float volts;
-  float vrms;
-  for (uint8_t i = 0; i<16;i++)
+  // Check that a full window of samples has been collected
+  // Otherwise incorrect RMS value for first 32 reads
+  if (data->windowFilled)
   {
-    volts=raw2v(Data->samples[i]);
+    // If at end of array
+    if(data->count == NB_SAMPLES-1)
+      // Subtract oldest data from first position
+      data->sumSquares -= data->squares[0];
+    else
+      // Subtract oldest data from one position ahead of current position
+      data->sumSquares -= data->squares[data->count+1];
 
-    square += (volts*volts);
+    // Store analog RMS in temporary variable
+    float aRMS = sqrt(data->sumSquares/NB_SAMPLES);
+    // Convert analog RMS to a RMS voltage
+    float vRMS = analog2Volts(aRMS);
+
+    // Convert RMS Voltage to RMS Current and store  in Phase's TDORPhaseData struct
+    data->irms = (vRMS*40)/13 ;
   }
 
-  vrms = sqrt(square/16);
-
-  return (float)((vrms*13)/40);
+  // Increment count to move position up in arrays
+  data->count ++;
+  // If count reaches number of samples loop
+  if (data->count == NB_SAMPLES)
+  {
+    // Set count to zero to loop
+    data->count = 0;
+    // This is to indicate a window of samples has been collected
+    // After the first "NB_SAMPLES" has been collected this is always true.
+    data->windowFilled = true;
+  }
 }
 
-
-
-static float getOffset(int16_t sample0, int16_t sample1)
+/*! @brief Calculates the offset of the sample before the zero crossing as a portion of a sample.
+ *
+ *  @param sample0 is the value of the sample before the zero crossing.
+ *  @param sample1 is the value of the sample after the zero crossing.
+ */
+static float getZeroCrossingOffset(int16_t sample0, int16_t sample1)
 {
-  float m = (sample1-sample0);//Always  divide by one becuase 0ne sample diff
+  // using y=mx
+  // Calculate gradient
+  float m = (sample1-sample0);//Always  divide by one becuase one sample. i.e. x1=0 x2=1
+  // Return the offset as a portion of a sample
   return (-sample0)/m;
 }
 
-static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal)
+/*! @brief Calculates the frequency of the phase using a complete period
+ *
+ *  @param data is a pointer the a Phase's TDORPhaseData struct.
+ */
+static void calculateFreq(TDORPhaseData* data)
 {
-  float period;
-
-  switch (Data->crossing)
+  // Check that not at the first position in the array
+  if (data->count > 0)
   {
-  case 0:
-    Data->numberOfSamples = 0;
-    Data->offset1 = getOffset(prevVal,curVal);
-    Data->crossing = 1;
-    break;
-  case 1:
-    Data->offset2 = getOffset(prevVal,curVal);
-    period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
-    float freq = 1/((float)(period)*1e-9);
-
-    if (freq >= 47.5 && freq <= 52.5)
+    // Check if at a zero crossing with a positive gradient
+    if ((data->samples[data->count] > 0 && data->samples[data->count-1] < 0))
     {
-      Data->frequency = freq;
-      PIT_TIME_PERIOD = period/16;
-      PIT_Set(PIT_TIME_PERIOD,false,0);
+      // Temporary value to store period in
+      float period;
+
+      // Switch between first and second zero crossing
+      switch (data->crossing)
+      {
+      case 0:
+        data->numberOfSamples = 1;
+        // Calculate offset at first zero crossing
+        data->offset1 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
+        data->crossing = 1;
+        break;
+      case 1:
+        // Calculate offset at second zero crossing
+        data->offset2 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
+        // Calculate period between zero crossings
+        // Number of samples * current PIT0 sampling period
+        period = (data->numberOfSamples-data->offset1+data->offset2)*(float)MyPIT0TimePeriod;
+        // Store calculated frequency in a temporary variable so value can be checked
+        float freq = 1/((float)(period)*1e-9);
+
+        // Check if the freq is within the valid range
+        if (freq >= 47.5 && freq <= 52.5)
+        {
+          // Store in Phase's data struct
+          data->frequency = freq;
+          // Update sampling period to ensure 16 samples per cycle
+          MyPIT0TimePeriod = period/16;
+          PIT_Set(MyPIT0TimePeriod,false,0);
+        }
+        data->crossing = 0;
+        break;
+      default:
+        data->crossing = 0;
+        break;
+      }
     }
-    Data->crossing = 0;
-    break;
-  default:
-    Data->crossing = 0;
-    break;
-  }
+    // Increment to record number of samples between zero crossing
+    data->numberOfSamples++;
+    }
 }
 
-static void setTimer()
+/*! @brief Determines whether the "Timer" output should be set/cleared.
+ *         Based on the "timerStatus" set in each Phase's timing thread
+ *
+ */
+static void setTimerOutput()
 {
   // Check if any channel has timer status set
-  if (ChannelThreadData[0].timerStatus ||
-      ChannelThreadData[1].timerStatus ||
-      ChannelThreadData[2].timerStatus)
+  if (DOR_PhaseData[PHASE_A].timerStatus ||
+      DOR_PhaseData[PHASE_B].timerStatus ||
+      DOR_PhaseData[PHASE_C].timerStatus)
   {
     // Set timer output to 5 volts
-    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+    Analog_Put(TIMING_OUTPUT_CHANNEL,ACTIVE_OUTPUT_VOLTAGE_16BIT);
   }
   else
   {
     // Set timer output to 0 volts once all are cleared
-    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
+    Analog_Put(TIMING_OUTPUT_CHANNEL,IDLE_OUTPUT_VOLTAGE_16BIT);
   }
 }
 
-static void setTrip()
+/*! @brief Determines whether the "Trip" output should be set/cleared.
+ *         Based on the "tripStatus" set in each Phase's timing thread
+ *
+ */
+static void setTripOutput()
 {
   // Check if any channel has trip status set
-  if (ChannelThreadData[0].tripStatus ||
-      ChannelThreadData[1].tripStatus ||
-      ChannelThreadData[2].tripStatus)
+  if (DOR_PhaseData[0].tripStatus ||
+      DOR_PhaseData[1].tripStatus ||
+      DOR_PhaseData[2].tripStatus)
   {
     // Set timer output to 5 volts
-    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+    Analog_Put(TRIP_OUTPUT_CHANNEL,ACTIVE_OUTPUT_VOLTAGE_16BIT);
   }
   else
   {
     // Set timer output to 0 volts once all are cleared
-    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+    Analog_Put(TRIP_OUTPUT_CHANNEL,IDLE_OUTPUT_VOLTAGE_16BIT);
   }
 }
 
 void DOR_TimingThread(void* pData)
 {
-//  static int count;
-//  static int32_t sumSquares;
   for (;;)
   {
-    (void)OS_SemaphoreWait(channelData.semaphore, 0);
+    // Variable to address thread data - makes code easier to read
+    TDORPhaseData* phaseData = pData;
 
-    Analog_Get(channelData.channelNb, &channelData.sample);
-    channelData.samples[channelData.count] = channelData.sample;
+    // Wait for PIT0 to signal semaphore
+    (void)OS_SemaphoreWait(phaseData->semaphore, 0);
 
-    if (channelData.channelNb == 0)
+    // Read data from ADC and store in array for processing
+    Analog_Get(phaseData->phaseNb, &phaseData->sample);
+    phaseData->samples[phaseData->count] = phaseData->sample;
+
+    // Only calculate the frequency for Phase A
+    // Assumes that all phases share the same frequency
+    if (phaseData->phaseNb == PHASE_A)
+      calculateFreq(phaseData);
+
+    // Calculate the current RMS in sliding window
+    calculateRMS(phaseData);
+
+    // If current over the threshold and "Timer" output hasnt been set
+    if (phaseData->irms > DOR_CURRENT_LIMIT_LOWER && !phaseData->timerStatus)
     {
-      if (channelData.count > 0)
-      {
-        if ((channelData.samples[channelData.count] > 0 && channelData.samples[channelData.count-1] < 0))
-        {
-        //        float temp = channelData.samples[count];
-        //        float temp1 = channelData.samples[count-1];
-         getFrequency(&channelData,channelData.samples[channelData.count-1], channelData.samples[channelData.count]);
-
-        }
-        channelData.numberOfSamples++;
-      }
-
+      // Set "Timer" output and reset Phase's currentTimeCount
+      phaseData->timerStatus = 1;
+      phaseData->currentTimeCount = 0;
+      setTimerOutput();
     }
-
-
-//    channelData.sumSquares += channelData.samples[channelData.count]*channelData.samples[channelData.count];
-//    if (channelData.count == 0)
-//    {
-//      channelData.sumSquares -= channelData.samples[15]*channelData.samples[15];
-//    }
-//    else
-//    {
-//      channelData.sumSquares -= channelData.samples[channelData.count-1]*channelData.samples[channelData.count-1];
-//    }
-    channelData.squares[channelData.count] = pow(channelData.sample,2);
-    channelData.sumSquares += channelData.squares[channelData.count];
-
-    if (channelData.subtract)
+    else if (phaseData->irms < DOR_CURRENT_LIMIT_LOWER)
     {
-      if(channelData.count == NB_SAMPLES-1)
-        channelData.sumSquares -= channelData.squares[0];
-      else
-        channelData.sumSquares -= channelData.squares[channelData.count+1];
-
-
-    float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
-
-    channelData.irms = raw2v(((vrms*13)/40));
+      // Once below threshold reset Phase's status
+      phaseData->timerStatus = 0;
+      setTimerOutput();
     }
-
-    channelData.count ++;
-    if (channelData.count == NB_SAMPLES)
-    {
-//      channelData.irms = returnRMS(&channelData);
-      channelData.count = 0;
-      channelData.subtract = 1;
-    }
-
-
-
-
-
-    if (channelData.irms > 1.03 && !channelData.timerStatus)
-    {
-//      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
-      channelData.timerStatus = 1;
-      channelData.currentTimeCount = 0;
-      setTimer();
-    }
-    else if (channelData.irms < 1.03)
-    {
-      channelData.timerStatus = 0;
-      setTimer();
-    }
-
-
   }
 }
 
+/*! @brief gets the trip time depending on current characteristic.
+ *
+ *  @param  irms            is the current for which a trip time needs to be returned.
+ *  @param  characteristic  is the current characteristic curve selected.
+ *  @return uint32_t - trip time in milliseconds.
+ */
 static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
 {
-  // check irms lower than upper range
-  if (irms > 20)
-    irms = 20;
+  // If current greater than upper limit
+  if (irms > DOR_CURRENT_LIMIT_UPPER)
+    // Set to highest valid value
+    irms = DOR_CURRENT_LIMIT_UPPER;
 
+  // Calculate position in IDMT curve arrays
+  // "-103" is to align position to start at 1.03 amps
   uint16_t postion = (uint16_t)(irms*100)-103;
 
+  // Return relevant trip time in milliseconds
   switch (characteristic)
   {
-  case 0:
+  case IDMT_INVERSE:
     return INV_TRIP_TIME[postion];
     break;
-  case 1:
+  case IDMT_V_INVERSE:
     return VINV_TRIP_TIME[postion];
     break;
-  case 2:
+  case IDMT_E_INVERSE:
     return EINV_TRIP_TIME[postion];
     break;
   default:
@@ -381,43 +440,40 @@ void DOR_TripThread(void* pData)
   TDORTripThreadData* tripThreadData = pData;
   for(;;)
   {
+    // Wait for PIT1 to signal semaphore
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
-    // TODO: Add multi channel functionality
-    for (int i = 0; i < 3; i++)
+    // Loop through all three Phases
+    for (int i = 0; i < DOR_NB_PHASES; i++)
     {
-      //check if timer started
-      if (ChannelThreadData[i].timerStatus && !ChannelThreadData[i].tripStatus)
+      // Check if trip needs to occur
+      if (DOR_PhaseData[i].timerStatus && !DOR_PhaseData[i].tripStatus)
       {
-  //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
-  //      channelData.tripTime = 17610;
-  //      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
-  //      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
+        // Get trip time for the current phase
+        DOR_PhaseData[i].tripTime = getTripTime(DOR_PhaseData[i].irms, *tripThreadData->characteristic);
 
-//        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
-
-        ChannelThreadData[i].tripTime = getTripTime(ChannelThreadData[i].irms, *tripThreadData->characteristic);
-
-        if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
+        // If time since "Timer" output was reset exceeds the calculated trip time
+        // for the current
+        if (DOR_PhaseData[i].currentTimeCount >= DOR_PhaseData[i].tripTime)
         {
-          // Set Output high
-          ChannelThreadData[i].tripStatus = 1;
-          ChannelThreadData[i].currentWTripped = ChannelThreadData[i].irms;
+          // Set "Trip" output  status for phase
+          DOR_PhaseData[i].tripStatus = 1;
+          // Increment the total number of times tripped
           Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
-          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<ChannelThreadData[i].channelNb));
-          setTrip();
+          // Update the Fault Type to include current tripped phase
+          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<DOR_PhaseData[i].phaseNb));
+          setTripOutput();
         }
-
       }
-      else if (ChannelThreadData[i].tripStatus && !ChannelThreadData[i].timerStatus)
+      else if (DOR_PhaseData[i].tripStatus && !DOR_PhaseData[i].timerStatus)
       {
-        // Set Output low
-        ChannelThreadData[i].tripStatus = 0;
-        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<ChannelThreadData[i].channelNb));
-        setTrip();
+        // Reset "Trip" output  status for phase
+        DOR_PhaseData[i].tripStatus = 0;
+        // Remove current tripped phase from the Fault Type
+        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<DOR_PhaseData[i].phaseNb));
+        setTripOutput();
       }
     }
-
   }
 }
 

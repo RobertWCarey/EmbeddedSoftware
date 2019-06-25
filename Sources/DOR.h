@@ -21,64 +21,66 @@
 #include "OS.h"
 #include "PE_types.h"
 
-#define NB_ANALOG_CHANNELS 3
-#define NB_SAMPLES 32
+#define DOR_NB_PHASES 3 /*!< Total number of Phases. */
+#define NB_SAMPLES 32   /*!< Number of samples in RMS sliding window. */
 
 typedef struct
 {
-  uint32_t moduleClk;         /*!< The module clock rate in Hz. */
-  TOSThreadParams* Channel0Params;  /*!< Thread parameters for Channel0. */
-  TOSThreadParams* Channel1Params;  /*!< Thread parameters for Channel0. */
-  TOSThreadParams* Channel2Params;  /*!< Thread parameters for Channel0. */
-  TOSThreadParams* TripParams;
+  uint32_t moduleClk;             /*!< The module clock rate in Hz. */
+  TOSThreadParams* PhaseAParams;  /*!< Thread parameters for Phase A. */
+  TOSThreadParams* PhaseBParams;  /*!< Thread parameters for Phase B. */
+  TOSThreadParams* PhaseCParams;  /*!< Thread parameters for Phase C. */
+  TOSThreadParams* TripParams;    /*!< Thread parameters for Trip Thread. */
 } TDORSetup;
 
 typedef struct
 {
-  volatile uint8_t* characteristic;
-  volatile uint16union_t* timesTripped;
-  volatile uint8_t* faultType;
+  volatile uint8_t* characteristic;     /*!< Pointer to IDMT Characteristic. */
+  volatile uint16union_t* timesTripped; /*!< Pointer to number of times tripped. */
+  volatile uint8_t* faultType;          /*!< Pointer to fault type. */
 } TDORTripThreadData;
 
 typedef enum
 {
-  IDMT_INVERSE,
-  IDMT_V_INVERSE,
-  IDTM_E_INVERSE
+  IDMT_INVERSE,   /*!< IDMT Characteristic Inverse. */
+  IDMT_V_INVERSE, /*!< IDMT Characteristic Very Inverse. */
+  IDMT_E_INVERSE  /*!< IDMT Characteristic Extremely Inverse. */
 } TIDMTCharacter;
 
-typedef struct ChannelThreadData
+typedef enum
 {
-  OS_ECB* semaphore;
-  uint8_t channelNb;
-  float irms;
-  int16_t samples[NB_SAMPLES];
-  int16_t sample;
-  bool timerStatus;
-  bool tripStatus;
-  uint32_t currentTimeCount;
-  uint32_t tripTime;
-  float offset1;
-  float offset2;
-  uint8_t numberOfSamples;
-  uint8_t crossing;
-  float frequencyArray[3];
-  float frequency;
-  uint8_t count;
-  float squares[NB_SAMPLES];
-  float sumSquares;
-  bool subtract;
-  float currentWTripped;
-} TAnalogThreadData;
+  PHASE_A,  /*!< Phase A channel number. */
+  PHASE_B,  /*!< Phase B channel number. */
+  PHASE_C   /*!< Phase C channel number. */
+} TDORPhases;
 
-typedef struct
+typedef struct PhaseData
 {
-    uint32_t y;
-    double x;
-} TIDMTData;
+  OS_ECB* semaphore;          /*!< Semaphore for Phase's Timing Thread. */
+  uint8_t phaseNb;            /*!< Phase channel number. */
+  uint8_t numberOfSamples;    /*!< Number of samples between zero crossings. */
+  uint8_t crossing;           /*!< Current zero crossing. */
+  uint8_t count;              /*!< Current positions in samples & squares arrays. */
+  int16_t samples[NB_SAMPLES];/*!< Array of 16bit ADC samples, MyPIT0TimePeriod apart. */
+  int16_t sample;             /*!< Most recent ADC 16bit sample. */
+  uint32_t currentTimeCount;  /*!< Time in ms since going over DOR_CURRENT_LIMIT_LOWER. */
+  uint32_t tripTime;          /*!< Time to trip for current "irms" from IDMT curve. */
+  bool timerStatus;           /*!< Current Status of "Timer" output for this Phase. */
+  bool tripStatus;            /*!< Current Status of "Trip" output for this Phase. */
+  bool windowFilled;          /*!< Indicates NB_SAMPLES has been collected for sliding window. */
+  float irms;                 /*!< Current Irms value for Phase. */
+  float offset1;              /*!< Offset as a fraction of a sample from first zero crossing. */
+  float offset2;              /*!< Offset as a fraction of a sample from second zero crossing. */
+  float frequency;            /*!< Current frequency value for Phase. */
+  float squares[NB_SAMPLES];  /*!< Squared ADC 16bit values. i.e. samples^2. */
+  float sumSquares;           /*!< Sum of squares. */
+} TDORPhaseData;
 
-TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS];
+// All DOR Phase Data
+TDORPhaseData DOR_PhaseData[DOR_NB_PHASES];
 
+// Array storing Inverse Characteristic curve
+// Trip times correspond to (current to 2 decimal places * 100) -103
 static const uint32_t INV_TRIP_TIME[1898] =
 {
    2.3675e+05,1.7841e+05,1.434e+05,1.2006e+05,1.0339e+05,90885,81158,73374,67006,61697,57205,53354,50015,47093,44515,42222,40171,38324,36652,35132,33744,32471,31300,30218,
@@ -140,6 +142,8 @@ static const uint32_t INV_TRIP_TIME[1898] =
    2275,2274,2274,2274,2273,2273,2272,2272,2272,2271,2271,2270,2270,2270,2269,2269,2269,2268,2268,2267
 };
 
+// Array storing Very Inverse Characteristic curve values
+// Trip times correspond to (current to 2 decimal places * 100) -103
 static const uint32_t VINV_TRIP_TIME[1898] =
 {
     4.5e+05,3.375e+05,2.7e+05,2.25e+05,1.9286e+05,1.6875e+05,1.5e+05,1.35e+05,1.2273e+05,1.125e+05,1.0385e+05,96429,90000,84375,79412,75000,71053,67500,64286,61364,58696,
@@ -196,10 +200,10 @@ static const uint32_t VINV_TRIP_TIME[1898] =
     753,753,753,752,752,751,751,750,750,750,749,749,748,748,748,747,747,746,746,745,745,745,744,744,743,743,743,742,742,741,741,741,740,740,739,739,739,738,738,737,737,736,736,
     736,735,735,734,734,734,733,733,733,732,732,731,731,731,730,730,729,729,729,728,728,727,727,727,726,726,725,725,725,724,724,723,723,723,722,722,722,721,721,720,720,720,719,
     719,718,718,718,717,717,717,716,716,715,715,715,714,714,714,713,713,712,712,712,711,711,711
-
-
 };
 
+// Array storing Extremely Inverse Characteristic curve values
+// Trip times correspond to (current to 2 decimal places * 100) -103
 static const uint32_t EINV_TRIP_TIME[1898] =
 {
     1.3136e+06,9.8039e+05,7.8049e+05,6.4725e+05,5.5211e+05,4.8077e+05,4.2531e+05,3.8095e+05,3.4468e+05,3.1447e+05,2.8891e+05,2.6702e+05,2.4806e+05,2.3148e+05,2.1686e+05,2.0387e+05,
@@ -251,14 +255,29 @@ static const uint32_t EINV_TRIP_TIME[1898] =
     227,226,226,226,226,225,225,225,225,224,224,224,224,223,223,223,223,222,222,222,222,222,221,221,221,221,220,220,220,220,219,219,219,219,219,218,218,218,218,217,217,217,217,216,216,
     216,216,216,215,215,215,215,214,214,214,214,214,213,213,213,213,212,212,212,212,212,211,211,211,211,211,210,210,210,210,209,209,209,209,209,208,208,208,208,208,207,207,207,207,206,
     206,206,206,206,205,205,205,205,205,204,204,204,204,204,203,203,203,203,203,202,202,202,202,202,201,201,201,201,201
-
-
 };
 
+/*! @brief Sets up the DOR before first use.
+ *
+ *  Enables the all DOR threads and configures phase data.
+ *
+ *  @param dorSetup is a pointer to a DOR setup structure.
+ *  @return bool - TRUE if the DOR was successfully initialized.
+ */
 bool DOR_Init(const TDORSetup* const dorSetup);
 
+/*! @brief Thread that samples the ADC data, does RMS calc and triggers "Timer" output.
+ *
+ *
+ *  @param pData a pointer to an optional data area used to pass parameters to the thread when it is created.
+ */
 void DOR_TimingThread(void* pData);
 
+/*! @brief Calculates and executes "Trip" output timing.
+ *
+ *
+ *  @param pData a pointer to an optional data area used to pass parameters to the thread when it is created.
+ */
 void DOR_TripThread(void* pData);
 
 #endif

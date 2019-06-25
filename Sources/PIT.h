@@ -10,6 +10,7 @@
  *
  *  @author PMcL
  *  @date 2015-08-22
+ *  Modified by Robert Carey 2019-06-26
  */
 
 #ifndef PIT_H
@@ -28,11 +29,7 @@ typedef struct
   void (*CallbackFunction[2])(void*);	/*!< The user's callback function. */
   void* CallbackArguments[2];		      /*!< The user's callback function arguments. */
   TOSThreadParams* ThreadParams;    /*!< Thread parameters for PITThread. */
-  bool EnablePITThread;
-  OS_ECB* Semaphore[2];
 } TPITSetup;
-
-void PITThread(void* pData);
 
 /*! @brief Sets up the PIT before first use.
  *
@@ -48,6 +45,7 @@ bool PIT_Init(const TPITSetup* const PITSetup);
  *  @param period The desired value of the timer period in nanoseconds.
  *  @param restart TRUE if the PIT is disabled, a new value set, and then enabled.
  *                 FALSE if the PIT will use the new value after a trigger event.
+ *  @param PIT To select which it timer to set (0 or 1)
  *  @note The function will enable the timer and interrupts for the PIT.
  */
 void PIT_Set(const uint32_t period, const bool restart, const uint8_t PIT);
