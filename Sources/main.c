@@ -45,13 +45,12 @@
 
 
 // Pointers to non-volatile storage locations
-volatile uint8_t *nvIDMTCharacter;
+volatile uint8_t *nvIDMTCharacter; // Pointer to IDMT Characteristic
+volatile uint8_t *nvTimesTripped; // Pointer to Number of Times Tripped
+volatile uint8_t *nvFaultType;  // Pointer to Most recent Fault Type
 
-// Baud Rate (bps)
+// Serial Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
-
-// Global value for storing IDMT Characteristic
-TIDMTCharacter IDMT_Characteristic = IDMT_V_INVERSE;
 
 // Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
 #define THREAD_STACK_SIZE 1024
@@ -107,6 +106,8 @@ static void InitModulesThread(void* pData)
 {
   //Default settings
   const uint8_t defaultIDMTCharacter = IDMT_V_INVERSE;
+  const uint8_t defaultTimesTripped = 0;
+  const uint8_t defaultFaultType = 0;
 
   //Packet setup struct
   TPacketSetup packetSetup;
@@ -127,8 +128,14 @@ static void InitModulesThread(void* pData)
 
   //Assign non-volatile memory locations
   Flash_AllocateVar((void*)&nvIDMTCharacter, sizeof(*nvIDMTCharacter));
+  Flash_AllocateVar((void*)&nvTimesTripped, sizeof(*nvTimesTripped));
+  Flash_AllocateVar((void*)&nvFaultType, sizeof(*nvFaultType));
   if (*nvIDMTCharacter == 0xff)
       Flash_Write8((uint8_t*)nvIDMTCharacter, defaultIDMTCharacter);
+  if (*nvTimesTripped == 0xff)
+        Flash_Write8((uint8_t*)nvTimesTripped, defaultTimesTripped);
+  if (*nvFaultType == 0xff)
+        Flash_Write8((uint8_t*)nvFaultType, defaultFaultType);
 
 
 
@@ -138,7 +145,11 @@ static void InitModulesThread(void* pData)
   dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
   dorSetup.Channel1Params = &DOR_Timing1ThreadParams;
   dorSetup.Channel2Params = &DOR_Timing2ThreadParams;
-  DOR_TripThreadParams.pData = nvIDMTCharacter;
+  TDORTripThreadData dorTripThreadData;
+  dorTripThreadData.characteristic = nvIDMTCharacter;
+  dorTripThreadData.timesTripped = nvTimesTripped;
+  dorTripThreadData.faultType = nvFaultType;
+  DOR_TripThreadParams.pData = &dorTripThreadData;
   dorSetup.TripParams = &DOR_TripThreadParams;
   DOR_Init(&dorSetup);
 

@@ -20,6 +20,7 @@
 #include "stdlib.h"
 #include "types.h"
 #include "math.h"
+#include "Flash.h"
 
 
 // Pit time period (nano seconds)
@@ -349,9 +350,9 @@ static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
 
 void DOR_TripThread(void* pData)
 {
+  TDORTripThreadData* tripThreadData = pData;
   for(;;)
   {
-    TIDMTCharacter* characteristic = pData;
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
     // TODO: Add multi channel functionality
