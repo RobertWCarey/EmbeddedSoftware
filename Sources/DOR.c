@@ -20,10 +20,15 @@
 #include "stdlib.h"
 #include "types.h"
 #include "math.h"
+#include "Flash.h"
 
 
 // Pit time period (nano seconds)
+// Todo: change to proper case for vairable
 static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+//static uint32_t PIT_TIME_PERIOD = 10000000; // 1ms
+//static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
+static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
 //Output channels
 static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
@@ -31,34 +36,11 @@ static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
 
 static const uint16_t ADC_CONVERSION = 3276;
 
-static const TIDMTData INV_TRIP_TIME[20] =
-{
-  {.y=236746,.x=1.03},{.y=10029,.x=2},{.y=6302,.x=3},{.y=4980,.x=4},{.y=4280,.x=5},
-  {.y=3837,.x=6},{.y=3528,.x=7},{.y=3297,.x=8},{.y=3116,.x=9},{.y=2971,.x=10},
-  {.y=2850,.x=11},{.y=2748,.x=12},{.y=2660,.x=13},{.y=2583,.x=14},{.y=2516,.x=15},
-  {.y=2455,.x=16},{.y=2401,.x=17},{.y=2353,.x=18},{.y=2308,.x=19},{.y=2267,.x=20},
-};
-
-static const TIDMTData VINV_TRIP_TIME[20] =
-{
-  {.y=450000,.x=1.03},{.y=13500,.x=2},{.y=6750,.x=3},{.y=4500,.x=4},{.y=3375,.x=5},
-  {.y=2700,.x=6},{.y=2250,.x=7},{.y=1929,.x=8},{.y=1688,.x=9},{.y=1500,.x=10},
-  {.y=1350,.x=11},{.y=1227,.x=12},{.y=1125,.x=13},{.y=1038,.x=14},{.y=964,.x=15},
-  {.y=900,.x=16},{.y=844,.x=17},{.y=794,.x=18},{.y=750,.x=19},{.y=711,.x=20},
-};
-
-static const TIDMTData EINV_TRIP_TIME[20] =
-{
-  {.y=1313629,.x=1.03},{.y=26667,.x=2},{.y=10000,.x=3},{.y=5333,.x=4},{.y=3333,.x=5},
-  {.y=2286,.x=6},{.y=1667,.x=7},{.y=1270,.x=8},{.y=1000,.x=9},{.y=808,.x=10},
-  {.y=667,.x=11},{.y=559,.x=12},{.y=476,.x=13},{.y=410,.x=14},{.y=357,.x=15},
-  {.y=314,.x=16},{.y=278,.x=17},{.y=248,.x=18},{.y=222,.x=19},{.y=201,.x=20},
-};
 
 
 uint16_t analogInputValue;
 
-#define NB_ANALOG_CHANNELS 3
+
 
 #define channelData (*(TAnalogThreadData*)pData)
 
@@ -69,7 +51,7 @@ static OS_ECB* TripSemaphore;
 /*! @brief Analog thread configuration data
  *
  */
-static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
+TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
 {
   {
     .semaphore = NULL,
@@ -109,8 +91,11 @@ static void PIT0Callback(void* arg)
 
   for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
   {
-    Analog_Get(0, &ChannelThreadData[i].sample);
+//    Analog_Get(0, &ChannelThreadData[i].sample);
+    OS_SemaphoreSignal(ChannelThreadData[i].semaphore);
   }
+//  Analog_Get(0, &ChannelThreadData[0].sample);
+//  OS_SemaphoreSignal(ChannelThreadData[0].semaphore);
 
 }
 
@@ -122,6 +107,7 @@ static void PIT1Callback(void* arg)
     {
       ChannelThreadData[i].currentTimeCount++;
     }
+    OS_SemaphoreSignal(TripSemaphore);
   }
 
 }
@@ -129,6 +115,8 @@ static void PIT1Callback(void* arg)
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
   ChannelThreadData[0].semaphore = OS_SemaphoreCreate(0);
+  ChannelThreadData[1].semaphore = OS_SemaphoreCreate(0);
+  ChannelThreadData[2].semaphore = OS_SemaphoreCreate(0);
 
   TripSemaphore = OS_SemaphoreCreate(0);
 
@@ -138,7 +126,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   pitSetup.moduleClk = dorSetup->moduleClk;
   pitSetup.EnablePITThread = 0;
   pitSetup.Semaphore[0] = ChannelThreadData[0].semaphore;
-  pitSetup.Semaphore[1] = TripSemaphore;
+  pitSetup.Semaphore[1] = NULL;
   pitSetup.CallbackFunction[0] = PIT0Callback;
   pitSetup.CallbackArguments[0] = NULL;
   pitSetup.CallbackFunction[1] = PIT1Callback;
@@ -150,7 +138,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
   //Set PIT Timer
   PIT_Set(PIT_TIME_PERIOD, true,0);
-  PIT_Set(PIT_TIME_PERIOD, true,1);
+  PIT_Set(PIT1_TIME_PERIOD, true,1);
 
   OS_ERROR error;
 
@@ -159,31 +147,21 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           dorSetup->Channel0Params->pStack,
                           dorSetup->Channel0Params->priority);
 
+  error = OS_ThreadCreate(DOR_TimingThread,
+                          &ChannelThreadData[1],
+                          dorSetup->Channel1Params->pStack,
+                          dorSetup->Channel1Params->priority);
+  error = OS_ThreadCreate(DOR_TimingThread,
+                          &ChannelThreadData[2],
+                          dorSetup->Channel2Params->pStack,
+                          dorSetup->Channel2Params->priority);
+
   error = OS_ThreadCreate(DOR_TripThread,
-                          &ChannelThreadData[0],
+                          dorSetup->TripParams->pData,
                           dorSetup->TripParams->pStack,
                           dorSetup->TripParams->priority);
 
   return true;
-}
-
-
-static float returnRMS(int16_t sampleData[])
-{
-
-  float square = 0;
-  float volts;
-  float vrms;
-  for (uint8_t i = 0; i<16;i++)
-  {
-    volts=sampleData[i];
-
-    square += (volts*volts);
-  }
-
-  vrms = sqrt(square/16);
-
-  return (float)((vrms*40)/13);
 }
 
 static int16_t v2raw(float voltage)
@@ -196,48 +174,105 @@ static float raw2v(int16_t voltage)
   return (float)voltage/(float)ADC_CONVERSION;
 }
 
-static float getOffset(float sample0, float sample1)
+static float returnRMS(TAnalogThreadData* Data)
 {
-  float m = (sample1-sample0)/1;//Always one becuase 0ne sample diff
+
+  float square = 0;
+  float volts;
+  float vrms;
+  for (uint8_t i = 0; i<16;i++)
+  {
+    volts=raw2v(Data->samples[i]);
+
+    square += (volts*volts);
+  }
+
+  vrms = sqrt(square/16);
+
+  return (float)((vrms*40)/13);
+}
+
+
+
+static float getOffset(int16_t sample0, int16_t sample1)
+{
+  float m = (sample1-sample0);//Always  divide by one becuase 0ne sample diff
   return (-sample0)/m;
 }
 
-static void getFrequency(TAnalogThreadData* Data, uint8_t count)
+static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal)
 {
+  float period;
+  static int tempLoop=0;
 
-  if (count > 0 )
-  {
     // check at full cycle zero crossing
-    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
-    {
+//    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
+//    {
       switch (Data->crossing)
       {
       case 0:
-        Data->numberOfSamples = 2;
-        Data->offset1 = getOffset(Data->samples[count-1],Data->samples[count]);
+        Data->numberOfSamples = 0;
+        Data->offset1 = getOffset(prevVal,curVal);
         Data->crossing = 1;
         break;
       case 1:
-        Data->offset2 = getOffset(Data->samples[count-1],Data->samples[count]);
-        float period = (Data->numberOfSamples - Data->offset1 + Data->offset2)*PIT_TIME_PERIOD;
-        float freq = 1/(period/1e-9);
-        if (freq >= 47.5 && freq <= 52.5)
-        {
-          Data->frequency = freq;
-          PIT_TIME_PERIOD = period;
-          PIT_Set(PIT_TIME_PERIOD,false,0);
-        }
+        Data->offset2 = getOffset(prevVal,curVal);
+//        float period1 = Data->offset1*PIT_TIME_PERIOD;
+//        float period2 = Data->offset2*PIT_TIME_PERIOD;
+        period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
+        float freq = 1/((float)(period)*1e-9);
+
+        Data->frequency[tempLoop] = freq;
+        tempLoop++;
+        if (tempLoop >=3)
+          tempLoop = 0;
+//
+//        if (freq >= 47.5 && freq <= 52.5)
+//        {
+////          Data->frequency = freq;
+////          PIT_TIME_PERIOD = period;
+////          PIT_Set(PIT_TIME_PERIOD,false,0);
+//        }
         Data->crossing = 0;
         break;
       default:
         Data->crossing = 0;
         break;
-      }
     }
+//    }
+}
+
+static void setTimer()
+{
+  // Check if any channel has timer status set
+  if (ChannelThreadData[0].timerStatus ||
+      ChannelThreadData[1].timerStatus ||
+      ChannelThreadData[2].timerStatus)
+  {
+    // Set timer output to 5 volts
+    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
   }
   else
   {
-    Data->numberOfSamples++;
+    // Set timer output to 0 volts once all are cleared
+    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
+  }
+}
+
+static void setTrip()
+{
+  // Check if any channel has trip status set
+  if (ChannelThreadData[0].tripStatus ||
+      ChannelThreadData[1].tripStatus ||
+      ChannelThreadData[2].tripStatus)
+  {
+    // Set timer output to 5 volts
+    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+  }
+  else
+  {
+    // Set timer output to 0 volts once all are cleared
+    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
   }
 }
 
@@ -248,80 +283,109 @@ void DOR_TimingThread(void* pData)
   {
     (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
-    channelData.samples[count] = raw2v(channelData.sample);
+    Analog_Get(channelData.channelNb, &channelData.sample);
+    channelData.samples[count] = channelData.sample;
+
+    if (channelData.channelNb == 0)
+    {
+      if (count > 0)
+      {
+        if ((channelData.samples[count] > 0 && channelData.samples[count-1] < 0))
+        {
+        //        float temp = channelData.samples[count];
+        //        float temp1 = channelData.samples[count-1];
+         getFrequency(&channelData,channelData.samples[count-1], channelData.samples[count]);
+
+        }
+        channelData.numberOfSamples++;
+      }
+
+    }
 
     count ++;
     if (count == 16)
     {
-      channelData.irms = returnRMS(channelData.samples);
+      channelData.irms = returnRMS(&channelData);
       count = 0;
     }
 
-    if (channelData.irms > 1.03)
+
+
+
+
+    if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
-      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+//      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
       channelData.timerStatus = 1;
       channelData.currentTimeCount = 0;
+      setTimer();
     }
-    else
+    else if (channelData.irms < 1.03)
     {
-      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
       channelData.timerStatus = 0;
+      setTimer();
     }
+
 
   }
 }
 
-static uint32_t interpolate(TIDMTData data[], double val)
+static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
 {
-  double result = 0; // Initialize result
-
-  for (int i=1; i<20; i++)
+  switch (characteristic)
   {
-      // Compute individual terms of above formula
-      double term = data[i].y;
-      double temp = data[i].x;
-      for (int j=1;j<20;j++)
-      {
-          double temp = data[j].x;
-          if (j!=i)
-          {
-            temp = (val - data[j].x);
-            temp = temp/(data[i].x - data[j].x);
-            term = term*temp;
-          }
-//              term = term*((val - data[j].x)/(data[i].x - data[j].x));
-      }
-
-      // Add current term to result
-      result += term;
+  case 0:
+    return INV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  case 1:
+    return VINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  case 2:
+    return EINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  default:
+    break;
   }
-
-  return (uint32_t)result;
 }
 
 void DOR_TripThread(void* pData)
 {
+  TDORTripThreadData* tripThreadData = pData;
   for(;;)
   {
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
     // TODO: Add multi channel functionality
-//    for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
-
-    //check if timer started
-    if (channelData.timerStatus)
+    for (int i = 0; i < 3; i++)
     {
-      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
-      if (channelData.currentTimeCount >= channelData.tripTime)
+      //check if timer started
+      if (ChannelThreadData[i].timerStatus && !ChannelThreadData[i].tripStatus)
       {
-        // Set Output high
-        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+  //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
+  //      channelData.tripTime = 17610;
+  //      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
+  //      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
+
+//        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
+
+        ChannelThreadData[i].tripTime = getTripTime(ChannelThreadData[i].irms, *tripThreadData->characteristic);
+
+        if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
+        {
+          // Set Output high
+          ChannelThreadData[i].tripStatus = 1;
+          Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
+          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<ChannelThreadData[i].channelNb));
+          setTrip();
+        }
+
       }
-      else
+      else if (ChannelThreadData[i].tripStatus && !ChannelThreadData[i].timerStatus)
       {
         // Set Output low
-        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+        ChannelThreadData[i].tripStatus = 0;
+        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<ChannelThreadData[i].channelNb));
+        setTrip();
       }
     }
 
