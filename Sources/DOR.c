@@ -312,15 +312,16 @@ void DOR_TimingThread(void* pData)
 
     if (channelData.subtract)
     {
-      if(channelData.count == 0)
-        channelData.sumSquares -= channelData.squares[NB_SAMPLES-1];
+      if(channelData.count == NB_SAMPLES-1)
+        channelData.sumSquares -= channelData.squares[0];
       else
-        channelData.sumSquares -= channelData.squares[channelData.count-1];
-    }
+        channelData.sumSquares -= channelData.squares[channelData.count+1];
+
 
     float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
 
     channelData.irms = ((vrms*13)/40);
+    }
 
     channelData.count ++;
     if (channelData.count == NB_SAMPLES)
