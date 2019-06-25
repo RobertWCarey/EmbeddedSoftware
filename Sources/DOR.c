@@ -47,6 +47,10 @@ static const uint16_t ANALOG_16BIT_CONVERSION = 3276;
 // Semaphore for tripThread
 static OS_ECB* TripSemaphore;
 
+// Voltages for Outputs as 16bit values
+static const int16_t IDLE_OUTPUT_VOLTAGE_16BIT = 0;       // Equivalent to OV
+static const int16_t ACTIVE_OUTPUT_VOLTAGE_16BIT = 16384; // Equivalent to 5V
+
 // Configuration of array storing data for all three phases
 TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
 {
@@ -285,7 +289,7 @@ static void calculateFreq(TDORPhaseData* data)
         // Calculate period between zero crossings
         // Number of samples * current PIT0 sampling period
         period = (data->numberOfSamples-data->offset1+data->offset2)*(float)MyPIT0TimePeriod;
-        // Store calculated freq in a temp var so value can be checked
+        // Store calculated frequency in a temporary variable so value can be checked
         float freq = 1/((float)(period)*1e-9);
 
         // Check if the freq is within the valid range
@@ -309,24 +313,32 @@ static void calculateFreq(TDORPhaseData* data)
     }
 }
 
-static void setTimer()
+/*! @brief Determines whether the "Timer" output should be set/cleared.
+ *         Based on the "timerStatus" set in each Phase's timing thread
+ *
+ */
+static void setTimerOutput()
 {
   // Check if any channel has timer status set
-  if (DOR_PhaseData[0].timerStatus ||
-      DOR_PhaseData[1].timerStatus ||
-      DOR_PhaseData[2].timerStatus)
+  if (DOR_PhaseData[PHASE_A].timerStatus ||
+      DOR_PhaseData[PHASE_B].timerStatus ||
+      DOR_PhaseData[PHASE_C].timerStatus)
   {
     // Set timer output to 5 volts
-    Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(5));
+    Analog_Put(TIMING_OUTPUT_CHANNEL,ACTIVE_OUTPUT_VOLTAGE_16BIT);
   }
   else
   {
     // Set timer output to 0 volts once all are cleared
-    Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(0));
+    Analog_Put(TIMING_OUTPUT_CHANNEL,IDLE_OUTPUT_VOLTAGE_16BIT);
   }
 }
 
-static void setTrip()
+/*! @brief Determines whether the "Trip" output should be set/cleared.
+ *         Based on the "tripStatus" set in each Phase's timing thread
+ *
+ */
+static void setTripOutput()
 {
   // Check if any channel has trip status set
   if (DOR_PhaseData[0].tripStatus ||
@@ -334,12 +346,12 @@ static void setTrip()
       DOR_PhaseData[2].tripStatus)
   {
     // Set timer output to 5 volts
-    Analog_Put(TRIP_OUTPUT_CHANNEL,volts2Analog(5));
+    Analog_Put(TRIP_OUTPUT_CHANNEL,ACTIVE_OUTPUT_VOLTAGE_16BIT);
   }
   else
   {
     // Set timer output to 0 volts once all are cleared
-    Analog_Put(TRIP_OUTPUT_CHANNEL,volts2Analog(0));
+    Analog_Put(TRIP_OUTPUT_CHANNEL,IDLE_OUTPUT_VOLTAGE_16BIT);
   }
 }
 
@@ -365,12 +377,12 @@ void DOR_TimingThread(void* pData)
 //      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(5));
       channelData->timerStatus = 1;
       channelData->currentTimeCount = 0;
-      setTimer();
+      setTimerOutput();
     }
     else if (channelData->irms < 1.03)
     {
       channelData->timerStatus = 0;
-      setTimer();
+      setTimerOutput();
     }
 
 
@@ -430,7 +442,7 @@ void DOR_TripThread(void* pData)
           DOR_PhaseData[i].currentWTripped = DOR_PhaseData[i].irms;
           Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
           Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<DOR_PhaseData[i].channelNb));
-          setTrip();
+          setTripOutput();
         }
 
       }
@@ -439,7 +451,7 @@ void DOR_TripThread(void* pData)
         // Set Output low
         DOR_PhaseData[i].tripStatus = 0;
         Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<DOR_PhaseData[i].channelNb));
-        setTrip();
+        setTripOutput();
       }
     }
 
