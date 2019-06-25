@@ -437,43 +437,40 @@ void DOR_TripThread(void* pData)
   TDORTripThreadData* tripThreadData = pData;
   for(;;)
   {
+    // Wait for PIT1 to signal semaphore
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
-    // TODO: Add multi channel functionality
-    for (int i = 0; i < 3; i++)
+    // Loop through all three Phases
+    for (int i = 0; i < DOR_NB_PHASES; i++)
     {
-      //check if timer started
+      // Check if trip needs to occour
       if (DOR_PhaseData[i].timerStatus && !DOR_PhaseData[i].tripStatus)
       {
-  //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
-  //      channelData.tripTime = 17610;
-  //      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
-  //      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
-
-//        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
-
+        // Get trip time for the current phase
         DOR_PhaseData[i].tripTime = getTripTime(DOR_PhaseData[i].irms, *tripThreadData->characteristic);
 
+        // If time since "Timer" output was reset exceeds the calculated trip time
+        // for the current
         if (DOR_PhaseData[i].currentTimeCount >= DOR_PhaseData[i].tripTime)
         {
-          // Set Output high
+          // Set "Trip" output  status for phase
           DOR_PhaseData[i].tripStatus = 1;
-          DOR_PhaseData[i].currentWTripped = DOR_PhaseData[i].irms;
+          // Increment the total number of times tripped
           Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
+          // Update the Fault Type to include current tripped phase
           Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<DOR_PhaseData[i].channelNb));
           setTripOutput();
         }
-
       }
       else if (DOR_PhaseData[i].tripStatus && !DOR_PhaseData[i].timerStatus)
       {
-        // Set Output low
+        // Reset "Trip" output  status for phase
         DOR_PhaseData[i].tripStatus = 0;
+        // Remove current tripped phase from the Fault Type
         Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<DOR_PhaseData[i].channelNb));
         setTripOutput();
       }
     }
-
   }
 }
 
