@@ -21,6 +21,8 @@
 #include "OS.h"
 #include "PE_types.h"
 
+#define NB_ANALOG_CHANNELS 3
+
 typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
@@ -29,6 +31,20 @@ typedef struct
   TOSThreadParams* Channel2Params;  /*!< Thread parameters for Channel0. */
   TOSThreadParams* TripParams;
 } TDORSetup;
+
+typedef struct
+{
+  volatile uint8_t* characteristic;
+  volatile uint16union_t* timesTripped;
+  volatile uint8_t* faultType;
+} TDORTripThreadData;
+
+typedef enum
+{
+  IDMT_INVERSE,
+  IDMT_V_INVERSE,
+  IDTM_E_INVERSE
+} TIDMTCharacter;
 
 typedef struct ChannelThreadData
 {
@@ -53,6 +69,8 @@ typedef struct
     uint32_t y;
     double x;
 } TIDMTData;
+
+TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS];
 
 static const uint32_t INV_TRIP_TIME[1898] =
 {

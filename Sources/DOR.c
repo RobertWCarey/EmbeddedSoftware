@@ -20,6 +20,7 @@
 #include "stdlib.h"
 #include "types.h"
 #include "math.h"
+#include "Flash.h"
 
 
 // Pit time period (nano seconds)
@@ -39,7 +40,7 @@ static const uint16_t ADC_CONVERSION = 3276;
 
 uint16_t analogInputValue;
 
-#define NB_ANALOG_CHANNELS 3
+
 
 #define channelData (*(TAnalogThreadData*)pData)
 
@@ -50,7 +51,7 @@ static OS_ECB* TripSemaphore;
 /*! @brief Analog thread configuration data
  *
  */
-static TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
+TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
 {
   {
     .semaphore = NULL,
@@ -156,7 +157,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           dorSetup->Channel2Params->priority);
 
   error = OS_ThreadCreate(DOR_TripThread,
-                          &ChannelThreadData[0],
+                          dorSetup->TripParams->pData,
                           dorSetup->TripParams->pStack,
                           dorSetup->TripParams->priority);
 
@@ -329,8 +330,27 @@ void DOR_TimingThread(void* pData)
   }
 }
 
+static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
+{
+  switch (characteristic)
+  {
+  case 0:
+    return INV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  case 1:
+    return VINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  case 2:
+    return EINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  default:
+    break;
+  }
+}
+
 void DOR_TripThread(void* pData)
 {
+  TDORTripThreadData* tripThreadData = pData;
   for(;;)
   {
     (void)OS_SemaphoreWait(TripSemaphore, 0);
@@ -345,11 +365,17 @@ void DOR_TripThread(void* pData)
   //      channelData.tripTime = 17610;
   //      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
   //      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
-        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
+
+//        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
+
+        ChannelThreadData[i].tripTime = getTripTime(ChannelThreadData[i].irms, *tripThreadData->characteristic);
+
         if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
         {
           // Set Output high
           ChannelThreadData[i].tripStatus = 1;
+          Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
+          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<ChannelThreadData[i].channelNb));
           setTrip();
         }
 
@@ -358,6 +384,7 @@ void DOR_TripThread(void* pData)
       {
         // Set Output low
         ChannelThreadData[i].tripStatus = 0;
+        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<ChannelThreadData[i].channelNb));
         setTrip();
       }
     }
