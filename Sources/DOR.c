@@ -184,11 +184,6 @@ static float raw2v(int16_t voltage)
   return (float)voltage/(float)ADC_CONVERSION;
 }
 
-static float raw2c(uint16_t voltage)
-{
-  return (float)voltage/(float)ADC_CONVERSION;
-}
-
 static float returnRMS(TDORPhaseData* Data)
 {
 
@@ -328,10 +323,10 @@ void DOR_TimingThread(void* pData)
 
 
     float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
-
+    vrms = raw2v(vrms);
     float temp = ((vrms*40)/13);
     int16_t temp1 = (temp/1);
-    channelData.irms = raw2c( (uint16_t)((vrms*40)/13) );
+    channelData.irms = (vrms*40)/13 ;
     }
 
     channelData.count ++;

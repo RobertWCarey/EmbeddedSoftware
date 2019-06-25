@@ -190,7 +190,7 @@ Discarded input sections
                 0x00000000        0x1 ./Sources/DOR.o
  .rodata.ADC_CONVERSION
                 0x00000000        0x2 ./Sources/DOR.o
- .text.raw2v    0x00000000       0x34 ./Sources/DOR.o
+ .text.raw2c    0x00000000       0x34 ./Sources/DOR.o
  .text.returnRMS
                 0x00000000       0xa4 ./Sources/DOR.o
  .debug_macro   0x00000000      0x850 ./Sources/DOR.o
@@ -870,7 +870,7 @@ LOAD c:/freescale/kds_v3/toolchain/bin/../lib/gcc/arm-none-eabi/4.8.4/armv7e-m/f
                 0x00001330      0x130 ./Sources/DOR.o
                 0x00001330                DOR_Init
  .text.v2raw    0x00001460       0x38 ./Sources/DOR.o
- .text.raw2c    0x00001498       0x34 ./Sources/DOR.o
+ .text.raw2v    0x00001498       0x34 ./Sources/DOR.o
  .text.getOffset
                 0x000014cc       0x48 ./Sources/DOR.o
  *fill*         0x00001514        0x4 
@@ -880,165 +880,165 @@ LOAD c:/freescale/kds_v3/toolchain/bin/../lib/gcc/arm-none-eabi/4.8.4/armv7e-m/f
                 0x00001670       0x58 ./Sources/DOR.o
  .text.setTrip  0x000016c8       0x58 ./Sources/DOR.o
  .text.DOR_TimingThread
-                0x00001720      0x2b0 ./Sources/DOR.o
+                0x00001720      0x2b8 ./Sources/DOR.o
                 0x00001720                DOR_TimingThread
  .text.getTripTime
-                0x000019d0       0x8c ./Sources/DOR.o
+                0x000019d8       0x8c ./Sources/DOR.o
  .text.DOR_TripThread
-                0x00001a5c      0x1e0 ./Sources/DOR.o
-                0x00001a5c                DOR_TripThread
+                0x00001a64      0x1e0 ./Sources/DOR.o
+                0x00001a64                DOR_TripThread
  .text.FIFO_Init
-                0x00001c3c       0x3c ./Sources/FIFO.o
-                0x00001c3c                FIFO_Init
+                0x00001c44       0x3c ./Sources/FIFO.o
+                0x00001c44                FIFO_Init
  .text.FIFO_Put
-                0x00001c78       0x5c ./Sources/FIFO.o
-                0x00001c78                FIFO_Put
+                0x00001c80       0x5c ./Sources/FIFO.o
+                0x00001c80                FIFO_Put
  .text.FIFO_Get
-                0x00001cd4       0x5c ./Sources/FIFO.o
-                0x00001cd4                FIFO_Get
+                0x00001cdc       0x5c ./Sources/FIFO.o
+                0x00001cdc                FIFO_Get
  .text.LaunchCommand
-                0x00001d30      0x250 ./Sources/Flash.o
+                0x00001d38      0x250 ./Sources/Flash.o
  .text.WritePhrase
-                0x00001f80       0x30 ./Sources/Flash.o
+                0x00001f88       0x30 ./Sources/Flash.o
  .text.EraseSector
-                0x00001fb0       0x24 ./Sources/Flash.o
+                0x00001fb8       0x24 ./Sources/Flash.o
  .text.ModifyPhrase
-                0x00001fd4       0x3c ./Sources/Flash.o
+                0x00001fdc       0x3c ./Sources/Flash.o
  .text.Flash_Init
-                0x00002010       0x28 ./Sources/Flash.o
-                0x00002010                Flash_Init
+                0x00002018       0x28 ./Sources/Flash.o
+                0x00002018                Flash_Init
  .text.Flash_AllocateVar
-                0x00002038       0x98 ./Sources/Flash.o
-                0x00002038                Flash_AllocateVar
+                0x00002040       0x98 ./Sources/Flash.o
+                0x00002040                Flash_AllocateVar
  .text.Flash_Write32
-                0x000020d0       0x64 ./Sources/Flash.o
-                0x000020d0                Flash_Write32
+                0x000020d8       0x64 ./Sources/Flash.o
+                0x000020d8                Flash_Write32
  .text.Flash_Write16
-                0x00002134       0x6c ./Sources/Flash.o
-                0x00002134                Flash_Write16
+                0x0000213c       0x6c ./Sources/Flash.o
+                0x0000213c                Flash_Write16
  .text.Flash_Write8
-                0x000021a0       0x68 ./Sources/Flash.o
-                0x000021a0                Flash_Write8
+                0x000021a8       0x68 ./Sources/Flash.o
+                0x000021a8                Flash_Write8
  .text.LEDs_Init
-                0x00002208       0xb4 ./Sources/LEDs.o
-                0x00002208                LEDs_Init
- *fill*         0x000022bc        0x4 
+                0x00002210       0xb4 ./Sources/LEDs.o
+                0x00002210                LEDs_Init
+ *fill*         0x000022c4        0x4 
  .text.PIT_Init
-                0x000022c0      0x118 ./Sources/PIT.o
-                0x000022c0                PIT_Init
- .text.PIT_Set  0x000023d8       0xc4 ./Sources/PIT.o
-                0x000023d8                PIT_Set
+                0x000022c8      0x118 ./Sources/PIT.o
+                0x000022c8                PIT_Init
+ .text.PIT_Set  0x000023e0       0xc4 ./Sources/PIT.o
+                0x000023e0                PIT_Set
  .text.PIT_Enable
-                0x0000249c       0x38 ./Sources/PIT.o
-                0x0000249c                PIT_Enable
+                0x000024a4       0x38 ./Sources/PIT.o
+                0x000024a4                PIT_Enable
  .text.PITThread
-                0x000024d4       0x18 ./Sources/PIT.o
-                0x000024d4                PITThread
- .text.PIT_ISR  0x000024ec       0x98 ./Sources/PIT.o
-                0x000024ec                PIT_ISR
+                0x000024dc       0x18 ./Sources/PIT.o
+                0x000024dc                PITThread
+ .text.PIT_ISR  0x000024f4       0x98 ./Sources/PIT.o
+                0x000024f4                PIT_ISR
  .text.UART_Init
-                0x00002584      0x1c0 ./Sources/UART.o
-                0x00002584                UART_Init
+                0x0000258c      0x1c0 ./Sources/UART.o
+                0x0000258c                UART_Init
  .text.UART_InChar
-                0x00002744       0x20 ./Sources/UART.o
-                0x00002744                UART_InChar
+                0x0000274c       0x20 ./Sources/UART.o
+                0x0000274c                UART_InChar
  .text.UART_OutChar
-                0x00002764       0x48 ./Sources/UART.o
-                0x00002764                UART_OutChar
+                0x0000276c       0x48 ./Sources/UART.o
+                0x0000276c                UART_OutChar
  .text.UARTRxThread
-                0x000027ac       0x30 ./Sources/UART.o
-                0x000027ac                UARTRxThread
+                0x000027b4       0x30 ./Sources/UART.o
+                0x000027b4                UARTRxThread
  .text.UARTTxThread
-                0x000027dc       0x68 ./Sources/UART.o
-                0x000027dc                UARTTxThread
+                0x000027e4       0x68 ./Sources/UART.o
+                0x000027e4                UARTTxThread
  .text.UART_ISR
-                0x00002844       0x88 ./Sources/UART.o
-                0x00002844                UART_ISR
+                0x0000284c       0x88 ./Sources/UART.o
+                0x0000284c                UART_ISR
  .text.InitModulesThread
-                0x000028cc      0x124 ./Sources/main.o
+                0x000028d4      0x124 ./Sources/main.o
  .text.PacketHandleThread
-                0x000029f0       0x38 ./Sources/main.o
- .text.main     0x00002a28       0x58 ./Sources/main.o
-                0x00002a28                main
+                0x000029f8       0x38 ./Sources/main.o
+ .text.main     0x00002a30       0x58 ./Sources/main.o
+                0x00002a30                main
  .text.returnChecksum
-                0x00002a80       0x30 ./Sources/packet.o
+                0x00002a88       0x30 ./Sources/packet.o
  .text.Packet_Init
-                0x00002ab0       0x44 ./Sources/packet.o
-                0x00002ab0                Packet_Init
+                0x00002ab8       0x44 ./Sources/packet.o
+                0x00002ab8                Packet_Init
  .text.Packet_Get
-                0x00002af4       0x6c ./Sources/packet.o
-                0x00002af4                Packet_Get
+                0x00002afc       0x6c ./Sources/packet.o
+                0x00002afc                Packet_Get
  .text.Packet_Put
-                0x00002b60       0x94 ./Sources/packet.o
-                0x00002b60                Packet_Put
+                0x00002b68       0x94 ./Sources/packet.o
+                0x00002b68                Packet_Put
  .text.__copy_rom_section
-                0x00002bf4       0xe4 ./Project_Settings/Startup_Code/startup.o
-                0x00002bf4                __copy_rom_section
+                0x00002bfc       0xe4 ./Project_Settings/Startup_Code/startup.o
+                0x00002bfc                __copy_rom_section
  .text.__copy_rom_sections_to_ram
-                0x00002cd8       0x9c ./Project_Settings/Startup_Code/startup.o
-                0x00002cd8                __copy_rom_sections_to_ram
+                0x00002ce0       0x9c ./Project_Settings/Startup_Code/startup.o
+                0x00002ce0                __copy_rom_sections_to_ram
  .text.__init_registers
-                0x00002d74       0x20 ./Project_Settings/Startup_Code/startup.o
-                0x00002d74                __init_registers
+                0x00002d7c       0x20 ./Project_Settings/Startup_Code/startup.o
+                0x00002d7c                __init_registers
  .text.__init_user
-                0x00002d94        0xc ./Project_Settings/Startup_Code/startup.o
-                0x00002d94                __init_user
+                0x00002d9c        0xc ./Project_Settings/Startup_Code/startup.o
+                0x00002d9c                __init_user
  .text.__thumb_startup
-                0x00002da0       0x34 ./Project_Settings/Startup_Code/startup.o
-                0x00002da0                __thumb_startup
+                0x00002da8       0x34 ./Project_Settings/Startup_Code/startup.o
+                0x00002da8                __thumb_startup
  .text.Cpu_Interrupt
-                0x00002dd4       0x18 ./Generated_Code/Cpu.o
-                0x00002dd4                Cpu_Interrupt
+                0x00002ddc       0x18 ./Generated_Code/Cpu.o
+                0x00002ddc                Cpu_Interrupt
  .text.__init_hardware
-                0x00002dec      0x1cc ./Generated_Code/Cpu.o
-                0x00002dec                __init_hardware
+                0x00002df4      0x1cc ./Generated_Code/Cpu.o
+                0x00002df4                __init_hardware
  .text.Cpu_SetBASEPRI
-                0x00002fb8       0x18 ./Generated_Code/Cpu.o
-                0x00002fb8                Cpu_SetBASEPRI
+                0x00002fc0       0x18 ./Generated_Code/Cpu.o
+                0x00002fc0                Cpu_SetBASEPRI
  .text.PE_low_level_init
-                0x00002fd0       0xe4 ./Generated_Code/Cpu.o
-                0x00002fd0                PE_low_level_init
- .text.OS_Init  0x000030b4      0x110 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x000030b4                OS_Init
+                0x00002fd8       0xe4 ./Generated_Code/Cpu.o
+                0x00002fd8                PE_low_level_init
+ .text.OS_Init  0x000030bc      0x110 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x000030bc                OS_Init
  .text.OS_ISREnter
-                0x000031c4       0x20 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x000031c4                OS_ISREnter
+                0x000031cc       0x20 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x000031cc                OS_ISREnter
  .text.OS_ISRExit
-                0x000031e4       0x1c D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x000031e4                OS_ISRExit
+                0x000031ec       0x1c D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x000031ec                OS_ISRExit
  .text.OS_SemaphoreCreate
-                0x00003200       0x90 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x00003200                OS_SemaphoreCreate
+                0x00003208       0x90 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003208                OS_SemaphoreCreate
  .text.OS_SemaphoreSignal
-                0x00003290       0x44 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x00003290                OS_SemaphoreSignal
+                0x00003298       0x44 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003298                OS_SemaphoreSignal
  .text.OS_SemaphoreWait
-                0x000032d4       0x58 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x000032d4                OS_SemaphoreWait
+                0x000032dc       0x58 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x000032dc                OS_SemaphoreWait
  .text.OS_Start
-                0x0000332c       0x10 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x0000332c                OS_Start
+                0x00003334       0x10 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003334                OS_Start
  .text.OS_ThreadCreate
-                0x0000333c      0x160 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x0000333c                OS_ThreadCreate
+                0x00003344      0x160 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003344                OS_ThreadCreate
  .text.OS_ThreadDelete
-                0x0000349c      0x18c D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
-                0x0000349c                OS_ThreadDelete
+                0x000034a4      0x18c D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x000034a4                OS_ThreadDelete
  .text.EventThreadReady
-                0x00003628       0x68 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003630       0x68 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
  .text.EventThreadWait
-                0x00003690       0x64 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003698       0x64 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
  .text.EventTimeout
-                0x000036f4       0x40 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
- .text.Idle     0x00003734       0x18 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x000036fc       0x40 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+ .text.Idle     0x0000373c       0x18 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
  .text.FindFirstSet
-                0x0000374c       0x44 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003754       0x44 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
  .text.Schedule
-                0x00003790       0x64 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
- .text.TCBInit  0x000037f4       0xcc D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+                0x00003798       0x64 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+ .text.TCBInit  0x000037fc       0xcc D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
  .text.TimeTick
-                0x000038c0       0x74 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
- *fill*         0x00003934        0xc 
+                0x000038c8       0x74 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+ *fill*         0x0000393c        0x4 
  .text.OS_ContextSwitchISR
                 0x00003940       0x70 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
                 0x00003940                OS_ContextSwitchISR
