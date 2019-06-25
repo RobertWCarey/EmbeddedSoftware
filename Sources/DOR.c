@@ -51,6 +51,9 @@ static OS_ECB* TripSemaphore;
 static const int16_t IDLE_OUTPUT_VOLTAGE_16BIT = 0;       // Equivalent to OV
 static const int16_t ACTIVE_OUTPUT_VOLTAGE_16BIT = 16384; // Equivalent to 5V
 
+// Variable for lower threshold trip of DOR
+static const float DOR_CURRENT_THRESHOLD = 1.03;
+
 // Configuration of array storing data for all three phases
 TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
 {
@@ -360,32 +363,37 @@ void DOR_TimingThread(void* pData)
   for (;;)
   {
     // Variable to address thread data - makes code easier to read
-    TDORPhaseData* channelData = pData;
+    TDORPhaseData* phaseData = pData;
 
-    (void)OS_SemaphoreWait(channelData->semaphore, 0);
+    // Wait for PIT0 to signal semaphore
+    (void)OS_SemaphoreWait(phaseData->semaphore, 0);
 
-    Analog_Get(channelData->channelNb, &channelData->sample);
-    channelData->samples[channelData->count] = channelData->sample;
+    // Read data from ADC and store in array for processing
+    Analog_Get(phaseData->channelNb, &phaseData->sample);
+    phaseData->samples[phaseData->count] = phaseData->sample;
 
-    if (channelData->channelNb == 0)
-      calculateFreq(channelData);
+    // Only calculate the frequency for Phase A
+    // Assumes that all phases share the same frequency
+    if (phaseData->channelNb == PHASE_A)
+      calculateFreq(phaseData);
 
-    calculateRMS(channelData);
+    // Calculate the current RMS in sliding window
+    calculateRMS(phaseData);
 
-    if (channelData->irms > 1.03 && !channelData->timerStatus)
+    // If current over the threshold and "Timer" output hasnt been set
+    if (phaseData->irms > DOR_CURRENT_THRESHOLD && !phaseData->timerStatus)
     {
-//      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(5));
-      channelData->timerStatus = 1;
-      channelData->currentTimeCount = 0;
+      // Set "Timer" output and reset Phase's currentTimeCount
+      phaseData->timerStatus = 1;
+      phaseData->currentTimeCount = 0;
       setTimerOutput();
     }
-    else if (channelData->irms < 1.03)
+    else if (phaseData->irms < DOR_CURRENT_THRESHOLD)
     {
-      channelData->timerStatus = 0;
+      // Once below threshold reset Phase's status
+      phaseData->timerStatus = 0;
       setTimerOutput();
     }
-
-
   }
 }
 
