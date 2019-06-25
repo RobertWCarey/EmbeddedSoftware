@@ -50,7 +50,7 @@ static const uint16_t ADC_CONVERSION = 3276;
 // Semaphore for tripThread
 static OS_ECB* TripSemaphore;
 
-
+// Configuration of array storing data for all three phases
 TDORPhaseData DOR_PhaseData[NB_ANALOG_CHANNELS] =
 {
   {
@@ -91,6 +91,10 @@ TDORPhaseData DOR_PhaseData[NB_ANALOG_CHANNELS] =
   }
 };
 
+/*! @brief Checks for any valid packets and then handles them.
+ *
+ *  @param pData is used to store the FTM0 Channel0 data.
+ */
 static void PIT0Callback(void* arg)
 {
   // Make the code easier to read by giving a name to the typecast'ed pointer
@@ -180,6 +184,11 @@ static float raw2v(int16_t voltage)
   return (float)voltage/(float)ADC_CONVERSION;
 }
 
+static float raw2c(uint16_t voltage)
+{
+  return (float)voltage/(float)ADC_CONVERSION;
+}
+
 static float returnRMS(TDORPhaseData* Data)
 {
 
@@ -195,7 +204,7 @@ static float returnRMS(TDORPhaseData* Data)
 
   vrms = sqrt(square/16);
 
-  return (float)((vrms*13)/40);
+  return (float)((vrms*40)/13);
 }
 
 
@@ -320,7 +329,9 @@ void DOR_TimingThread(void* pData)
 
     float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
 
-    channelData.irms = raw2v(((vrms*13)/40));
+    float temp = ((vrms*40)/13);
+    int16_t temp1 = (temp/1);
+    channelData.irms = raw2c( (uint16_t)((vrms*40)/13) );
     }
 
     channelData.count ++;
