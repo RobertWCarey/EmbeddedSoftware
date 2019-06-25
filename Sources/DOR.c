@@ -198,7 +198,7 @@ static float analog2Volts(int16_t analogVal)
 
 /*! @brief Calculates the RMS current in a sliding window 32 samples wide.
  *
- *  @param data is a pointed the a Phase's TDORPhaseData struct.
+ *  @param data is a pointer the a Phase's TDORPhaseData struct.
  */
 static void calculateRMS(TDORPhaseData* data)
 {
@@ -241,9 +241,17 @@ static void calculateRMS(TDORPhaseData* data)
   }
 }
 
-static float getOffset(int16_t sample0, int16_t sample1)
+/*! @brief Calculates the offset of the sample before the zero crossing as a portion of a sample.
+ *
+ *  @param sample0 is the value of the sample before the zero crossing.
+ *  @param sample1 is the value of the sample after the zero crossing.
+ */
+static float getZeroCrossingOffset(int16_t sample0, int16_t sample1)
 {
-  float m = (sample1-sample0);//Always  divide by one becuase 0ne sample diff
+  // using y=mx
+  // Calculate gradient
+  float m = (sample1-sample0);//Always  divide by one becuase one sample. i.e. x1=0 x2=1
+  // Return the offset as a portion of a sample
   return (-sample0)/m;
 }
 
@@ -255,11 +263,11 @@ static void getFrequency(TDORPhaseData* Data,int16_t prevVal, int16_t curVal)
   {
   case 0:
     Data->numberOfSamples = 0;
-    Data->offset1 = getOffset(prevVal,curVal);
+    Data->offset1 = getZeroCrossingOffset(prevVal,curVal);
     Data->crossing = 1;
     break;
   case 1:
-    Data->offset2 = getOffset(prevVal,curVal);
+    Data->offset2 = getZeroCrossingOffset(prevVal,curVal);
     period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)MyPIT0TimePeriod;
     float freq = 1/((float)(period)*1e-9);
 
