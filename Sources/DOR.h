@@ -68,6 +68,7 @@ typedef struct ChannelThreadData
   float squares[NB_SAMPLES];
   float sumSquares;
   bool subtract;
+  float currentWTripped;
 } TAnalogThreadData;
 
 typedef struct

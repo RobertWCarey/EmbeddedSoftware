@@ -358,16 +358,18 @@ static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
   if (irms > 20)
     irms = 20;
 
+  uint16_t postion = (uint16_t)(irms*100)-103;
+
   switch (characteristic)
   {
   case 0:
-    return INV_TRIP_TIME[((uint16_t)irms*100)-103];
+    return INV_TRIP_TIME[postion];
     break;
   case 1:
-    return VINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    return VINV_TRIP_TIME[postion];
     break;
   case 2:
-    return EINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    return EINV_TRIP_TIME[postion];
     break;
   default:
     break;
@@ -400,6 +402,7 @@ void DOR_TripThread(void* pData)
         {
           // Set Output high
           ChannelThreadData[i].tripStatus = 1;
+          ChannelThreadData[i].currentWTripped = ChannelThreadData[i].irms;
           Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
           Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<ChannelThreadData[i].channelNb));
           setTrip();
