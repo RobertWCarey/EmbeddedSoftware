@@ -46,7 +46,7 @@
 
 // Pointers to non-volatile storage locations
 volatile uint8_t *nvIDMTCharacter; // Pointer to IDMT Characteristic
-volatile uint8_t *nvTimesTripped; // Pointer to Number of Times Tripped
+volatile uint16union_t *nvTimesTripped; // Pointer to Number of Times Tripped
 volatile uint8_t *nvFaultType;  // Pointer to Most recent Fault Type
 
 // Serial Baud Rate (bps)
@@ -106,7 +106,7 @@ static void InitModulesThread(void* pData)
 {
   //Default settings
   const uint8_t defaultIDMTCharacter = IDMT_V_INVERSE;
-  const uint8_t defaultTimesTripped = 0;
+  const uint16_t defaultTimesTripped = 0;
   const uint8_t defaultFaultType = 0;
 
   //Packet setup struct
@@ -127,13 +127,13 @@ static void InitModulesThread(void* pData)
 
 
   //Assign non-volatile memory locations
-  Flash_AllocateVar((void*)&nvIDMTCharacter, sizeof(*nvIDMTCharacter));
   Flash_AllocateVar((void*)&nvTimesTripped, sizeof(*nvTimesTripped));
+  Flash_AllocateVar((void*)&nvIDMTCharacter, sizeof(*nvIDMTCharacter));
   Flash_AllocateVar((void*)&nvFaultType, sizeof(*nvFaultType));
   if (*nvIDMTCharacter == 0xff)
       Flash_Write8((uint8_t*)nvIDMTCharacter, defaultIDMTCharacter);
-  if (*nvTimesTripped == 0xff)
-        Flash_Write8((uint8_t*)nvTimesTripped, defaultTimesTripped);
+  if (nvTimesTripped->l == 0xffff)
+        Flash_Write16((uint16_t*)nvTimesTripped, defaultTimesTripped);
   if (*nvFaultType == 0xff)
         Flash_Write8((uint8_t*)nvFaultType, defaultFaultType);
 
@@ -174,7 +174,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvIDMTCharacter);
+      cmdHandler(nvIDMTCharacter, nvTimesTripped, nvFaultType);
   }
 }
 

@@ -118,7 +118,35 @@ static bool myDORFreqHandler()
 
 }
 
-static bool dorPacketHandler(volatile uint8_t* const characteristic)
+/*! @brief Gets number of times the DOR has been tripped
+ *
+ *  @param  timesTripped  pointer to a location containing the number of times tripped.
+ *
+ *  @return bool - TRUE if packet successfully sent.
+ */
+static bool myDORTimesTrippedHandler(volatile uint16union_t* const timesTripped)
+{
+  if (Packet_Parameter2 && Packet_Parameter3)
+    return false;
+
+  return Packet_Put(DOR_TIMES_TRIPPED, Packet_Parameter1, timesTripped->s.Lo, timesTripped->s.Hi);
+}
+
+/*! @brief Gets the current fault type
+ *
+ *  @param  faultType  pointer to a location containing the current fault type.
+ *
+ *  @return bool - TRUE if packet successfully sent.
+ */
+static bool myDORFaultTypeHandler(volatile uint8_t* const faultType)
+{
+  if (Packet_Parameter2 && Packet_Parameter3)
+    return false;
+
+  return Packet_Put(DOR_FAULT_TYPE, Packet_Parameter1, *faultType, 0);
+}
+
+static bool dorPacketHandler(volatile uint8_t* const characteristic, volatile uint16union_t* const timesTripped, volatile uint8_t* const faultType)
 {
   bool success = 0;
 
@@ -134,8 +162,10 @@ static bool dorPacketHandler(volatile uint8_t* const characteristic)
       success = myDORCurrentHandler();
       break;
     case DOR_TIMES_TRIPPED:
+      success = myDORTimesTrippedHandler(timesTripped);
       break;
     case DOR_FAULT_TYPE:
+      success = myDORFaultTypeHandler(faultType);
       break;
     default:
       success = false;
@@ -146,7 +176,7 @@ static bool dorPacketHandler(volatile uint8_t* const characteristic)
   return success;
 }
 
-void cmdHandler(volatile uint8_t* const characteristic)
+void cmdHandler(volatile uint8_t* const characteristic, volatile uint16union_t* const timesTripped, volatile uint8_t* const faultType)
 {
 
   // Isolate command packet
@@ -165,7 +195,7 @@ void cmdHandler(volatile uint8_t* const characteristic)
       success = specialPacketHandler();
       break;
     case CMD_DOR:
-      success = dorPacketHandler(characteristic);
+      success = dorPacketHandler(characteristic, timesTripped, faultType);
       break;
     default:
       break;

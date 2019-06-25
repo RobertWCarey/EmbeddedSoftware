@@ -374,8 +374,8 @@ void DOR_TripThread(void* pData)
         {
           // Set Output high
           ChannelThreadData[i].tripStatus = 1;
-          Flash_Write8(tripThreadData->timesTripped,*tripThreadData->timesTripped+1);
-          Flash_Write8(tripThreadData->faultType,ChannelThreadData[i].channelNb);
+          Flash_Write16((uint16_t*)tripThreadData->timesTripped,tripThreadData->timesTripped->l+1);
+          Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType | (1<<ChannelThreadData[i].channelNb));
           setTrip();
         }
 
@@ -384,6 +384,7 @@ void DOR_TripThread(void* pData)
       {
         // Set Output low
         ChannelThreadData[i].tripStatus = 0;
+        Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<ChannelThreadData[i].channelNb));
         setTrip();
       }
     }

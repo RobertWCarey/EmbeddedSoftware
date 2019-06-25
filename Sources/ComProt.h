@@ -40,7 +40,7 @@
  *  @param characteristic A pointer to the current IDMT characteristic.
  *  @return void.
  */
-void cmdHandler(volatile uint8_t* const characteristic);
+void cmdHandler(volatile uint8_t* const characteristic, volatile uint16union_t* const timesTripped, volatile uint8_t* const faultType);
 
 /*! @brief Sends out required packets for Tower Startup.
  *

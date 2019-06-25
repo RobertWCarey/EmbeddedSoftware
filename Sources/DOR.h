@@ -35,7 +35,7 @@ typedef struct
 typedef struct
 {
   volatile uint8_t* characteristic;
-  volatile uint8_t* timesTripped;
+  volatile uint16union_t* timesTripped;
   volatile uint8_t* faultType;
 } TDORTripThreadData;
 
