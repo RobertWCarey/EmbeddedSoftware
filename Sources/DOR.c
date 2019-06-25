@@ -239,8 +239,20 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
         break;
     }
 //    }
+}
 
-
+static void setTimer()
+{
+  if (ChannelThreadData[0].timerStatus ||
+      ChannelThreadData[1].timerStatus ||
+      ChannelThreadData[2].timerStatus)
+  {
+    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+  }
+  else
+  {
+    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
+  }
 }
 
 void DOR_TimingThread(void* pData)
@@ -300,14 +312,15 @@ void DOR_TimingThread(void* pData)
 
     if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
-      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+//      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
       channelData.timerStatus = 1;
       channelData.currentTimeCount = 0;
+      setTimer();
     }
     else if (channelData.irms < 1.03)
     {
-      Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
       channelData.timerStatus = 0;
+      setTimer();
     }
 
 
