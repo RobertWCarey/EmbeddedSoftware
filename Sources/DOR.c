@@ -214,18 +214,17 @@ static float raw2v(int16_t voltage)
   return (float)voltage/(float)ADC_CONVERSION;
 }
 
-static float getOffset(float sample0, float sample1)
+static float getOffset(int16_t sample0, int16_t sample1)
 {
   float m = (sample1-sample0);//Always  divide by one becuase 0ne sample diff
   return (-sample0)/m;
 }
 
-static void getFrequency(TAnalogThreadData* Data, uint8_t count)
+static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal)
 {
   float period;
   static int tempLoop=0;
-  if (count > 0 )
-  {
+
     // check at full cycle zero crossing
 //    if (Data->samples[count] > 0 && Data->samples[count-1] < 0)
 //    {
@@ -233,27 +232,27 @@ static void getFrequency(TAnalogThreadData* Data, uint8_t count)
       {
       case 0:
         Data->numberOfSamples = 1;
-        Data->offset1 = getOffset(Data->samples[count-1],Data->samples[count]);
+        Data->offset1 = getOffset(prevVal,curVal);
         Data->crossing = 1;
         break;
       case 1:
-        Data->offset2 = getOffset(Data->samples[count-1],Data->samples[count]);
-        float period1 = Data->offset1*PIT_TIME_PERIOD;
-        float period2 = Data->offset2*PIT_TIME_PERIOD;
+        Data->offset2 = getOffset(prevVal,curVal);
+//        float period1 = Data->offset1*PIT_TIME_PERIOD;
+//        float period2 = Data->offset2*PIT_TIME_PERIOD;
         period = (Data->numberOfSamples-1-Data->offset1+Data->offset2)*PIT_TIME_PERIOD;
         float freq = 1/((float)(period)*1e-9);
 
-        Data->frequency[tempLoop] = freq;
-        tempLoop++;
-        if (tempLoop >3)
-          tempLoop = 0;
-
-        if (freq >= 47.5 && freq <= 52.5)
-        {
-//          Data->frequency = freq;
-//          PIT_TIME_PERIOD = period;
-//          PIT_Set(PIT_TIME_PERIOD,false,0);
-        }
+//        Data->frequency[tempLoop] = freq;
+//        tempLoop++;
+//        if (tempLoop >3)
+//          tempLoop = 0;
+//
+//        if (freq >= 47.5 && freq <= 52.5)
+//        {
+////          Data->frequency = freq;
+////          PIT_TIME_PERIOD = period;
+////          PIT_Set(PIT_TIME_PERIOD,false,0);
+//        }
         Data->crossing = 0;
         break;
       default:
@@ -261,7 +260,7 @@ static void getFrequency(TAnalogThreadData* Data, uint8_t count)
         break;
     }
 //    }
-  }
+
 
 }
 
@@ -274,6 +273,36 @@ void DOR_TimingThread(void* pData)
 
     Analog_Get(channelData.channelNb, &channelData.sample);
     channelData.samples[count] = raw2v(channelData.sample);
+
+    if (channelData.channelNb == 0)
+    {
+      static int16_t prevVal;
+      static int16_t curVal;
+//      channelData.crossing = 0;
+//      for (int i = 1; i < 16;i++)
+      static int temp = 0;
+      if (!temp)
+      {
+        prevVal = channelData.sample;
+        temp = 1;
+      }
+      else
+      {
+        curVal = channelData.sample;
+        temp = 0;
+      }
+
+       if ((prevVal > 0 && curVal < 0))
+       {
+ //        float temp = channelData.samples[count];
+ //        float temp1 = channelData.samples[count-1];
+         getFrequency(&channelData,prevVal, curVal);
+         prevVal = 0;
+         curVal = 0;
+       }
+       channelData.numberOfSamples++;
+
+    }
 
     count ++;
     if (count == 16)
@@ -298,6 +327,7 @@ void DOR_TimingThread(void* pData)
 //        }
 //      }
     }
+
 
 
 
