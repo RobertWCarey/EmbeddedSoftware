@@ -156,7 +156,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
                           dorSetup->Channel2Params->priority);
 
   error = OS_ThreadCreate(DOR_TripThread,
-                          &ChannelThreadData[0],
+                          dorSetup->TripParams->pData,
                           dorSetup->TripParams->pStack,
                           dorSetup->TripParams->priority);
 
@@ -329,10 +329,29 @@ void DOR_TimingThread(void* pData)
   }
 }
 
+static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
+{
+  switch (characteristic)
+  {
+  case 0:
+    return INV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  case 1:
+    return VINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  case 2:
+    return EINV_TRIP_TIME[((uint16_t)irms*100)-103];
+    break;
+  default:
+    break;
+  }
+}
+
 void DOR_TripThread(void* pData)
 {
   for(;;)
   {
+    TIDMTCharacter* characteristic = pData;
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
     // TODO: Add multi channel functionality
@@ -345,7 +364,11 @@ void DOR_TripThread(void* pData)
   //      channelData.tripTime = 17610;
   //      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
   //      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
-        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
+
+//        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
+
+        ChannelThreadData[i].tripTime = getTripTime(ChannelThreadData[i].irms, *characteristic);
+
         if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
         {
           // Set Output high

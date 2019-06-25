@@ -51,8 +51,8 @@ volatile uint16union_t *nvTowerMode;
 // Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
 
-//Last three values for each accelerometer axis
-static uint8_t XValues[3], YValues[3], ZValues[3];
+// Global value for storing IDMT Characteristic
+TIDMTCharacter IDMT_Characteristic = IDMT_INVERSE;
 
 // Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
 #define THREAD_STACK_SIZE 1024
@@ -90,7 +90,7 @@ TOSThreadParams DOR_Timing1ThreadParams = {NULL,&DORTiming1ThreadStack[THREAD_ST
 // Analog thread params for one channel
 TOSThreadParams DOR_Timing2ThreadParams = {NULL,&DORTiming2ThreadStack[THREAD_STACK_SIZE - 1],DORTiming2Priority};
 // Trip thread params
-TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
+TOSThreadParams DOR_TripThreadParams = {&IDMT_Characteristic,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
 // UART transmit thread parameters

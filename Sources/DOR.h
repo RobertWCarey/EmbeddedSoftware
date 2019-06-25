@@ -30,6 +30,13 @@ typedef struct
   TOSThreadParams* TripParams;
 } TDORSetup;
 
+typedef enum
+{
+  IDMT_INVERSE,
+  IDMT_V_INVERSE,
+  IDTM_E_INVERSE
+} TIDMTCharacter;
+
 typedef struct ChannelThreadData
 {
   OS_ECB* semaphore;
