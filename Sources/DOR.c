@@ -35,29 +35,6 @@ static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
 
 static const uint16_t ADC_CONVERSION = 3276;
 
-//static const TIDMTData INV_TRIP_TIME[20] =
-//{
-//  {.y=236746,.x=1.03},{.y=10029,.x=2},{.y=6302,.x=3},{.y=4980,.x=4},{.y=4280,.x=5},
-//  {.y=3837,.x=6},{.y=3528,.x=7},{.y=3297,.x=8},{.y=3116,.x=9},{.y=2971,.x=10},
-//  {.y=2850,.x=11},{.y=2748,.x=12},{.y=2660,.x=13},{.y=2583,.x=14},{.y=2516,.x=15},
-//  {.y=2455,.x=16},{.y=2401,.x=17},{.y=2353,.x=18},{.y=2308,.x=19},{.y=2267,.x=20},
-//};
-
-//static const TIDMTData VINV_TRIP_TIME[20] =
-//{
-//  {.y=450000,.x=1.03},{.y=13500,.x=2},{.y=6750,.x=3},{.y=4500,.x=4},{.y=3375,.x=5},
-//  {.y=2700,.x=6},{.y=2250,.x=7},{.y=1929,.x=8},{.y=1688,.x=9},{.y=1500,.x=10},
-//  {.y=1350,.x=11},{.y=1227,.x=12},{.y=1125,.x=13},{.y=1038,.x=14},{.y=964,.x=15},
-//  {.y=900,.x=16},{.y=844,.x=17},{.y=794,.x=18},{.y=750,.x=19},{.y=711,.x=20},
-//};
-//
-//static const TIDMTData EINV_TRIP_TIME[20] =
-//{
-//  {.y=1313629,.x=1.03},{.y=26667,.x=2},{.y=10000,.x=3},{.y=5333,.x=4},{.y=3333,.x=5},
-//  {.y=2286,.x=6},{.y=1667,.x=7},{.y=1270,.x=8},{.y=1000,.x=9},{.y=808,.x=10},
-//  {.y=667,.x=11},{.y=559,.x=12},{.y=476,.x=13},{.y=410,.x=14},{.y=357,.x=15},
-//  {.y=314,.x=16},{.y=278,.x=17},{.y=248,.x=18},{.y=222,.x=19},{.y=201,.x=20},
-//};
 
 
 uint16_t analogInputValue;
@@ -129,6 +106,7 @@ static void PIT1Callback(void* arg)
     {
       ChannelThreadData[i].currentTimeCount++;
     }
+    OS_SemaphoreSignal(TripSemaphore);
   }
 
 }
@@ -243,9 +221,9 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
         period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
         float freq = 1/((float)(period)*1e-9);
 
-        Data->frequency[0] = freq;
+        Data->frequency[tempLoop] = freq;
         tempLoop++;
-        if (tempLoop >3)
+        if (tempLoop >=3)
           tempLoop = 0;
 //
 //        if (freq >= 47.5 && freq <= 52.5)
@@ -332,7 +310,7 @@ void DOR_TimingThread(void* pData)
       channelData.timerStatus = 0;
     }
 
-    OS_SemaphoreSignal(TripSemaphore);
+
   }
 }
 
@@ -371,29 +349,29 @@ void DOR_TripThread(void* pData)
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
     // TODO: Add multi channel functionality
-//    for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
-
-    //check if timer started
-    if (channelData.timerStatus)
+    for (int i = 0; i < 1; i++)
     {
-//      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
-//      channelData.tripTime = 17610;
-//      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
-//      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
-      channelData.tripTime = INV_TRIP_TIME[((uint16_t)channelData.irms*100)-103];
-      if (channelData.currentTimeCount >= channelData.tripTime)
+      //check if timer started
+      if (ChannelThreadData[i].timerStatus)
       {
-        // Set Output high
-        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+  //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
+  //      channelData.tripTime = 17610;
+  //      channelData.tripTime = ((float)0.14/(pow(channelData.irms,0.02)-1))*1000;
+  //      uint16_t temp = (uint16_t)(channelData.irms*100)-103;
+        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
+        if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
+        {
+          // Set Output high
+          Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+        }
+
       }
-
+      else
+      {
+        // Set Output low
+        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+      }
     }
-    else
-    {
-      // Set Output low
-      Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
-    }
-
 
   }
 }
