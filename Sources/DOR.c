@@ -44,9 +44,6 @@ static const uint8_t TRIP_OUTPUT_CHANNEL = 2; // "Trip" output signal
 // Constant to convert ADC/DAC 16 bit value to volts
 static const uint16_t ANALOG_16BIT_CONVERSION = 3276;
 
-// Variable to address thread data - makes code easier to read
-#define channelData (*(TDORPhaseData*)pData)
-
 // Semaphore for tripThread
 static OS_ECB* TripSemaphore;
 
@@ -195,25 +192,8 @@ static int16_t volts2Analog(float voltage)
  */
 static float analog2Volts(int16_t analogVal)
 {
+  // Return float equivalent voltage of 16 bit analog value
   return (float)analogVal/(float)ANALOG_16BIT_CONVERSION;
-}
-
-static float returnRMS(TDORPhaseData* Data)
-{
-
-  float square = 0;
-  float volts;
-  float vrms;
-  for (uint8_t i = 0; i<16;i++)
-  {
-    volts=analog2Volts(Data->samples[i]);
-
-    square += (volts*volts);
-  }
-
-  vrms = sqrt(square/16);
-
-  return (float)((vrms*40)/13);
 }
 
 
@@ -288,83 +268,70 @@ static void setTrip()
   }
 }
 
+static void calculateRMS(TDORPhaseData* data)
+{
+  data->squares[data->count] = pow(data->sample,2);
+  data->sumSquares += data->squares[data->count];
+
+  if (data->subtract)
+  {
+    if(data->count == NB_SAMPLES-1)
+      data->sumSquares -= data->squares[0];
+    else
+      data->sumSquares -= data->squares[data->count+1];
+
+
+  float vrms = sqrt(data->sumSquares/NB_SAMPLES);
+  vrms = analog2Volts(vrms);
+  data->irms = (vrms*40)/13 ;
+  }
+
+  data->count ++;
+  if (data->count == NB_SAMPLES)
+  {
+//      channelData.irms = returnRMS(&channelData);
+    data->count = 0;
+    data->subtract = 1;
+  }
+}
+
 void DOR_TimingThread(void* pData)
 {
-//  static int count;
-//  static int32_t sumSquares;
   for (;;)
   {
-    (void)OS_SemaphoreWait(channelData.semaphore, 0);
+    // Variable to address thread data - makes code easier to read
+    TDORPhaseData* channelData = pData;
 
-    Analog_Get(channelData.channelNb, &channelData.sample);
-    channelData.samples[channelData.count] = channelData.sample;
+    (void)OS_SemaphoreWait(channelData->semaphore, 0);
 
-    if (channelData.channelNb == 0)
+    Analog_Get(channelData->channelNb, &channelData->sample);
+    channelData->samples[channelData->count] = channelData->sample;
+
+    if (channelData->channelNb == 0)
     {
-      if (channelData.count > 0)
+      if (channelData->count > 0)
       {
-        if ((channelData.samples[channelData.count] > 0 && channelData.samples[channelData.count-1] < 0))
+        if ((channelData->samples[channelData->count] > 0 && channelData->samples[channelData->count-1] < 0))
         {
-        //        float temp = channelData.samples[count];
-        //        float temp1 = channelData.samples[count-1];
-         getFrequency(&channelData,channelData.samples[channelData.count-1], channelData.samples[channelData.count]);
-
+         getFrequency(channelData,channelData->samples[channelData->count-1], channelData->samples[channelData->count]);
         }
-        channelData.numberOfSamples++;
+        channelData->numberOfSamples++;
       }
 
     }
 
+    calculateRMS(channelData);
 
-//    channelData.sumSquares += channelData.samples[channelData.count]*channelData.samples[channelData.count];
-//    if (channelData.count == 0)
-//    {
-//      channelData.sumSquares -= channelData.samples[15]*channelData.samples[15];
-//    }
-//    else
-//    {
-//      channelData.sumSquares -= channelData.samples[channelData.count-1]*channelData.samples[channelData.count-1];
-//    }
-    channelData.squares[channelData.count] = pow(channelData.sample,2);
-    channelData.sumSquares += channelData.squares[channelData.count];
-
-    if (channelData.subtract)
-    {
-      if(channelData.count == NB_SAMPLES-1)
-        channelData.sumSquares -= channelData.squares[0];
-      else
-        channelData.sumSquares -= channelData.squares[channelData.count+1];
-
-
-    float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
-    vrms = analog2Volts(vrms);
-    float temp = ((vrms*40)/13);
-    int16_t temp1 = (temp/1);
-    channelData.irms = (vrms*40)/13 ;
-    }
-
-    channelData.count ++;
-    if (channelData.count == NB_SAMPLES)
-    {
-//      channelData.irms = returnRMS(&channelData);
-      channelData.count = 0;
-      channelData.subtract = 1;
-    }
-
-
-
-
-
-    if (channelData.irms > 1.03 && !channelData.timerStatus)
+    if (channelData->irms > 1.03 && !channelData->timerStatus)
     {
 //      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(5));
-      channelData.timerStatus = 1;
-      channelData.currentTimeCount = 0;
+      channelData->timerStatus = 1;
+      channelData->currentTimeCount = 0;
       setTimer();
     }
-    else if (channelData.irms < 1.03)
+    else if (channelData->irms < 1.03)
     {
-      channelData.timerStatus = 0;
+      channelData->timerStatus = 0;
       setTimer();
     }
 
