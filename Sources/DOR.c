@@ -135,13 +135,9 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   DOR_PhaseData[PHASE_C].semaphore = OS_SemaphoreCreate(0); // Phase C Timing Thread semaphore
   TripSemaphore = OS_SemaphoreCreate(0);  // DOR Trip Thread semaphore
 
-
   //PIT setup struct
   TPITSetup pitSetup;
   pitSetup.moduleClk = dorSetup->moduleClk;
-  pitSetup.EnablePITThread = 0;
-  pitSetup.Semaphore[0] = DOR_PhaseData[0].semaphore;
-  pitSetup.Semaphore[1] = NULL;
   pitSetup.CallbackFunction[0] = PIT0Callback;
   pitSetup.CallbackArguments[0] = NULL;
   pitSetup.CallbackFunction[1] = PIT1Callback;

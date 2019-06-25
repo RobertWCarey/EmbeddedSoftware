@@ -28,11 +28,7 @@ typedef struct
   void (*CallbackFunction[2])(void*);	/*!< The user's callback function. */
   void* CallbackArguments[2];		      /*!< The user's callback function arguments. */
   TOSThreadParams* ThreadParams;    /*!< Thread parameters for PITThread. */
-  bool EnablePITThread;
-  OS_ECB* Semaphore[2];
 } TPITSetup;
-
-void PITThread(void* pData);
 
 /*! @brief Sets up the PIT before first use.
  *
