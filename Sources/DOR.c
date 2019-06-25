@@ -385,7 +385,7 @@ void DOR_TimingThread(void* pData)
     calculateRMS(phaseData);
 
     // If current over the threshold and "Timer" output hasnt been set
-    if (phaseData->irms > DOR_CURRENT_LIMIT_LOWER && !phaseData->timerStatus)
+    if (phaseData->irms >= DOR_CURRENT_LIMIT_LOWER && !phaseData->timerStatus)
     {
       // Set "Timer" output and reset Phase's currentTimeCount
       phaseData->timerStatus = 1;
@@ -449,8 +449,30 @@ void DOR_TripThread(void* pData)
       // Check if trip needs to occur
       if (DOR_PhaseData[i].timerStatus && !DOR_PhaseData[i].tripStatus)
       {
-        // Get trip time for the current phase
-        DOR_PhaseData[i].tripTime = getTripTime(DOR_PhaseData[i].irms, *tripThreadData->characteristic);
+
+        if (DOR_PhaseData[i].tripTime == 0)
+          DOR_PhaseData[i].tripTime = getTripTime(DOR_PhaseData[i].irms, *tripThreadData->characteristic);
+        else
+        {
+          DOR_PhaseData[i].tripTime = getTripTime(DOR_PhaseData[i].irms, *tripThreadData->characteristic);
+//          uint32_t temp3 = (DOR_PhaseData[i].tripTime/10);
+          if (DOR_PhaseData[i].tripTime >1000 && ((DOR_PhaseData[i].tripTime/10) != (DOR_PhaseData[i].prevTripTime/10)))
+          {
+
+            // Get trip time for the current phase
+//            DOR_PhaseData[i].tripTime = getTripTime(DOR_PhaseData[i].irms, *tripThreadData->characteristic);
+
+            double temp = (double)(DOR_PhaseData[i].prevTripTime-DOR_PhaseData[i].currentTimeCount)/(double)DOR_PhaseData[i].prevTripTime;
+
+
+
+
+            uint32_t temp1 = (temp * DOR_PhaseData[i].tripTime)/1;
+
+            DOR_PhaseData[i].tripTime = temp1;
+          }
+        }
+        DOR_PhaseData[i].prevTripTime = DOR_PhaseData[i].tripTime;
 
         // If time since "Timer" output was reset exceeds the calculated trip time
         // for the current
@@ -472,6 +494,7 @@ void DOR_TripThread(void* pData)
         // Remove current tripped phase from the Fault Type
         Flash_Write8(tripThreadData->faultType,*tripThreadData->faultType & ~(1<<DOR_PhaseData[i].phaseNb));
         setTripOutput();
+        DOR_PhaseData[i].tripTime = 0;
       }
     }
   }
