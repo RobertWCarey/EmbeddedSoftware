@@ -22,15 +22,6 @@ static const uint8_t TOWER_SPECIAL_X = 0x78; // ASCII "x" in Hex
 static const uint8_t TOWER_VERSION_MAJOR = 0x01;
 static const uint8_t TOWER_VERSION_MINOR = 0x00;
 
-// Parameters for 0x07-Program Byte
-static const uint8_t PROGRAM_BYTE_ERASE = 0x08;// Erase Sector Param
-static const uint8_t PROGRAM_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
-static const uint8_t PROGRAM_BYTE_RANGE_HI = 0x08;// Highest valid value Param
-
-// Parameters for 0x08-Read Byte
-static const uint8_t READ_BYTE_RANGE_LO = 0x00;// Lowest valid value Param
-static const uint8_t READ_BYTE_RANGE_HI = 0x07;// Highest valid value Param
-
 // Parameters for 0x70 - DOR
 #define DOR_IDMT_CHARAC 0// Select "IDMT characteristic"
 static const uint8_t DOR_IDMT_GET = 1;// GET IDMT characteristic
@@ -66,37 +57,6 @@ static bool specialPacketHandler()
     return Packet_Put(CMD_SPECIAL_TOWER_VERSION,TOWER_SPECIAL_V,TOWER_VERSION_MAJOR,TOWER_VERSION_MINOR);
 
   return false;
-}
-
-/*! @brief Executes Program byte.
- *
- *  @return bool - TRUE if data successfully programmed.
- */
-static bool prgmBytePacketHandler()
-{
-  // Check offset is valid, and parameter byte is valid
-  if ((Packet_Parameter1 < PROGRAM_BYTE_RANGE_LO) || (Packet_Parameter1 > PROGRAM_BYTE_RANGE_HI) || (Packet_Parameter2))
-    return false;
-  // Check if erase sector has been requested
-  if (Packet_Parameter1 == PROGRAM_BYTE_ERASE)
-    return Flash_Erase();
-  // Write data to selected address offset
-  return Flash_Write8((uint8_t*)(FLASH_DATA_START+Packet_Parameter1),Packet_Parameter3);
-
-}
-
-/*! @brief Executes Read byte.
- *
- *  @return bool - TRUE if packet successfully sent.
- */
-static bool readBytePacketHandler()
-{
-  // Check offset is valid, and parameter byte is valid
-  if ((Packet_Parameter1 < READ_BYTE_RANGE_LO) || (Packet_Parameter1 > READ_BYTE_RANGE_HI) || (Packet_Parameter2) || (Packet_Parameter3))
-    return false;
-
-  return Packet_Put(CMD_READ_BYTE, Packet_Parameter1, 0, _FB(FLASH_DATA_START+Packet_Parameter1));
-
 }
 
 
@@ -203,12 +163,6 @@ void cmdHandler(volatile uint8_t* const characteristic)
       break;
     case CMD_SPECIAL_TOWER_VERSION:
       success = specialPacketHandler();
-      break;
-    case CMD_PROGRAM_BYTE:
-      success = prgmBytePacketHandler();
-      break;
-    case CMD_READ_BYTE:
-      success = readBytePacketHandler();
       break;
     case CMD_DOR:
       success = dorPacketHandler(characteristic);

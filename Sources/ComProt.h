@@ -32,19 +32,12 @@
 // Command Values
 #define CMD_TOWER_STARTUP 0x04u         /* "Tower Startup" */
 #define CMD_SPECIAL_TOWER_VERSION 0x09u /* "Special - Tower Version" */
-#define CMD_TOWER_NUMBER 0x0Bu          /* "Tower Number" */
-#define CMD_PROGRAM_BYTE 0x07u          /* "Flash - Program Byte" */
-#define CMD_READ_BYTE 0x08u             /* "Flash - Read Byte" */
-#define CMD_TOWER_MODE 0x0Du            /* "Tower Mode" */
 #define CMD_DOR 0x70u                   /* "DOR" */
-#define CMD_DOR_CURRENT 0x71u                   /* "DOR Current" */
+#define CMD_DOR_CURRENT 0x71u           /* "DOR Current" */
 
 /*! @brief Performs necessary action for any valid packets received.
  *
- *  @param towerNb A pointer to the Tower Number.
- *  @param towerNb A pointer to the Tower Mode.
- *  @param towerNb A pointer to the the current FTMxChannely setup struct x=FTM no. y=Channel no..
- *  @param towerNb A pointer to the current accelerometer mode.
+ *  @param characteristic A pointer to the current IDMT characteristic.
  *  @return void.
  */
 void cmdHandler(volatile uint8_t* const characteristic);
