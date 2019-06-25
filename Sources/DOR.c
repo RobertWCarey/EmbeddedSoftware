@@ -258,6 +258,23 @@ static void setTimer()
   }
 }
 
+static void setTrip()
+{
+  // Check if any channel has trip status set
+  if (ChannelThreadData[0].tripStatus ||
+      ChannelThreadData[1].tripStatus ||
+      ChannelThreadData[2].tripStatus)
+  {
+    // Set timer output to 5 volts
+    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+  }
+  else
+  {
+    // Set timer output to 0 volts once all are cleared
+    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+  }
+}
+
 void DOR_TimingThread(void* pData)
 {
   int count;
@@ -332,14 +349,16 @@ void DOR_TripThread(void* pData)
         if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
         {
           // Set Output high
-          Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+          ChannelThreadData[i].tripStatus = 1;
+          setTrip();
         }
 
       }
-      else
+      else if (ChannelThreadData[i].tripStatus && !ChannelThreadData[i].timerStatus)
       {
         // Set Output low
-        Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+        ChannelThreadData[i].tripStatus = 0;
+        setTrip();
       }
     }
 
