@@ -21,7 +21,7 @@
 #include "OS.h"
 #include "PE_types.h"
 
-#define NB_ANALOG_CHANNELS 3
+#define DOR_NB_PHASES 3
 #define NB_SAMPLES 32
 
 typedef struct
@@ -77,7 +77,7 @@ typedef struct
     double x;
 } TIDMTData;
 
-TDORPhaseData DOR_PhaseData[NB_ANALOG_CHANNELS];
+TDORPhaseData DOR_PhaseData[DOR_NB_PHASES];
 
 static const uint32_t INV_TRIP_TIME[1898] =
 {

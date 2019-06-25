@@ -51,7 +51,7 @@ static const uint16_t ADC_CONVERSION = 3276;
 static OS_ECB* TripSemaphore;
 
 // Configuration of array storing data for all three phases
-TDORPhaseData DOR_PhaseData[NB_ANALOG_CHANNELS] =
+TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
 {
   {
     .semaphore = NULL,
@@ -91,27 +91,26 @@ TDORPhaseData DOR_PhaseData[NB_ANALOG_CHANNELS] =
   }
 };
 
-/*! @brief Checks for any valid packets and then handles them.
+/*! @brief Interrupt callback function to be called when PIT_ISR trigger by PIT0.
  *
- *  @param pData is used to store the FTM0 Channel0 data.
+ *  @param arg The user argument that comes with the callback.
  */
 static void PIT0Callback(void* arg)
 {
-  // Make the code easier to read by giving a name to the typecast'ed pointer
+  for (int i = 0; i < DOR_NB_PHASES; i++)
 
-  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
   {
-//    Analog_Get(0, &ChannelThreadData[i].sample);
     OS_SemaphoreSignal(DOR_PhaseData[i].semaphore);
   }
-//  Analog_Get(0, &ChannelThreadData[0].sample);
-//  OS_SemaphoreSignal(ChannelThreadData[0].semaphore);
-
 }
 
+/*! @brief Interrupt callback function to be called when PIT_ISR trigger by PIT1.
+ *
+ *  @param arg The user argument that comes with the callback.
+ */
 static void PIT1Callback(void* arg)
 {
-  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  for (int i = 0; i < DOR_NB_PHASES; i++)
   {
     if (DOR_PhaseData[i].timerStatus)
     {

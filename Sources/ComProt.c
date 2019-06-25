@@ -90,7 +90,7 @@ static bool myDORCurrentHandler()
   if (Packet_Parameter2 && Packet_Parameter3)
     return false;
 
-  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  for (int i = 0; i < DOR_NB_PHASES; i++)
   {
     float irms = DOR_PhaseData[i].irms;
     uint8_t high = (uint8_t)(irms);
