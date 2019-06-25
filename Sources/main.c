@@ -60,9 +60,9 @@ typedef enum
 {
   InitModulesThreadPriority,
   UARTRxThreadPriority,
-  DORTiming0Priority,
-  DORTiming1Priority,
-  DORTiming2Priority,
+  DORPhaseATimingPriority,
+  DORPhaseBTimingPriority,
+  DORPhaseCTimingPriority,
   DORTripPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
@@ -72,22 +72,22 @@ typedef enum
 OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for the Init Modules thread. */
 OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
 OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
-OS_THREAD_STACK(DORTiming0ThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(DORTiming1ThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(DORTiming2ThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORPhaseATimingThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORPhaseBTimingThreadStack, THREAD_STACK_SIZE);
+OS_THREAD_STACK(DORPhaseCTimingThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(DORTripThreadStack, THREAD_STACK_SIZE);
 OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
 
 // Thread Parameters
 // Initilisation of modules thread parameters
 TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_STACK_SIZE - 1],InitModulesThreadPriority};
-// Analog thread params for one channel
-TOSThreadParams DOR_Timing0ThreadParams = {NULL,&DORTiming0ThreadStack[THREAD_STACK_SIZE - 1],DORTiming0Priority};
-// Analog thread params for one channel
-TOSThreadParams DOR_Timing1ThreadParams = {NULL,&DORTiming1ThreadStack[THREAD_STACK_SIZE - 1],DORTiming1Priority};
-// Analog thread params for one channel
-TOSThreadParams DOR_Timing2ThreadParams = {NULL,&DORTiming2ThreadStack[THREAD_STACK_SIZE - 1],DORTiming2Priority};
-// Trip thread params
+// DOR Phase A Timing thread params for one channel
+TOSThreadParams DOR_PhaseATimingThreadParams = {NULL,&DORPhaseATimingThreadStack[THREAD_STACK_SIZE - 1],DORPhaseATimingPriority};
+// DOR Phase B Timing thread params for one channel
+TOSThreadParams DOR_PhaseBTimingThreadParams = {NULL,&DORPhaseBTimingThreadStack[THREAD_STACK_SIZE - 1],DORPhaseBTimingPriority};
+// DOR Phase C Timing thread params for one channel
+TOSThreadParams DOR_PhaseCTimingThreadParams = {NULL,&DORPhaseCTimingThreadStack[THREAD_STACK_SIZE - 1],DORPhaseCTimingPriority};
+// DOR Trip thread params
 TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
@@ -121,9 +121,9 @@ static void InitModulesThread(void* pData)
   OS_DisableInterrupts();
 
   //Initialise Modules
-  Packet_Init(&packetSetup);
+  Packet_Init(&packetSetup); // Init Packet Module
   LEDs_Init();
-  Flash_Init();
+  Flash_Init(); // Init Flash Module
 
 
   //Assign non-volatile memory locations
@@ -142,9 +142,9 @@ static void InitModulesThread(void* pData)
   //DOR Module Setup & Init
   TDORSetup dorSetup;
   dorSetup.moduleClk = CPU_BUS_CLK_HZ;
-  dorSetup.PhaseAParams = &DOR_Timing0ThreadParams;
-  dorSetup.PhaseBParams = &DOR_Timing1ThreadParams;
-  dorSetup.PhaseCParams = &DOR_Timing2ThreadParams;
+  dorSetup.PhaseAParams = &DOR_PhaseATimingThreadParams;
+  dorSetup.PhaseBParams = &DOR_PhaseBTimingThreadParams;
+  dorSetup.PhaseCParams = &DOR_PhaseCTimingThreadParams;
   TDORTripThreadData dorTripThreadData;
   dorTripThreadData.characteristic = nvIDMTCharacter;
   dorTripThreadData.timesTripped = nvTimesTripped;

@@ -1239,15 +1239,15 @@ LOAD c:/freescale/kds_v3/toolchain/bin/../lib/gcc/arm-none-eabi/4.8.4/armv7e-m/f
  .data.InitModulesThreadParams
                 0x1fff0318        0xc ./Sources/main.o
                 0x1fff0318                InitModulesThreadParams
- .data.DOR_Timing0ThreadParams
+ .data.DOR_PhaseATimingThreadParams
                 0x1fff0324        0xc ./Sources/main.o
-                0x1fff0324                DOR_Timing0ThreadParams
- .data.DOR_Timing1ThreadParams
+                0x1fff0324                DOR_PhaseATimingThreadParams
+ .data.DOR_PhaseBTimingThreadParams
                 0x1fff0330        0xc ./Sources/main.o
-                0x1fff0330                DOR_Timing1ThreadParams
- .data.DOR_Timing2ThreadParams
+                0x1fff0330                DOR_PhaseBTimingThreadParams
+ .data.DOR_PhaseCTimingThreadParams
                 0x1fff033c        0xc ./Sources/main.o
-                0x1fff033c                DOR_Timing2ThreadParams
+                0x1fff033c                DOR_PhaseCTimingThreadParams
  .data.DOR_TripThreadParams
                 0x1fff0348        0xc ./Sources/main.o
                 0x1fff0348                DOR_TripThreadParams
@@ -1319,11 +1319,11 @@ LOAD c:/freescale/kds_v3/toolchain/bin/../lib/gcc/arm-none-eabi/4.8.4/armv7e-m/f
                 0x1fff1638     0x1000 ./Sources/main.o
  .bss.UARTTxThreadStack
                 0x1fff2638     0x1000 ./Sources/main.o
- .bss.DORTiming0ThreadStack
+ .bss.DORPhaseATimingThreadStack
                 0x1fff3638     0x1000 ./Sources/main.o
- .bss.DORTiming1ThreadStack
+ .bss.DORPhaseBTimingThreadStack
                 0x1fff4638     0x1000 ./Sources/main.o
- .bss.DORTiming2ThreadStack
+ .bss.DORPhaseCTimingThreadStack
                 0x1fff5638     0x1000 ./Sources/main.o
  .bss.DORTripThreadStack
                 0x1fff6638     0x1000 ./Sources/main.o
@@ -1671,7 +1671,7 @@ OUTPUT(Project.elf elf32-littlearm)
  .debug_line    0x000031c5      0x218 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(analog.o)
  .debug_line    0x000033dd      0x2d3 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(SPI.o)
 
-.debug_str      0x00000000    0x900cc
+.debug_str      0x00000000    0x900f9
  .debug_str     0x00000000    0x8ae25 ./Sources/ComProt.o
                               0x8b010 (size before relaxing)
  .debug_str     0x0008ae25     0x2959 ./Sources/DOR.o
@@ -1686,21 +1686,21 @@ OUTPUT(Project.elf elf32-littlearm)
                               0x8aa77 (size before relaxing)
  .debug_str     0x0008dc62      0x175 ./Sources/UART.o
                               0x8abe1 (size before relaxing)
- .debug_str     0x0008ddd7      0x322 ./Sources/main.o
-                              0x8b201 (size before relaxing)
- .debug_str     0x0008e0f9       0x52 ./Sources/packet.o
+ .debug_str     0x0008ddd7      0x34f ./Sources/main.o
+                              0x8b22e (size before relaxing)
+ .debug_str     0x0008e126       0x52 ./Sources/packet.o
                               0x8ab32 (size before relaxing)
- .debug_str     0x0008e14b     0x1095 ./Project_Settings/Startup_Code/startup.o
+ .debug_str     0x0008e178     0x1095 ./Project_Settings/Startup_Code/startup.o
                               0x8540e (size before relaxing)
- .debug_str     0x0008f1e0      0x215 ./Generated_Code/Cpu.o
+ .debug_str     0x0008f20d      0x215 ./Generated_Code/Cpu.o
                               0x8aa4b (size before relaxing)
- .debug_str     0x0008f3f5       0x1c ./Generated_Code/Vectors.o
+ .debug_str     0x0008f422       0x1c ./Generated_Code/Vectors.o
                               0x8a7c6 (size before relaxing)
- .debug_str     0x0008f411      0x3a2 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+ .debug_str     0x0008f43e      0x3a2 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
                               0x8ad2a (size before relaxing)
- .debug_str     0x0008f7b3      0x5c4 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(analog.o)
+ .debug_str     0x0008f7e0      0x5c4 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(analog.o)
                                0x38d5 (size before relaxing)
- .debug_str     0x0008fd77      0x355 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(SPI.o)
+ .debug_str     0x0008fda4      0x355 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(SPI.o)
                               0x83389 (size before relaxing)
 
 .comment        0x00000000       0x70
