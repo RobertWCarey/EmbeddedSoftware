@@ -22,6 +22,7 @@
 #include "PE_types.h"
 
 #define NB_ANALOG_CHANNELS 3
+#define NB_SAMPLES 32
 
 typedef struct
 {
@@ -51,7 +52,7 @@ typedef struct ChannelThreadData
   OS_ECB* semaphore;
   uint8_t channelNb;
   float irms;
-  int16_t samples[16];
+  int16_t samples[NB_SAMPLES];
   int16_t sample;
   bool timerStatus;
   bool tripStatus;
@@ -63,6 +64,11 @@ typedef struct ChannelThreadData
   uint8_t crossing;
   float frequencyArray[3];
   float frequency;
+  uint8_t count;
+  float squares[NB_SAMPLES];
+  float sumSquares;
+  bool subtract;
+  float currentWTripped;
 } TAnalogThreadData;
 
 typedef struct
