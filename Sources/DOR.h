@@ -47,6 +47,13 @@ typedef enum
   IDTM_E_INVERSE
 } TIDMTCharacter;
 
+typedef enum
+{
+  PHASE_A,
+  PHASE_B,
+  PHASE_C
+} TDORPhases;
+
 typedef struct PhaseData
 {
   OS_ECB* semaphore;

@@ -129,11 +129,11 @@ static void PIT1Callback(void* arg)
 
 bool DOR_Init(const TDORSetup* const dorSetup)
 {
-  DOR_PhaseData[0].semaphore = OS_SemaphoreCreate(0);
-  DOR_PhaseData[1].semaphore = OS_SemaphoreCreate(0);
-  DOR_PhaseData[2].semaphore = OS_SemaphoreCreate(0);
-
-  TripSemaphore = OS_SemaphoreCreate(0);
+  // Create all DOR semaphores
+  DOR_PhaseData[PHASE_A].semaphore = OS_SemaphoreCreate(0); // Phase A Timing Thread semaphore
+  DOR_PhaseData[PHASE_B].semaphore = OS_SemaphoreCreate(0); // Phase B Timing Thread semaphore
+  DOR_PhaseData[PHASE_C].semaphore = OS_SemaphoreCreate(0); // Phase C Timing Thread semaphore
+  TripSemaphore = OS_SemaphoreCreate(0);  // DOR Trip Thread semaphore
 
 
   //PIT setup struct
