@@ -23,10 +23,19 @@
 #include "Flash.h"
 
 
-// Pit time period (nano seconds)
-// Todo: change to proper case for vairable
-static uint32_t PIT0_TIME_PERIOD = 1250e3; // Sampling 16per cycle at 50Hz
-static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
+// Pit time periods (nano seconds)
+/*
+ * PIT0 sample period.
+ * Default sampling 16per cycle at 50Hz.
+ * Used for sampling phases
+ */
+static uint32_t MyPIT0TimePeriod = 1250e3;
+/*
+ * PIT1 sample period.
+ * Default sampling every 1ms.
+ * Used for incrementing currentTimeCount for each phase.
+ */
+static uint32_t MyPIT1TimePeriod = 1000000;
 
 //Output channels
 static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
@@ -141,8 +150,8 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
 
   //Set PIT Timer
-  PIT_Set(PIT0_TIME_PERIOD, true,0);
-  PIT_Set(PIT1_TIME_PERIOD, true,1);
+  PIT_Set(MyPIT0TimePeriod, true,0);
+  PIT_Set(MyPIT1TimePeriod, true,1);
 
   OS_ERROR error;
 
@@ -217,14 +226,14 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
     break;
   case 1:
     Data->offset2 = getOffset(prevVal,curVal);
-    period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT0_TIME_PERIOD;
+    period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)MyPIT0TimePeriod;
     float freq = 1/((float)(period)*1e-9);
 
     if (freq >= 47.5 && freq <= 52.5)
     {
       Data->frequency = freq;
-      PIT0_TIME_PERIOD = period/16;
-      PIT_Set(PIT0_TIME_PERIOD,false,0);
+      MyPIT0TimePeriod = period/16;
+      PIT_Set(MyPIT0TimePeriod,false,0);
     }
     Data->crossing = 0;
     break;
