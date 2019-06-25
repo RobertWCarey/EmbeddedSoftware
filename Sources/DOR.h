@@ -61,7 +61,8 @@ typedef struct ChannelThreadData
   float offset2;
   uint8_t numberOfSamples;
   uint8_t crossing;
-  float frequency[3];
+  float frequencyArray[3];
+  float frequency;
 } TAnalogThreadData;
 
 typedef struct

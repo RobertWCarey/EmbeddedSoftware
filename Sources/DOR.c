@@ -21,6 +21,7 @@
 #include "types.h"
 #include "math.h"
 #include "Flash.h"
+#include "median.h"
 
 
 // Pit time period (nano seconds)
@@ -222,10 +223,14 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
         period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
         float freq = 1/((float)(period)*1e-9);
 
-        Data->frequency[tempLoop] = freq;
+        Data->frequencyArray[tempLoop] = freq;
         tempLoop++;
         if (tempLoop >=3)
+        {
+          Data->frequency = Median_Filter3(Data->frequencyArray[0],Data->frequencyArray[1],Data->frequencyArray[2]);
           tempLoop = 0;
+        }
+
 //
 //        if (freq >= 47.5 && freq <= 52.5)
 //        {
