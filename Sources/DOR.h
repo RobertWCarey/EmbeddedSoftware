@@ -47,7 +47,7 @@ typedef enum
   IDTM_E_INVERSE
 } TIDMTCharacter;
 
-typedef struct ChannelThreadData
+typedef struct PhaseData
 {
   OS_ECB* semaphore;
   uint8_t channelNb;
@@ -69,7 +69,7 @@ typedef struct ChannelThreadData
   float sumSquares;
   bool subtract;
   float currentWTripped;
-} TAnalogThreadData;
+} TDORPhaseData;
 
 typedef struct
 {
@@ -77,7 +77,7 @@ typedef struct
     double x;
 } TIDMTData;
 
-TAnalogThreadData DOR_PhaseData[NB_ANALOG_CHANNELS];
+TDORPhaseData DOR_PhaseData[NB_ANALOG_CHANNELS];
 
 static const uint32_t INV_TRIP_TIME[1898] =
 {

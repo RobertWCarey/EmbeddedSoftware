@@ -45,15 +45,13 @@ static const uint8_t TRIP_OUTPUT_CHANNEL = 2; // "Trip" output signal
 static const uint16_t ADC_CONVERSION = 3276;
 
 // Variable to address thread data - makes code easier to read
-#define channelData (*(TAnalogThreadData*)pData)
+#define channelData (*(TDORPhaseData*)pData)
 
 // Semaphore for tripThread
 static OS_ECB* TripSemaphore;
 
-/*! @brief Analog thread configuration data
- *
- */
-TAnalogThreadData DOR_PhaseData[NB_ANALOG_CHANNELS] =
+
+TDORPhaseData DOR_PhaseData[NB_ANALOG_CHANNELS] =
 {
   {
     .semaphore = NULL,
@@ -182,7 +180,7 @@ static float raw2v(int16_t voltage)
   return (float)voltage/(float)ADC_CONVERSION;
 }
 
-static float returnRMS(TAnalogThreadData* Data)
+static float returnRMS(TDORPhaseData* Data)
 {
 
   float square = 0;
@@ -208,7 +206,7 @@ static float getOffset(int16_t sample0, int16_t sample1)
   return (-sample0)/m;
 }
 
-static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal)
+static void getFrequency(TDORPhaseData* Data,int16_t prevVal, int16_t curVal)
 {
   float period;
 
