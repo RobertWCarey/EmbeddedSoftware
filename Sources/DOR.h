@@ -74,7 +74,7 @@ typedef struct PhaseData
   uint8_t count;
   float squares[NB_SAMPLES];
   float sumSquares;
-  bool subtract;
+  bool windowFilled;
   float currentWTripped;
 } TDORPhaseData;
 

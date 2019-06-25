@@ -60,7 +60,7 @@ TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .subtract = 0,
+    .windowFilled = 0,
   },
   {
     .semaphore = NULL,
@@ -72,7 +72,7 @@ TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .subtract = 0,
+    .windowFilled = 0,
   },
   {
     .semaphore = NULL,
@@ -84,7 +84,7 @@ TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
     .numberOfSamples = 0,
     .crossing = 0,
     .count = 0,
-    .subtract = 0,
+    .windowFilled = 0,
   }
 };
 
@@ -196,7 +196,50 @@ static float analog2Volts(int16_t analogVal)
   return (float)analogVal/(float)ANALOG_16BIT_CONVERSION;
 }
 
+/*! @brief Calculates the RMS current in a sliding window 32 samples wide.
+ *
+ *  @param data is a pointed the a Phase's TDORPhaseData struct.
+ */
+static void calculateRMS(TDORPhaseData* data)
+{
+  // Square the current sample and store in the "squares" array
+  data->squares[data->count] = pow(data->sample,2);
+  // Add the current squared value to the "sumSquares" variable
+  data->sumSquares += data->squares[data->count];
 
+  // Check that a full window of samples has been collected
+  // Otherwise incorrect RMS value for first 32 reads
+  if (data->windowFilled)
+  {
+    // If at end of array
+    if(data->count == NB_SAMPLES-1)
+      // Subtract oldest data from first position
+      data->sumSquares -= data->squares[0];
+    else
+      // Subtract oldest data from one position ahead of current position
+      data->sumSquares -= data->squares[data->count+1];
+
+    // Store analog RMS in temporary variable
+    float aRMS = sqrt(data->sumSquares/NB_SAMPLES);
+    // Convert analog RMS to a RMS voltage
+    float vRMS = analog2Volts(aRMS);
+
+    // Convert RMS Voltage to RMS Current and store  in Phase's TDORPhaseData struct
+    data->irms = (vRMS*40)/13 ;
+  }
+
+  // Increment count to move position up in arrays
+  data->count ++;
+  // If count reaches number of samples loop
+  if (data->count == NB_SAMPLES)
+  {
+    // Set count to zero to loop
+    data->count = 0;
+    // This is to indicate a window of samples has been collected
+    // After the first "NB_SAMPLES" has been collected this is always true.
+    data->windowFilled = true;
+  }
+}
 
 static float getOffset(int16_t sample0, int16_t sample1)
 {
@@ -265,33 +308,6 @@ static void setTrip()
   {
     // Set timer output to 0 volts once all are cleared
     Analog_Put(TRIP_OUTPUT_CHANNEL,volts2Analog(0));
-  }
-}
-
-static void calculateRMS(TDORPhaseData* data)
-{
-  data->squares[data->count] = pow(data->sample,2);
-  data->sumSquares += data->squares[data->count];
-
-  if (data->subtract)
-  {
-    if(data->count == NB_SAMPLES-1)
-      data->sumSquares -= data->squares[0];
-    else
-      data->sumSquares -= data->squares[data->count+1];
-
-
-  float vrms = sqrt(data->sumSquares/NB_SAMPLES);
-  vrms = analog2Volts(vrms);
-  data->irms = (vrms*40)/13 ;
-  }
-
-  data->count ++;
-  if (data->count == NB_SAMPLES)
-  {
-//      channelData.irms = returnRMS(&channelData);
-    data->count = 0;
-    data->subtract = 1;
   }
 }
 
