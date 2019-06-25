@@ -4,7 +4,7 @@
  */
 /*! @file
  *
- *  @brief Routines for the accelerometer
+ *  @brief Routines for the Digital Overcurrent Relay
  *
  *  This contains the functions for operating the DOR
  *
@@ -25,9 +25,7 @@
 
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
-static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
-//static uint32_t PIT_TIME_PERIOD = 10000000; // 1ms
-//static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
+static uint32_t PIT0_TIME_PERIOD = 1250e3; // Sampling 16per cycle at 50Hz
 static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
 //Output channels
@@ -143,7 +141,7 @@ bool DOR_Init(const TDORSetup* const dorSetup)
 
 
   //Set PIT Timer
-  PIT_Set(PIT_TIME_PERIOD, true,0);
+  PIT_Set(PIT0_TIME_PERIOD, true,0);
   PIT_Set(PIT1_TIME_PERIOD, true,1);
 
   OS_ERROR error;
@@ -219,14 +217,14 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
     break;
   case 1:
     Data->offset2 = getOffset(prevVal,curVal);
-    period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
+    period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT0_TIME_PERIOD;
     float freq = 1/((float)(period)*1e-9);
 
     if (freq >= 47.5 && freq <= 52.5)
     {
       Data->frequency = freq;
-      PIT_TIME_PERIOD = period/16;
-      PIT_Set(PIT_TIME_PERIOD,false,0);
+      PIT0_TIME_PERIOD = period/16;
+      PIT_Set(PIT0_TIME_PERIOD,false,0);
     }
     Data->crossing = 0;
     break;
