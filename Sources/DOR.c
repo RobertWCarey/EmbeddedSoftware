@@ -42,7 +42,7 @@ static const uint8_t TIMING_OUTPUT_CHANNEL = 1; // "Timing" output signal
 static const uint8_t TRIP_OUTPUT_CHANNEL = 2; // "Trip" output signal
 
 // Constant to convert ADC/DAC 16 bit value to volts
-static const uint16_t ADC_CONVERSION = 3276;
+static const uint16_t ANALOG_16BIT_CONVERSION = 3276;
 
 // Variable to address thread data - makes code easier to read
 #define channelData (*(TDORPhaseData*)pData)
@@ -179,14 +179,23 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   return true;
 }
 
-static int16_t v2raw(float voltage)
+/*! @brief Converts voltage to 16 bit value for Analog module.
+ *
+ *  @param voltage value of voltage to be converted.
+ */
+static int16_t volts2Analog(float voltage)
 {
-  return (int16_t)(voltage*ADC_CONVERSION);
+  // Return 16 bit equivalent of voltage
+  return (int16_t)(voltage*ANALOG_16BIT_CONVERSION);
 }
 
-static float raw2v(int16_t voltage)
+/*! @brief Converts 16 bit value from Analog module to voltage.
+ *
+ *  @param analogVal 16 bit Analog Value to be converted.
+ */
+static float analog2Volts(int16_t analogVal)
 {
-  return (float)voltage/(float)ADC_CONVERSION;
+  return (float)analogVal/(float)ANALOG_16BIT_CONVERSION;
 }
 
 static float returnRMS(TDORPhaseData* Data)
@@ -197,7 +206,7 @@ static float returnRMS(TDORPhaseData* Data)
   float vrms;
   for (uint8_t i = 0; i<16;i++)
   {
-    volts=raw2v(Data->samples[i]);
+    volts=analog2Volts(Data->samples[i]);
 
     square += (volts*volts);
   }
@@ -253,12 +262,12 @@ static void setTimer()
       DOR_PhaseData[2].timerStatus)
   {
     // Set timer output to 5 volts
-    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+    Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(5));
   }
   else
   {
     // Set timer output to 0 volts once all are cleared
-    Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
+    Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(0));
   }
 }
 
@@ -270,12 +279,12 @@ static void setTrip()
       DOR_PhaseData[2].tripStatus)
   {
     // Set timer output to 5 volts
-    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(5));
+    Analog_Put(TRIP_OUTPUT_CHANNEL,volts2Analog(5));
   }
   else
   {
     // Set timer output to 0 volts once all are cleared
-    Analog_Put(TRIP_OUTPUT_CHANNEL,v2raw(0));
+    Analog_Put(TRIP_OUTPUT_CHANNEL,volts2Analog(0));
   }
 }
 
@@ -328,7 +337,7 @@ void DOR_TimingThread(void* pData)
 
 
     float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
-    vrms = raw2v(vrms);
+    vrms = analog2Volts(vrms);
     float temp = ((vrms*40)/13);
     int16_t temp1 = (temp/1);
     channelData.irms = (vrms*40)/13 ;
@@ -348,7 +357,7 @@ void DOR_TimingThread(void* pData)
 
     if (channelData.irms > 1.03 && !channelData.timerStatus)
     {
-//      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
+//      bool temp = Analog_Put(TIMING_OUTPUT_CHANNEL,volts2Analog(5));
       channelData.timerStatus = 1;
       channelData.currentTimeCount = 0;
       setTimer();
