@@ -24,8 +24,8 @@
 
 // Pit time period (nano seconds)
 // Todo: change to proper case for vairable
-//static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
-static uint32_t PIT_TIME_PERIOD = 10000000; // 1ms
+static uint32_t PIT_TIME_PERIOD = 1250e3;//Sampling 16per cycle at 50Hz
+//static uint32_t PIT_TIME_PERIOD = 10000000; // 1ms
 //static uint32_t PIT_TIME_PERIOD = 1e6;//Sampling 16per cycle at 50Hz
 static uint32_t PIT1_TIME_PERIOD = 1000000; // 1ms
 
@@ -240,7 +240,7 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
         Data->offset2 = getOffset(prevVal,curVal);
 //        float period1 = Data->offset1*PIT_TIME_PERIOD;
 //        float period2 = Data->offset2*PIT_TIME_PERIOD;
-        period = (Data->numberOfSamples-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
+        period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
         float freq = 1/((float)(period)*1e-9);
 
         Data->frequency[0] = freq;
@@ -275,21 +275,21 @@ void DOR_TimingThread(void* pData)
     Analog_Get(channelData.channelNb, &channelData.sample);
     channelData.samples[count] = channelData.sample;
 
-//    if (channelData.channelNb == 0)
-//    {
-//      if (count > 0)
-//      {
-//        if ((channelData.samples[count] > 0 && channelData.samples[count-1] < 0))
-//        {
-//        //        float temp = channelData.samples[count];
-//        //        float temp1 = channelData.samples[count-1];
-//         getFrequency(&channelData,channelData.samples[count], channelData.samples[count-1]);
-//
-//        }
-//        channelData.numberOfSamples++;
-//      }
-//
-//    }
+    if (channelData.channelNb == 0)
+    {
+      if (count > 0)
+      {
+        if ((channelData.samples[count] > 0 && channelData.samples[count-1] < 0))
+        {
+        //        float temp = channelData.samples[count];
+        //        float temp1 = channelData.samples[count-1];
+         getFrequency(&channelData,channelData.samples[count-1], channelData.samples[count]);
+
+        }
+        channelData.numberOfSamples++;
+      }
+
+    }
 
     count ++;
     if (count == 16)
@@ -298,22 +298,22 @@ void DOR_TimingThread(void* pData)
       count = 0;
 
 
-      if (channelData.channelNb == 0)
-      {
-        channelData.crossing = 0;
-        for (int i = 1; i < 16;i++)
-        {
-
-         if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0))
-         {
-   //        float temp = channelData.samples[count];
-   //        float temp1 = channelData.samples[count-1];
-//           getFrequency(&channelData, i);
-           getFrequency(&channelData,channelData.samples[count], channelData.samples[count-1]);
-         }
-         channelData.numberOfSamples++;
-        }
-      }
+//      if (channelData.channelNb == 0)
+//      {
+//        channelData.crossing = 0;
+//        for (int i = 1; i < 16;i++)
+//        {
+//
+//         if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0))
+//         {
+//   //        float temp = channelData.samples[count];
+//   //        float temp1 = channelData.samples[count-1];
+////           getFrequency(&channelData, i);
+//           getFrequency(&channelData,channelData.samples[count], channelData.samples[count-1]);
+//         }
+//         channelData.numberOfSamples++;
+//        }
+//      }
     }
 
 
