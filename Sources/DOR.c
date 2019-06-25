@@ -185,25 +185,6 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   return true;
 }
 
-
-static float returnRMS(float sampleData[])
-{
-
-  float square = 0;
-  float volts;
-  float vrms;
-  for (uint8_t i = 0; i<16;i++)
-  {
-    volts=sampleData[i];
-
-    square += (volts*volts);
-  }
-
-  vrms = sqrt(square/16);
-
-  return (float)((vrms*40)/13);
-}
-
 static int16_t v2raw(float voltage)
 {
   return (int16_t)(voltage*ADC_CONVERSION);
@@ -213,6 +194,26 @@ static float raw2v(int16_t voltage)
 {
   return (float)voltage/(float)ADC_CONVERSION;
 }
+
+static float returnRMS(TAnalogThreadData* Data)
+{
+
+  float square = 0;
+  float volts;
+  float vrms;
+  for (uint8_t i = 0; i<16;i++)
+  {
+    volts=raw2v(Data->samples[i]);
+
+    square += (volts*volts);
+  }
+
+  vrms = sqrt(square/16);
+
+  return (float)((vrms*40)/13);
+}
+
+
 
 static float getOffset(int16_t sample0, int16_t sample1)
 {
@@ -231,7 +232,7 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
       switch (Data->crossing)
       {
       case 0:
-        Data->numberOfSamples = 1;
+        Data->numberOfSamples = 0;
         Data->offset1 = getOffset(prevVal,curVal);
         Data->crossing = 1;
         break;
@@ -239,13 +240,13 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
         Data->offset2 = getOffset(prevVal,curVal);
 //        float period1 = Data->offset1*PIT_TIME_PERIOD;
 //        float period2 = Data->offset2*PIT_TIME_PERIOD;
-        period = (Data->numberOfSamples-1-Data->offset1+Data->offset2)*PIT_TIME_PERIOD;
+        period = (Data->numberOfSamples-Data->offset1+Data->offset2)*(float)PIT_TIME_PERIOD;
         float freq = 1/((float)(period)*1e-9);
 
-//        Data->frequency[tempLoop] = freq;
-//        tempLoop++;
-//        if (tempLoop >3)
-//          tempLoop = 0;
+        Data->frequency[0] = freq;
+        tempLoop++;
+        if (tempLoop >3)
+          tempLoop = 0;
 //
 //        if (freq >= 47.5 && freq <= 52.5)
 //        {
@@ -272,60 +273,47 @@ void DOR_TimingThread(void* pData)
     (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
     Analog_Get(channelData.channelNb, &channelData.sample);
-    channelData.samples[count] = raw2v(channelData.sample);
+    channelData.samples[count] = channelData.sample;
 
-    if (channelData.channelNb == 0)
-    {
-      static int16_t prevVal;
-      static int16_t curVal;
-//      channelData.crossing = 0;
-//      for (int i = 1; i < 16;i++)
-      static int temp = 0;
-      if (!temp)
-      {
-        prevVal = channelData.sample;
-        temp = 1;
-      }
-      else
-      {
-        curVal = channelData.sample;
-        temp = 0;
-      }
-
-       if ((prevVal > 0 && curVal < 0))
-       {
- //        float temp = channelData.samples[count];
- //        float temp1 = channelData.samples[count-1];
-         getFrequency(&channelData,prevVal, curVal);
-         prevVal = 0;
-         curVal = 0;
-       }
-       channelData.numberOfSamples++;
-
-    }
+//    if (channelData.channelNb == 0)
+//    {
+//      if (count > 0)
+//      {
+//        if ((channelData.samples[count] > 0 && channelData.samples[count-1] < 0))
+//        {
+//        //        float temp = channelData.samples[count];
+//        //        float temp1 = channelData.samples[count-1];
+//         getFrequency(&channelData,channelData.samples[count], channelData.samples[count-1]);
+//
+//        }
+//        channelData.numberOfSamples++;
+//      }
+//
+//    }
 
     count ++;
     if (count == 16)
     {
-      channelData.irms = returnRMS(channelData.samples);
+      channelData.irms = returnRMS(&channelData);
       count = 0;
 
 
-//      if (channelData.channelNb == 0)
-//      {
-//        channelData.crossing = 0;
-//        for (int i = 1; i < 16;i++)
-//        {
-//
-//         if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0))
-//         {
-//   //        float temp = channelData.samples[count];
-//   //        float temp1 = channelData.samples[count-1];
+      if (channelData.channelNb == 0)
+      {
+        channelData.crossing = 0;
+        for (int i = 1; i < 16;i++)
+        {
+
+         if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0))
+         {
+   //        float temp = channelData.samples[count];
+   //        float temp1 = channelData.samples[count-1];
 //           getFrequency(&channelData, i);
-//         }
-//         channelData.numberOfSamples++;
-//        }
-//      }
+           getFrequency(&channelData,channelData.samples[count], channelData.samples[count-1]);
+         }
+         channelData.numberOfSamples++;
+        }
+      }
     }
 
 
