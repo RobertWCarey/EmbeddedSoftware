@@ -27,9 +27,9 @@
 typedef struct
 {
   uint32_t moduleClk;         /*!< The module clock rate in Hz. */
-  TOSThreadParams* Channel0Params;  /*!< Thread parameters for Channel0. */
-  TOSThreadParams* Channel1Params;  /*!< Thread parameters for Channel0. */
-  TOSThreadParams* Channel2Params;  /*!< Thread parameters for Channel0. */
+  TOSThreadParams* PhaseAParams;  /*!< Thread parameters for Channel0. */
+  TOSThreadParams* PhaseBParams;  /*!< Thread parameters for Channel0. */
+  TOSThreadParams* PhaseCParams;  /*!< Thread parameters for Channel0. */
   TOSThreadParams* TripParams;
 } TDORSetup;
 

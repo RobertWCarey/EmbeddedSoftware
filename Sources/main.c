@@ -142,9 +142,9 @@ static void InitModulesThread(void* pData)
   //DOR Module Setup & Init
   TDORSetup dorSetup;
   dorSetup.moduleClk = CPU_BUS_CLK_HZ;
-  dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
-  dorSetup.Channel1Params = &DOR_Timing1ThreadParams;
-  dorSetup.Channel2Params = &DOR_Timing2ThreadParams;
+  dorSetup.PhaseAParams = &DOR_Timing0ThreadParams;
+  dorSetup.PhaseBParams = &DOR_Timing1ThreadParams;
+  dorSetup.PhaseCParams = &DOR_Timing2ThreadParams;
   TDORTripThreadData dorTripThreadData;
   dorTripThreadData.characteristic = nvIDMTCharacter;
   dorTripThreadData.timesTripped = nvTimesTripped;

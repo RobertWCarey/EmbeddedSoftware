@@ -143,30 +143,34 @@ bool DOR_Init(const TDORSetup* const dorSetup)
   pitSetup.CallbackFunction[1] = PIT1Callback;
   pitSetup.CallbackArguments[1] = NULL;
 
-  PIT_Init(&pitSetup);
-  Analog_Init(dorSetup->moduleClk);
+  // Initilise Modules
+  PIT_Init(&pitSetup); // Initilise Pit Module
+  Analog_Init(dorSetup->moduleClk); // Initilise Analog Module
 
-
-  //Set PIT Timer
+  //Set PIT Timers to default values
   PIT_Set(MyPIT0TimePeriod, true,0);
   PIT_Set(MyPIT1TimePeriod, true,1);
 
+  // Variable to catch any OS errors
   OS_ERROR error;
 
+  // Create Timing threads for all three phases
+  // Phase A
   error = OS_ThreadCreate(DOR_TimingThread,
                           &DOR_PhaseData[0],
-                          dorSetup->Channel0Params->pStack,
-                          dorSetup->Channel0Params->priority);
-
+                          dorSetup->PhaseAParams->pStack,
+                          dorSetup->PhaseAParams->priority);
+  // Phase B
   error = OS_ThreadCreate(DOR_TimingThread,
                           &DOR_PhaseData[1],
-                          dorSetup->Channel1Params->pStack,
-                          dorSetup->Channel1Params->priority);
+                          dorSetup->PhaseBParams->pStack,
+                          dorSetup->PhaseBParams->priority);
+  //Phase C
   error = OS_ThreadCreate(DOR_TimingThread,
                           &DOR_PhaseData[2],
-                          dorSetup->Channel2Params->pStack,
-                          dorSetup->Channel2Params->priority);
-
+                          dorSetup->PhaseCParams->pStack,
+                          dorSetup->PhaseCParams->priority);
+  // Create DOR Trip Thread
   error = OS_ThreadCreate(DOR_TripThread,
                           dorSetup->TripParams->pData,
                           dorSetup->TripParams->pStack,
