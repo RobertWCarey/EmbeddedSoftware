@@ -1560,22 +1560,22 @@ OUTPUT(Project.elf elf32-littlearm)
  .debug_macro   0x00034567       0x16 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(analog.o)
  .debug_macro   0x0003457d       0x68 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(SPI.o)
 
-.debug_line     0x00000000     0x3596
+.debug_line     0x00000000     0x3594
  .debug_line    0x00000000      0x432 ./Sources/ComProt.o
- .debug_line    0x00000432      0x596 ./Sources/DOR.o
- .debug_line    0x000009c8      0x315 ./Sources/FIFO.o
- .debug_line    0x00000cdd      0x303 ./Sources/Flash.o
- .debug_line    0x00000fe0      0x323 ./Sources/LEDs.o
- .debug_line    0x00001303      0x377 ./Sources/PIT.o
- .debug_line    0x0000167a      0x389 ./Sources/UART.o
- .debug_line    0x00001a03      0x3fb ./Sources/main.o
- .debug_line    0x00001dfe      0x35c ./Sources/packet.o
- .debug_line    0x0000215a      0x401 ./Project_Settings/Startup_Code/startup.o
- .debug_line    0x0000255b      0x376 ./Generated_Code/Cpu.o
- .debug_line    0x000028d1      0x344 ./Generated_Code/Vectors.o
- .debug_line    0x00002c15      0x496 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
- .debug_line    0x000030ab      0x218 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(analog.o)
- .debug_line    0x000032c3      0x2d3 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(SPI.o)
+ .debug_line    0x00000432      0x594 ./Sources/DOR.o
+ .debug_line    0x000009c6      0x315 ./Sources/FIFO.o
+ .debug_line    0x00000cdb      0x303 ./Sources/Flash.o
+ .debug_line    0x00000fde      0x323 ./Sources/LEDs.o
+ .debug_line    0x00001301      0x377 ./Sources/PIT.o
+ .debug_line    0x00001678      0x389 ./Sources/UART.o
+ .debug_line    0x00001a01      0x3fb ./Sources/main.o
+ .debug_line    0x00001dfc      0x35c ./Sources/packet.o
+ .debug_line    0x00002158      0x401 ./Project_Settings/Startup_Code/startup.o
+ .debug_line    0x00002559      0x376 ./Generated_Code/Cpu.o
+ .debug_line    0x000028cf      0x344 ./Generated_Code/Vectors.o
+ .debug_line    0x00002c13      0x496 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libOS.a(OS.o)
+ .debug_line    0x000030a9      0x218 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(analog.o)
+ .debug_line    0x000032c1      0x2d3 D:\Sync\Education\University\2019_Sem1(AUT)\48434 (EmbeddedSoftware)\30\Library\libanalog.a(SPI.o)
 
 .debug_str      0x00000000    0x900c7
  .debug_str     0x00000000    0x8ad57 ./Sources/ComProt.o

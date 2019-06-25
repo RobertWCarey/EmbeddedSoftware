@@ -243,14 +243,17 @@ static void getFrequency(TAnalogThreadData* Data,int16_t prevVal, int16_t curVal
 
 static void setTimer()
 {
+  // Check if any channel has timer status set
   if (ChannelThreadData[0].timerStatus ||
       ChannelThreadData[1].timerStatus ||
       ChannelThreadData[2].timerStatus)
   {
+    // Set timer output to 5 volts
     Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(5));
   }
   else
   {
+    // Set timer output to 0 volts once all are cleared
     Analog_Put(TIMING_OUTPUT_CHANNEL,v2raw(0));
   }
 }
@@ -286,24 +289,6 @@ void DOR_TimingThread(void* pData)
     {
       channelData.irms = returnRMS(&channelData);
       count = 0;
-
-
-//      if (channelData.channelNb == 0)
-//      {
-//        channelData.crossing = 0;
-//        for (int i = 1; i < 16;i++)
-//        {
-//
-//         if ((channelData.samples[i] > 0 && channelData.samples[i-1] < 0))
-//         {
-//   //        float temp = channelData.samples[count];
-//   //        float temp1 = channelData.samples[count-1];
-////           getFrequency(&channelData, i);
-//           getFrequency(&channelData,channelData.samples[count], channelData.samples[count-1]);
-//         }
-//         channelData.numberOfSamples++;
-//        }
-//      }
     }
 
 
