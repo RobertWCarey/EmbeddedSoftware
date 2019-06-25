@@ -320,6 +320,10 @@ void DOR_TimingThread(void* pData)
 
 static uint32_t getTripTime(float irms, TIDMTCharacter characteristic)
 {
+  // check irms lower than upper range
+  if (irms > 20)
+    irms = 20;
+
   switch (characteristic)
   {
   case 0:
