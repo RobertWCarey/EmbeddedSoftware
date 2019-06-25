@@ -285,6 +285,45 @@ static void getFrequency(TDORPhaseData* Data,int16_t prevVal, int16_t curVal)
   }
 }
 
+static void calculateFreq(TDORPhaseData* data)
+{
+
+    if (data->count > 0)
+    {
+      if ((data->samples[data->count] > 0 && data->samples[data->count-1] < 0))
+      {
+//       getFrequency(data,data->samples[data->count-1], data->samples[data->count]);
+        float period;
+
+        switch (data->crossing)
+        {
+        case 0:
+          data->numberOfSamples = 0;
+          data->offset1 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
+          data->crossing = 1;
+          break;
+        case 1:
+          data->offset2 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
+          period = (data->numberOfSamples+1-data->offset1+data->offset2)*(float)MyPIT0TimePeriod;
+          float freq = 1/((float)(period)*1e-9);
+
+          if (freq >= 47.5 && freq <= 52.5)
+          {
+            data->frequency = freq;
+            MyPIT0TimePeriod = period/16;
+            PIT_Set(MyPIT0TimePeriod,false,0);
+          }
+          data->crossing = 0;
+          break;
+        default:
+          data->crossing = 0;
+          break;
+        }
+      }
+      data->numberOfSamples++;
+    }
+}
+
 static void setTimer()
 {
   // Check if any channel has timer status set
@@ -331,18 +370,21 @@ void DOR_TimingThread(void* pData)
     Analog_Get(channelData->channelNb, &channelData->sample);
     channelData->samples[channelData->count] = channelData->sample;
 
-    if (channelData->channelNb == 0)
-    {
-      if (channelData->count > 0)
-      {
-        if ((channelData->samples[channelData->count] > 0 && channelData->samples[channelData->count-1] < 0))
-        {
-         getFrequency(channelData,channelData->samples[channelData->count-1], channelData->samples[channelData->count]);
-        }
-        channelData->numberOfSamples++;
-      }
+//    if (channelData->channelNb == 0)
+//    {
+//      if (channelData->count > 0)
+//      {
+//        if ((channelData->samples[channelData->count] > 0 && channelData->samples[channelData->count-1] < 0))
+//        {
+//         getFrequency(channelData,channelData->samples[channelData->count-1], channelData->samples[channelData->count]);
+//        }
+//        channelData->numberOfSamples++;
+//      }
+//
+//    }
 
-    }
+    if (channelData->channelNb == 0)
+      calculateFreq(channelData);
 
     calculateRMS(channelData);
 
