@@ -37,21 +37,17 @@ static uint32_t MyPIT0TimePeriod = 1250e3;
  */
 static uint32_t MyPIT1TimePeriod = 1000000;
 
-//Output channels
-static const uint8_t TIMING_OUTPUT_CHANNEL = 1;
-static const uint8_t TRIP_OUTPUT_CHANNEL = 2;
+// Output channels
+static const uint8_t TIMING_OUTPUT_CHANNEL = 1; // "Timing" output signal
+static const uint8_t TRIP_OUTPUT_CHANNEL = 2; // "Trip" output signal
 
+// Constant to convert ADC/DAC 16 bit value to volts
 static const uint16_t ADC_CONVERSION = 3276;
 
-
-
-uint16_t analogInputValue;
-
-
-
+// Variable to address thread data - makes code easier to read
 #define channelData (*(TAnalogThreadData*)pData)
 
-
+// Semaphore for tripThread
 static OS_ECB* TripSemaphore;
 
 
