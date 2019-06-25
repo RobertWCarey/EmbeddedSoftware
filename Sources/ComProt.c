@@ -165,6 +165,23 @@ static bool myIDMTCharacteristicHandler(TIDMTCharacter* const characteristic)
   return false;
 }
 
+static bool myDORCurrentHandler()
+{
+  if (Packet_Parameter2 && Packet_Parameter3)
+    return false;
+
+  for (int i = 0; i < NB_ANALOG_CHANNELS; i++)
+  {
+    float irms = ChannelThreadData[i].irms;
+    uint8_t high = (uint8_t)(irms);
+    uint8_t low = (uint8_t)((irms-high)*100);
+    if (!Packet_Put(CMD_DOR_CURRENT, ChannelThreadData[i].channelNb,low,high))
+      return false;
+  }
+
+  return true;
+}
+
 static bool dorPacketHandler(TIDMTCharacter* const characteristic)
 {
   bool success = 0;
@@ -177,6 +194,7 @@ static bool dorPacketHandler(TIDMTCharacter* const characteristic)
     case DOR_FREQ:
       break;
     case DOR_CURRENT:
+      success = myDORCurrentHandler();
       break;
     case DOR_TIMES_TRIPPED:
       break;

@@ -37,6 +37,7 @@
 #define CMD_READ_BYTE 0x08u             /* "Flash - Read Byte" */
 #define CMD_TOWER_MODE 0x0Du            /* "Tower Mode" */
 #define CMD_DOR 0x70u                   /* "DOR" */
+#define CMD_DOR_CURRENT 0x71u                   /* "DOR Current" */
 
 /*! @brief Performs necessary action for any valid packets received.
  *
