@@ -255,72 +255,57 @@ static float getZeroCrossingOffset(int16_t sample0, int16_t sample1)
   return (-sample0)/m;
 }
 
-static void getFrequency(TDORPhaseData* Data,int16_t prevVal, int16_t curVal)
-{
-  float period;
-
-  switch (Data->crossing)
-  {
-  case 0:
-    Data->numberOfSamples = 0;
-    Data->offset1 = getZeroCrossingOffset(prevVal,curVal);
-    Data->crossing = 1;
-    break;
-  case 1:
-    Data->offset2 = getZeroCrossingOffset(prevVal,curVal);
-    period = (Data->numberOfSamples+1-Data->offset1+Data->offset2)*(float)MyPIT0TimePeriod;
-    float freq = 1/((float)(period)*1e-9);
-
-    if (freq >= 47.5 && freq <= 52.5)
-    {
-      Data->frequency = freq;
-      MyPIT0TimePeriod = period/16;
-      PIT_Set(MyPIT0TimePeriod,false,0);
-    }
-    Data->crossing = 0;
-    break;
-  default:
-    Data->crossing = 0;
-    break;
-  }
-}
-
+/*! @brief Calculates the frequency of the phase using a complete period
+ *
+ *  @param data is a pointer the a Phase's TDORPhaseData struct.
+ */
 static void calculateFreq(TDORPhaseData* data)
 {
-
-    if (data->count > 0)
+  // Check that not at the first position in the array
+  if (data->count > 0)
+  {
+    // Check if at a zero crossing with a positive gradient
+    if ((data->samples[data->count] > 0 && data->samples[data->count-1] < 0))
     {
-      if ((data->samples[data->count] > 0 && data->samples[data->count-1] < 0))
+      // Temporary value to store period in
+      float period;
+
+      // Switch between first and second zero crossing
+      switch (data->crossing)
       {
-//       getFrequency(data,data->samples[data->count-1], data->samples[data->count]);
-        float period;
+      case 0:
+        data->numberOfSamples = 1;
+        // Calculate offset at first zero crossing
+        data->offset1 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
+        data->crossing = 1;
+        break;
+      case 1:
+        // Calculate offset at second zero crossing
+        data->offset2 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
+        // Calculate period between zero crossings
+        // Number of samples * current PIT0 sampling period
+        period = (data->numberOfSamples-data->offset1+data->offset2)*(float)MyPIT0TimePeriod;
+        // Store calculated freq in a temp var so value can be checked
+        float freq = 1/((float)(period)*1e-9);
 
-        switch (data->crossing)
+        // Check if the freq is within the valid range
+        if (freq >= 47.5 && freq <= 52.5)
         {
-        case 0:
-          data->numberOfSamples = 0;
-          data->offset1 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
-          data->crossing = 1;
-          break;
-        case 1:
-          data->offset2 = getZeroCrossingOffset(data->samples[data->count-1],data->samples[data->count]);
-          period = (data->numberOfSamples+1-data->offset1+data->offset2)*(float)MyPIT0TimePeriod;
-          float freq = 1/((float)(period)*1e-9);
-
-          if (freq >= 47.5 && freq <= 52.5)
-          {
-            data->frequency = freq;
-            MyPIT0TimePeriod = period/16;
-            PIT_Set(MyPIT0TimePeriod,false,0);
-          }
-          data->crossing = 0;
-          break;
-        default:
-          data->crossing = 0;
-          break;
+          // Store in Phase's data struct
+          data->frequency = freq;
+          // Update sampling period to ensure 16 samples per cycle
+          MyPIT0TimePeriod = period/16;
+          PIT_Set(MyPIT0TimePeriod,false,0);
         }
+        data->crossing = 0;
+        break;
+      default:
+        data->crossing = 0;
+        break;
       }
-      data->numberOfSamples++;
+    }
+    // Increment to record number of samples between zero crossing
+    data->numberOfSamples++;
     }
 }
 
@@ -369,19 +354,6 @@ void DOR_TimingThread(void* pData)
 
     Analog_Get(channelData->channelNb, &channelData->sample);
     channelData->samples[channelData->count] = channelData->sample;
-
-//    if (channelData->channelNb == 0)
-//    {
-//      if (channelData->count > 0)
-//      {
-//        if ((channelData->samples[channelData->count] > 0 && channelData->samples[channelData->count-1] < 0))
-//        {
-//         getFrequency(channelData,channelData->samples[channelData->count-1], channelData->samples[channelData->count]);
-//        }
-//        channelData->numberOfSamples++;
-//      }
-//
-//    }
 
     if (channelData->channelNb == 0)
       calculateFreq(channelData);
