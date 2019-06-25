@@ -251,14 +251,29 @@ static const uint32_t EINV_TRIP_TIME[1898] =
     227,226,226,226,226,225,225,225,225,224,224,224,224,223,223,223,223,222,222,222,222,222,221,221,221,221,220,220,220,220,219,219,219,219,219,218,218,218,218,217,217,217,217,216,216,
     216,216,216,215,215,215,215,214,214,214,214,214,213,213,213,213,212,212,212,212,212,211,211,211,211,211,210,210,210,210,209,209,209,209,209,208,208,208,208,208,207,207,207,207,206,
     206,206,206,206,205,205,205,205,205,204,204,204,204,204,203,203,203,203,203,202,202,202,202,202,201,201,201,201,201
-
-
 };
 
+/*! @brief Sets up the DOR before first use.
+ *
+ *  Enables the all DOR threads and configures phase data.
+ *
+ *  @param dorSetup is a pointer to a DOR setup structure.
+ *  @return bool - TRUE if the DOR was successfully initialized.
+ */
 bool DOR_Init(const TDORSetup* const dorSetup);
 
+/*! @brief Thread that samples the ADC data, does RMS calc and triggers "Timer" output.
+ *
+ *
+ *  @param pData a pointer to an optional data area used to pass parameters to the thread when it is created.
+ */
 void DOR_TimingThread(void* pData);
 
+/*! @brief Calculates and executes "Trip" output timing.
+ *
+ *
+ *  @param pData a pointer to an optional data area used to pass parameters to the thread when it is created.
+ */
 void DOR_TripThread(void* pData);
 
 #endif

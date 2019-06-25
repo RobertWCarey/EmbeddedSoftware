@@ -92,33 +92,39 @@ TDORPhaseData DOR_PhaseData[DOR_NB_PHASES] =
 };
 
 /*! @brief Interrupt callback function to be called when PIT_ISR trigger by PIT0.
+ *  @brief Used to trigger samples from the ADC at set sample rate.
  *
  *  @param arg The user argument that comes with the callback.
  */
 static void PIT0Callback(void* arg)
 {
+  // Cycle through all phases
   for (int i = 0; i < DOR_NB_PHASES; i++)
-
   {
+    // Signal TimingThread to sample data
     OS_SemaphoreSignal(DOR_PhaseData[i].semaphore);
   }
 }
 
 /*! @brief Interrupt callback function to be called when PIT_ISR trigger by PIT1.
+ *  @brief Used to increment each phase's currentTimeCount every 1ms.
  *
  *  @param arg The user argument that comes with the callback.
  */
 static void PIT1Callback(void* arg)
 {
+  // Cycle through all phases
   for (int i = 0; i < DOR_NB_PHASES; i++)
   {
+    // If phase's "Timer" output has been triggered
     if (DOR_PhaseData[i].timerStatus)
     {
+      // Increment phase's currentTimeCount by 1ms.
       DOR_PhaseData[i].currentTimeCount++;
     }
+    // Signal the Trip Thread to process
     OS_SemaphoreSignal(TripSemaphore);
   }
-
 }
 
 bool DOR_Init(const TDORSetup* const dorSetup)
