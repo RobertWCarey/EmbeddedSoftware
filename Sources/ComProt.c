@@ -150,6 +150,13 @@ static bool readBytePacketHandler()
 
 }
 
+
+/*! @brief Gets or Sets the IDMT Characteristic depending on the value of Parameter 2 and 3
+ *
+ *  @param  characteristic  pointer to a location containing the current IDMT Characteristic
+ *
+ *  @return bool - TRUE if packet successfully sent/ value successfully set.
+ */
 static bool myIDMTCharacteristicHandler(TIDMTCharacter* const characteristic)
 {
   if ((Packet_Parameter2 == DOR_IDMT_GET) && !Packet_Parameter3)
@@ -165,6 +172,10 @@ static bool myIDMTCharacteristicHandler(TIDMTCharacter* const characteristic)
   return false;
 }
 
+/*! @brief Gets the current for all 3phases
+ *
+ *  @return bool - TRUE if packet successfully sent.
+ */
 static bool myDORCurrentHandler()
 {
   if (Packet_Parameter2 && Packet_Parameter3)
@@ -175,11 +186,27 @@ static bool myDORCurrentHandler()
     float irms = ChannelThreadData[i].irms;
     uint8_t high = (uint8_t)(irms);
     uint8_t low = (uint8_t)((irms-high)*100);
-    if (!Packet_Put(CMD_DOR_CURRENT, ChannelThreadData[i].channelNb,low,high))
+    if (!Packet_Put(CMD_DOR_CURRENT, ChannelThreadData[i].channelNb, low, high))
       return false;
   }
 
   return true;
+}
+
+/*! @brief Gets the frequency from phase a
+ *
+ *  @return bool - TRUE if packet successfully sent.
+ */
+static bool myDORFreqHandler()
+{
+  if (Packet_Parameter2 && Packet_Parameter3)
+    return false;
+
+  float freq = ChannelThreadData[0].frequency[0];
+  uint8_t high = (uint8_t)(freq);
+  uint8_t low = (uint8_t)((freq-high)*100);
+  return Packet_Put(DOR_FREQ, Packet_Parameter1, low, high);
+
 }
 
 static bool dorPacketHandler(TIDMTCharacter* const characteristic)
@@ -192,6 +219,7 @@ static bool dorPacketHandler(TIDMTCharacter* const characteristic)
       success = myIDMTCharacteristicHandler(characteristic);
       break;
     case DOR_FREQ:
+      success = myDORFreqHandler();
       break;
     case DOR_CURRENT:
       success = myDORCurrentHandler();
