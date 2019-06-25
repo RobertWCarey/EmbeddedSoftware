@@ -111,7 +111,7 @@ static bool myDORFreqHandler()
   if (Packet_Parameter2 && Packet_Parameter3)
     return false;
 
-  float freq = ChannelThreadData[0].frequency[0];
+  float freq = ChannelThreadData[0].frequency;
   uint8_t high = (uint8_t)(freq);
   uint8_t low = (uint8_t)((freq-high)*100);
   return Packet_Put(DOR_FREQ, Packet_Parameter1, low, high);
