@@ -156,6 +156,11 @@ static bool myIDMTCharacteristicHandler(TIDMTCharacter* const characteristic)
   {
     return Packet_Put(CMD_DOR, Packet_Parameter1, DOR_IDMT_GET, *characteristic);
   }
+  else if ((Packet_Parameter2 == DOR_IDMT_SET) && (Packet_Parameter3 >= DOR_IDMT_INVERSE) && (Packet_Parameter3 <= DOR_IDMT_EINVERSE))
+  {
+    *characteristic = Packet_Parameter3;
+    return true;
+  }
 
   return false;
 }
