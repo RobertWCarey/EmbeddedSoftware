@@ -62,6 +62,7 @@ TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
+    .count = 0,
   },
   {
     .semaphore = NULL,
@@ -72,6 +73,7 @@ TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
+    .count = 0,
   },
   {
     .semaphore = NULL,
@@ -82,6 +84,7 @@ TAnalogThreadData ChannelThreadData[NB_ANALOG_CHANNELS] =
     .offset2 = 0,
     .numberOfSamples = 0,
     .crossing = 0,
+    .count = 0,
   }
 };
 
@@ -189,7 +192,7 @@ static float returnRMS(TAnalogThreadData* Data)
 
   vrms = sqrt(square/16);
 
-  return (float)((vrms*40)/13);
+  return (float)((vrms*13)/40);
 }
 
 
@@ -266,23 +269,24 @@ static void setTrip()
 
 void DOR_TimingThread(void* pData)
 {
-  int count;
+//  static int count;
+//  static int32_t sumSquares;
   for (;;)
   {
     (void)OS_SemaphoreWait(channelData.semaphore, 0);
 
     Analog_Get(channelData.channelNb, &channelData.sample);
-    channelData.samples[count] = channelData.sample;
+    channelData.samples[channelData.count] = channelData.sample;
 
     if (channelData.channelNb == 0)
     {
-      if (count > 0)
+      if (channelData.count > 0)
       {
-        if ((channelData.samples[count] > 0 && channelData.samples[count-1] < 0))
+        if ((channelData.samples[channelData.count] > 0 && channelData.samples[channelData.count-1] < 0))
         {
         //        float temp = channelData.samples[count];
         //        float temp1 = channelData.samples[count-1];
-         getFrequency(&channelData,channelData.samples[count-1], channelData.samples[count]);
+         getFrequency(&channelData,channelData.samples[channelData.count-1], channelData.samples[channelData.count]);
 
         }
         channelData.numberOfSamples++;
@@ -290,11 +294,22 @@ void DOR_TimingThread(void* pData)
 
     }
 
-    count ++;
-    if (count == 16)
+
+//    channelData.sumSquares += channelData.samples[channelData.count]*channelData.samples[channelData.count];
+//    if (channelData.count == 0)
+//    {
+//      channelData.sumSquares -= channelData.samples[15]*channelData.samples[15];
+//    }
+//    else
+//    {
+//      channelData.sumSquares -= channelData.samples[channelData.count-1]*channelData.samples[channelData.count-1];
+//    }
+
+    channelData.count ++;
+    if (channelData.count == 16)
     {
       channelData.irms = returnRMS(&channelData);
-      count = 0;
+      channelData.count = 0;
     }
 
 
