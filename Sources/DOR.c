@@ -336,10 +336,10 @@ void DOR_TripThread(void* pData)
     (void)OS_SemaphoreWait(TripSemaphore, 0);
 
     // TODO: Add multi channel functionality
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < 3; i++)
     {
       //check if timer started
-      if (ChannelThreadData[i].timerStatus)
+      if (ChannelThreadData[i].timerStatus && !ChannelThreadData[i].tripStatus)
       {
   //      channelData.tripTime = interpolate(INV_TRIP_TIME,channelData.irms);
   //      channelData.tripTime = 17610;
