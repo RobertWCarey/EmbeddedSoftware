@@ -307,7 +307,7 @@ void DOR_TimingThread(void* pData)
 //    {
 //      channelData.sumSquares -= channelData.samples[channelData.count-1]*channelData.samples[channelData.count-1];
 //    }
-    channelData.squares[channelData.count] = pow(raw2v(channelData.sample),2);
+    channelData.squares[channelData.count] = pow(channelData.sample,2);
     channelData.sumSquares += channelData.squares[channelData.count];
 
     if (channelData.subtract)
@@ -320,7 +320,7 @@ void DOR_TimingThread(void* pData)
 
     float vrms = sqrt(channelData.sumSquares/NB_SAMPLES);
 
-    channelData.irms = ((vrms*13)/40);
+    channelData.irms = raw2v(((vrms*13)/40));
     }
 
     channelData.count ++;
