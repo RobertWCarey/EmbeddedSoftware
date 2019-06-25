@@ -314,34 +314,6 @@ void DOR_TimingThread(void* pData)
   }
 }
 
-static uint32_t interpolate(TIDMTData data[], double val)
-{
-  double result = 0; // Initialize result
-
-  for (int i=1; i<20; i++)
-  {
-      // Compute individual terms of above formula
-      double term = data[i].y;
-      double temp = data[i].x;
-      for (int j=1;j<20;j++)
-      {
-          double temp = data[j].x;
-          if (j!=i)
-          {
-            temp = (val - data[j].x);
-            temp = temp/(data[i].x - data[j].x);
-            term = term*temp;
-          }
-//              term = term*((val - data[j].x)/(data[i].x - data[j].x));
-      }
-
-      // Add current term to result
-      result += term;
-  }
-
-  return (uint32_t)result;
-}
-
 void DOR_TripThread(void* pData)
 {
   for(;;)
