@@ -52,7 +52,7 @@ volatile uint16union_t *nvTowerMode;
 static const uint32_t BAUD_RATE = 115200;
 
 // Global value for storing IDMT Characteristic
-TIDMTCharacter IDMT_Characteristic = IDMT_INVERSE;
+TIDMTCharacter IDMT_Characteristic = IDMT_V_INVERSE;
 
 // Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
 #define THREAD_STACK_SIZE 1024
@@ -61,11 +61,11 @@ TIDMTCharacter IDMT_Characteristic = IDMT_INVERSE;
 typedef enum
 {
   InitModulesThreadPriority,
+  UARTRxThreadPriority,
   DORTiming0Priority,
   DORTiming1Priority,
   DORTiming2Priority,
   DORTripPriority,
-  UARTRxThreadPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
 } TThreadPriority;
@@ -163,7 +163,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode);
+      cmdHandler(nvTowerNb,nvTowerMode,&IDMT_Characteristic);
   }
 }
 

@@ -150,15 +150,24 @@ static bool readBytePacketHandler()
 
 }
 
+static bool myIDMTCharacteristicHandler(TIDMTCharacter* const characteristic)
+{
+  if ((Packet_Parameter2 == DOR_IDMT_GET) && !Packet_Parameter3)
+  {
+    return Packet_Put(CMD_DOR, Packet_Parameter1, DOR_IDMT_GET, *characteristic);
+  }
 
+  return false;
+}
 
-static bool dorPacketHandler()
+static bool dorPacketHandler(TIDMTCharacter* const characteristic)
 {
   bool success = 0;
 
   switch (Packet_Parameter1)
   {
     case DOR_IDMT_CHARAC:
+      success = myIDMTCharacteristicHandler(characteristic);
       break;
     case DOR_FREQ:
       break;
@@ -169,6 +178,7 @@ static bool dorPacketHandler()
     case DOR_FAULT_TYPE:
       break;
     default:
+      success = false;
       break;
   }
 
@@ -176,7 +186,7 @@ static bool dorPacketHandler()
   return success;
 }
 
-void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode)
+void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t * const towerMode, TIDMTCharacter* const characteristic)
 {
 
   // Isolate command packet
@@ -207,7 +217,7 @@ void cmdHandler(volatile uint16union_t * const towerNb, volatile uint16union_t *
       success = readBytePacketHandler();
       break;
     case CMD_DOR:
-      success = dorPacketHandler();
+      success = dorPacketHandler(characteristic);
       break;
     default:
       break;
