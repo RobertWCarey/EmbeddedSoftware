@@ -27,32 +27,26 @@
 */
 /* MODULE main */
 
-// CPU module - contains low level hardware initialization routines
 #include "DOR.h"
 #include "Cpu.h"
-#include "Events.h"
 #include "PE_Types.h"
 #include "PE_Error.h"
 #include "PE_Const.h"
 #include "IO_Map.h"
 #include "packet.h"
 #include "UART.h"
-#include "LEDs.h"
 #include "Flash.h"
 #include "PIT.h"
 #include "ComProt.h"
 #include "OS.h"
 
-
 // Pointers to non-volatile storage locations
-volatile uint16union_t *nvTowerNb;
-volatile uint16union_t *nvTowerMode;
+volatile uint8_t *nvIDMTCharacter;      // Pointer to IDMT Characteristic
+volatile uint16union_t *nvTimesTripped; // Pointer to Number of Times Tripped
+volatile uint8_t *nvFaultType;          // Pointer to Most recent Fault Type
 
-// Baud Rate (bps)
+// Serial Baud Rate (bps)
 static const uint32_t BAUD_RATE = 115200;
-
-//Last three values for each accelerometer axis
-static uint8_t XValues[3], YValues[3], ZValues[3];
 
 // Arbitrary thread stack size - big enough for stacking of interrupts and OS use.
 #define THREAD_STACK_SIZE 1024
@@ -61,32 +55,38 @@ static uint8_t XValues[3], YValues[3], ZValues[3];
 typedef enum
 {
   InitModulesThreadPriority,
-  DORTiming0Priority,
-  DORTiming1Priority,
-  DORTiming2Priority,
-  DORTripPriority,
   UARTRxThreadPriority,
+  DORPhaseATimingPriority,
+  DORPhaseBTimingPriority,
+  DORPhaseCTimingPriority,
+  DORTripPriority,
   PacketThreadPriority,
   UARTTxThreadPriority,
 } TThreadPriority;
 
 // Thread stacks
-OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);   /*!< The stack for the Init Modules thread. */
-OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART receive thread. */
-OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);        /*!< The stack for the UART transmit thread. */
-OS_THREAD_STACK(DORTiming0ThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(DORTripThreadStack, THREAD_STACK_SIZE);
-OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);  /*!< The stack for the Packet Handle thread. */
+OS_THREAD_STACK(InitModulesThreadStack, THREAD_STACK_SIZE);     /*!< The stack for the Init Modules thread. */
+OS_THREAD_STACK(UARTRxThreadStack, THREAD_STACK_SIZE);          /*!< The stack for the UART receive thread. */
+OS_THREAD_STACK(DORPhaseATimingThreadStack, THREAD_STACK_SIZE); /*!< The stack for the DOR Phase A Timing thread. */
+OS_THREAD_STACK(DORPhaseBTimingThreadStack, THREAD_STACK_SIZE); /*!< The stack for the DOR Phase B Timing thread. */
+OS_THREAD_STACK(DORPhaseCTimingThreadStack, THREAD_STACK_SIZE); /*!< The stack for the DOR Phase C Timing thread. */
+OS_THREAD_STACK(DORTripThreadStack, THREAD_STACK_SIZE);         /*!< The stack for the DOR Trip thread. */
+OS_THREAD_STACK(PacketHandleThreadStack, THREAD_STACK_SIZE);    /*!< The stack for the Packet Handle thread. */
+OS_THREAD_STACK(UARTTxThreadStack, THREAD_STACK_SIZE);          /*!< The stack for the UART transmit thread. */
 
 // Thread Parameters
 // Initilisation of modules thread parameters
 TOSThreadParams InitModulesThreadParams = {NULL,&InitModulesThreadStack[THREAD_STACK_SIZE - 1],InitModulesThreadPriority};
-// Analog thread params for one channel
-TOSThreadParams DOR_Timing0ThreadParams = {NULL,&DORTiming0ThreadStack[THREAD_STACK_SIZE - 1],DORTiming0Priority};
-// Trip thread params
-TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
 // UART receive thread parameters
 TOSThreadParams UART_RxThreadParams = {NULL,&UARTRxThreadStack[THREAD_STACK_SIZE - 1],UARTRxThreadPriority};
+// DOR Phase A Timing thread params for one channel
+TOSThreadParams DOR_PhaseATimingThreadParams = {NULL,&DORPhaseATimingThreadStack[THREAD_STACK_SIZE - 1],DORPhaseATimingPriority};
+// DOR Phase B Timing thread params for one channel
+TOSThreadParams DOR_PhaseBTimingThreadParams = {NULL,&DORPhaseBTimingThreadStack[THREAD_STACK_SIZE - 1],DORPhaseBTimingPriority};
+// DOR Phase C Timing thread params for one channel
+TOSThreadParams DOR_PhaseCTimingThreadParams = {NULL,&DORPhaseCTimingThreadStack[THREAD_STACK_SIZE - 1],DORPhaseCTimingPriority};
+// DOR Trip thread params
+TOSThreadParams DOR_TripThreadParams = {NULL,&DORTripThreadStack[THREAD_STACK_SIZE - 1],DORTripPriority};
 // UART transmit thread parameters
 TOSThreadParams UART_TxThreadParams = {NULL,&UARTTxThreadStack[THREAD_STACK_SIZE - 1],UARTTxThreadPriority};
 // Packet Handle thread parameters
@@ -101,8 +101,9 @@ TOSThreadParams PacketHandleThreadParams = {NULL,&PacketHandleThreadStack[THREAD
 static void InitModulesThread(void* pData)
 {
   //Default settings
-  const uint16_t defaultTowerNb = 9382; //Tower Mode no.
-  const uint16_t defaultTowerMode = 1; //Tower Version no.
+  const uint8_t defaultIDMTCharacter = IDMT_V_INVERSE;
+  const uint16_t defaultTimesTripped = 0;
+  const uint8_t defaultFaultType = 0;
 
   //Packet setup struct
   TPacketSetup packetSetup;
@@ -111,31 +112,40 @@ static void InitModulesThread(void* pData)
   packetSetup.UARTTxParams = &UART_TxThreadParams;
   packetSetup.UARTRxParams = &UART_RxThreadParams;
 
-  //DOR Module Setup
-  TDORSetup dorSetup;
-  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
-  dorSetup.Channel0Params = &DOR_Timing0ThreadParams;
-  dorSetup.TripParams = &DOR_TripThreadParams;
-
   //Disable Interrupts
   OS_DisableInterrupts();
 
   //Initialise Modules
-  Packet_Init(&packetSetup);
-  LEDs_Init();
-  Flash_Init();
-  DOR_Init(&dorSetup);
+  Packet_Init(&packetSetup); // Init Packet Module
+  Flash_Init(); // Init Flash Module
 
   //Assign non-volatile memory locations
-  Flash_AllocateVar((void*)&nvTowerNb, sizeof(*nvTowerNb));
-  Flash_AllocateVar((void*)&nvTowerMode, sizeof(*nvTowerMode));
-  if (nvTowerNb->l == 0xffff)
-    Flash_Write16((uint16_t*)nvTowerNb, defaultTowerNb);
-  if (nvTowerMode->l == 0xffff)
-    Flash_Write16((uint16_t*)nvTowerMode, defaultTowerMode);
+  Flash_AllocateVar((void*)&nvTimesTripped, sizeof(*nvTimesTripped));
+  Flash_AllocateVar((void*)&nvIDMTCharacter, sizeof(*nvIDMTCharacter));
+  Flash_AllocateVar((void*)&nvFaultType, sizeof(*nvFaultType));
+  if (*nvIDMTCharacter == 0xff)
+      Flash_Write8((uint8_t*)nvIDMTCharacter, defaultIDMTCharacter);
+  if (nvTimesTripped->l == 0xffff)
+        Flash_Write16((uint16_t*)nvTimesTripped, defaultTimesTripped);
+  if (*nvFaultType == 0xff)
+        Flash_Write8((uint8_t*)nvFaultType, defaultFaultType);
+
+  //DOR Module Setup & Init
+  TDORSetup dorSetup;
+  dorSetup.moduleClk = CPU_BUS_CLK_HZ;
+  dorSetup.PhaseAParams = &DOR_PhaseATimingThreadParams;
+  dorSetup.PhaseBParams = &DOR_PhaseBTimingThreadParams;
+  dorSetup.PhaseCParams = &DOR_PhaseCTimingThreadParams;
+  TDORTripThreadData dorTripThreadData;
+  dorTripThreadData.characteristic = nvIDMTCharacter;
+  dorTripThreadData.timesTripped = nvTimesTripped;
+  dorTripThreadData.faultType = nvFaultType;
+  DOR_TripThreadParams.pData = &dorTripThreadData;
+  dorSetup.TripParams = &DOR_TripThreadParams;
+  DOR_Init(&dorSetup);
 
   //Send start-up packet
-  towerStatupPacketHandler(nvTowerNb,nvTowerMode);
+  towerStatupPacketHandler(nvIDMTCharacter);
 
   //Enable Interrupts
   OS_EnableInterrupts();
@@ -155,7 +165,7 @@ static void PacketHandleThread(void* pData)
     // Check if a packet is available
     if (Packet_Get())
       // Deal with any received packets
-      cmdHandler(nvTowerNb,nvTowerMode);
+      cmdHandler(nvIDMTCharacter, nvTimesTripped, nvFaultType);
   }
 }
 

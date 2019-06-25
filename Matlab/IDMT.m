@@ -16,10 +16,14 @@ vi_t=zeros(1,currentSize);
 ei_t=zeros(1,currentSize);
 
 for count=1:currentSize
-   i_t(count)=i_k/(current(count)^i_a-1);
-   vi_t(count)=vi_k/(current(count)^vi_a-1);
-   ei_t(count)=ei_k/(current(count)^ei_a-1);
+   i_t(count)=round((i_k/(current(count)^i_a-1))*1000);
+   vi_t(count)=round((vi_k/(current(count)^vi_a-1))*1000);
+   ei_t(count)=round((ei_k/(current(count)^ei_a-1))*1000);
 end
+dlmwrite('it.csv',i_t);
+csvwrite('vit.csv',vi_t);
+csvwrite('eit.csv',ei_t);
+%% Store in ms
 
 intSize=20;
 idmt=zeros(1,intSize);
