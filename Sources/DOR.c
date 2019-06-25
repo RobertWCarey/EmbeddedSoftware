@@ -368,12 +368,14 @@ void DOR_TripThread(void* pData)
 
 //        ChannelThreadData[i].tripTime = INV_TRIP_TIME[((uint16_t)ChannelThreadData[i].irms*100)-103];
 
-        ChannelThreadData[i].tripTime = getTripTime(ChannelThreadData[i].irms, *characteristic);
+        ChannelThreadData[i].tripTime = getTripTime(ChannelThreadData[i].irms, *tripThreadData->characteristic);
 
         if (ChannelThreadData[i].currentTimeCount >= ChannelThreadData[i].tripTime)
         {
           // Set Output high
           ChannelThreadData[i].tripStatus = 1;
+          Flash_Write8(tripThreadData->timesTripped,*tripThreadData->timesTripped+1);
+          Flash_Write8(tripThreadData->faultType,ChannelThreadData[i].channelNb);
           setTrip();
         }
 
